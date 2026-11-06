@@ -3,7 +3,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/components/I18n";
 import { AsyncButton } from "@/components/Buttons";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 export function PasswordForm() {
   const t = useT();

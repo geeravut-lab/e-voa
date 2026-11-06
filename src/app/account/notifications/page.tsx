@@ -6,7 +6,7 @@ import { confirmWhatsappAction, disconnectChannelAction, startLineLinkAction, st
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 export const dynamic = "force-dynamic";
 

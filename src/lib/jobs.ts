@@ -11,11 +11,12 @@ import { reconcilePaid, expireUnpaid } from "@/lib/payments/service";
 import { recheckWaiting } from "@/lib/applications/service";
 import { processAddonQueue, syncPartnerPackages } from "@/lib/partners/service";
 
-const BUDGET_MS = 20_000;
+const DEFAULT_BUDGET_MS = 20_000;
+const budgetMs = () => { const n = Number(process.env.TICK_BUDGET_MS); return Number.isFinite(n) && n >= 1000 ? n : DEFAULT_BUDGET_MS; };          // tests on a slow link may raise it
 
 /**
  * The timed work. Every job is idempotent and isolated: one failing never stops the others, and the whole tick stops starting new jobs
- * after BUDGET_MS (the summary says where it stopped). Called by the cron route.
+ * after the budget (20 s) (the summary says where it stopped). Called by the cron route.
  */
 export async function runTick(): Promise<Record<string, unknown>> {
   const started = Date.now();
@@ -53,7 +54,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     }],
   ];
   for (const [name, job] of jobs) {
-    if (Date.now() - started > BUDGET_MS) { out[name] = "not started: time budget used"; continue; }
+    if (Date.now() - started > budgetMs()) { out[name] = "not started: time budget used"; continue; }
     try { out[name] = await job(); } catch (e) { console.error(`[tick] ${name} failed`, (e as Error).message); out[name] = { error: (e as Error).message.slice(0, 200) }; }
   }
   out.ms = Date.now() - started;

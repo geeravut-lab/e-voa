@@ -1,7 +1,8 @@
 "use client";
 import { useId, type ReactNode } from "react";
 
-export const inputCls = "min-h-11 w-full rounded-control border-[1.5px] border-field bg-surface px-3 text-base";
+import { inputCls } from "../inputStyles";
+export { inputCls };
 
 export function Field({ label, hint, children, wide = false }: { label: string; hint?: string; children: (id: string) => ReactNode; wide?: boolean }) {
   const id = useId();

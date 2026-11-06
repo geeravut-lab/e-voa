@@ -61,3 +61,9 @@ Real Supabase + real **Stripe TEST** API + this simulator: catalogue and rules, 
 (unpaid = not paid), a real test PaymentIntent recorded through `mark_payment_paid` (the hosted Checkout page cannot be reached from the cloud sandbox, so the card step itself is **not** driven),
 receipt number, insurance callback → document attached → Immigration → E-VOA → signed pass token, RLS, refunds through Stripe (policy, double refund, cap), rejection refunds only unused add-ons,
 partner outage → retries → failed → refunded, unpaid order expiry. It removes everything it created.
+
+## Phase 4 endpoints (`tests-live/phase4.live.test.ts`)
+
+- `POST /ai/v1/messages`: Anthropic Messages API (accepts `x-api-key` and `Bearer`), answers with tool calls then text so the assistant loop is exercised; state `aiRequests` records model, system prompt, tools and `output_config`.
+- `/line/v2/bot/message/push|reply`, `/whatsapp/v<version>/<phone>/messages`: record what would be sent in `messagesSent`; a LINE user id ending in `BLOCKED` answers 400 (the user blocked us) to test the "stop trying" path.
+- The partner portal needs no simulator: portal-managed partners are not called (the voucher is issued inside ThaiPass).

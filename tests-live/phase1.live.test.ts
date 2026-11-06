@@ -378,10 +378,11 @@ describe("reference lists and the scheduled tick", () => {
   it("the tick runs every job, one failing job does not stop the others", async () => {
     const prev = { u: process.env.IMMIGRATION_API_URL, t: process.env.IMMIGRATION_API_TOKEN, f: process.env.IMMIGRATION_API_FROM };
     process.env.IMMIGRATION_API_URL = `${mockBase}/immigration/th/v1`; process.env.IMMIGRATION_API_TOKEN = "jwt"; process.env.IMMIGRATION_API_FROM = "thaipass";
+    process.env.TICK_BUDGET_MS = "180000";          // the real budget is 20 s; from the sandbox the database answers more slowly
     try {
       const out = await runTick();
       expect(Object.keys(out)).toEqual(expect.arrayContaining(["outbox", "poll", "master_sync", "purge", "ms"]));
       expect(out.purge).toMatchObject({ failed: 0 });
-    } finally { process.env.IMMIGRATION_API_URL = prev.u; process.env.IMMIGRATION_API_TOKEN = prev.t; process.env.IMMIGRATION_API_FROM = prev.f; }
+    } finally { delete process.env.TICK_BUDGET_MS; process.env.IMMIGRATION_API_URL = prev.u; process.env.IMMIGRATION_API_TOKEN = prev.t; process.env.IMMIGRATION_API_FROM = prev.f; }
   });
 });

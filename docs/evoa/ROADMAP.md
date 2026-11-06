@@ -66,7 +66,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Tick: payments reconcile/expire, pre-check recheck, add-on queue, catalogue sync | ✅ (daily on Hobby) |
 | Tests: 13 live checks (real Supabase + Stripe TEST + simulator) and 5 browser journeys at 390×844 / 1280×800 pass; 127 unit tests | ✅ |
 | Closing items: PDPA consent + signed declaration, receipt PDF + e-mail, e-mail notices, public status check, traveler book, rate limits, error log, passport photo reading (in the browser), photo advice, autosave, full review, cancel / change dates / upgrade, FAQ, checklist, airport guide, official channels, sitemap/robots | ✅ tested: 149 unit, 23 live (Supabase + Stripe test + simulator), 8 browser |
-| ⬜ Group/agency uploads · ⬜ Ops: bulk actions, assignment, saved filters | next |
+| ✅ Agency uploads (CSV) · ⬜ Ops: bulk actions, assignment, saved filters | next |
 
 ## Phase 3 — Add-ons 🟡 (built and tested against the simulator; waits for real partner access)
 
@@ -81,6 +81,17 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 
 ⬜ UAT with Immigration Bureau · ⬜ security audit / pen-test · ⬜ load test · ⬜ PDPA/GDPR review · ⬜ revoke old keys found in legacy documents
 
-## Phase 4+ — Growth
+## Phase 4 — Growth 🟡 (built and tested; waits for real keys)
 
-⬜ AI assistant (provider/model routing, prompts and rules) · ⬜ LINE / WhatsApp notifications and quotas · ⬜ automation rules engine (SLA reminders, payment time-outs) · ⬜ Agency / OTA portal · ⬜ Partner portal · ⬜ more languages (HI, AR, RU, KO, JA, ZH-TW) · ⬜ Wallet passes · ⬜ Government/TAT dashboard
+| Item | Status |
+| --- | --- |
+| Photo face + background check (in the browser), **selfie with the device camera**, **view any uploaded file** | ✅ tested with a fake camera |
+| hreflang (`?lang=`) + SEO articles, tax invoice (PDF, Thai), airport details editable at `/admin/airports` | ✅ · ⬜ legal review of the Thai/Chinese texts and the invoice treatment |
+| AI help assistant `/help/chat` (tool use over the user's own application, daily budget, admin switch at `/admin/ai`) | ✅ against the simulator · ⬜ real Claude key (`ANTHROPIC_API_KEY`) |
+| LINE / WhatsApp notices (link code, signed webhook, quota, blocked accounts) | ✅ against the simulator · ⬜ real LINE / WhatsApp credentials and approved templates |
+| Agency portal `/agency` (+ `/admin/agencies`): registration, approval, team, CSV import, discount, commission | ✅ |
+| Partner portal `/partner` (+ `/admin/partners`): packages, voucher codes, redeem, settlement CSV, monthly payout record | ✅ |
+
+## Still planned
+
+⬜ automation rules engine (SLA reminders, payment time-outs) · ⬜ more languages (HI, AR, RU, KO, JA, ZH-TW) · ⬜ Wallet passes · ⬜ Government/TAT dashboard · ⬜ partner portal: refunds/void by the partner, per-package stock, partner e-mail notices · ⬜ agency: invoices per agency, commission payout record

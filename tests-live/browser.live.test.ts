@@ -15,6 +15,9 @@ import { syncFlatLists, syncChildLists } from "@/lib/immigration/sync";
 import { syncPartnerPackages, handlePartnerCallback } from "@/lib/partners/service";
 import { afterPayment } from "@/lib/payments/service";
 import { checkDigit } from "@/lib/mrz";
+import { cleanupUsers, makeDraft } from "./helpers";
+import { applyForPartner, savePackage } from "@/lib/partner-portal/service";
+import { applyForAgency } from "@/lib/agency/service";
 
 // Playwright is pre-installed globally in the cloud sandbox and resolves through require() from any directory.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,6 +91,7 @@ afterAll(async () => {
     if (data?.length) await admin.storage.from("documents").remove(data.map((d) => d.storage_path));
     await admin.auth.admin.deleteUser(id);
   }));
+  await cleanupUsers();
   await sql(eligibilityBefore === undefined ? "delete from public.platform_settings where key='eligibility'" : `update public.platform_settings set value='${JSON.stringify(eligibilityBefore)}'::jsonb where key='eligibility'`);
   const clean = [masterWasEmpty ? "delete from public.master_data; delete from public.master_sync;" : "", catalogueWasEmpty ? "delete from public.partner_packages;" : ""].join(" ").trim();
   if (clean) await sql(clean);
@@ -336,12 +340,115 @@ describe("mobile menu", () => {
     await p.goto(`${APP}/fees`); await p.waitForTimeout(800); expect(await col(label)).toBe(dark); expect(await col(more), "More is blue on a page of the sheet").not.toBe(grey);
     await p.goto(`${APP}/admin/queue`); await p.waitForTimeout(800); await more.click();
     const sheet = p.locator("[role=dialog]"); const rows = await sheet.locator("button").evaluateAll((els: Element[]) => els.map((e) => ({ t: (e as HTMLElement).innerText.trim(), cur: e.getAttribute("aria-current") })));
-    const head = rows.findIndex((r: { t: string }) => r.t === "Back office"); expect(head).toBeGreaterThan(0);
+    const head = rows.findIndex((r: { t: string }) => r.t.toLowerCase() === "back office"); expect(head, JSON.stringify(rows)).toBeGreaterThan(0);
     expect(rows[head].cur).toBeNull(); expect(rows[head + 1].cur, "the open page is the one highlighted").toBe("page");
     const box = await sheet.locator("button[aria-current=page]").boundingBox(); expect(box!.y).toBeGreaterThan(0); expect(box!.y + box!.height).toBeLessThan(844);
     await p.keyboard.press("Escape"); await p.goto(`${APP}/admin`); await p.waitForTimeout(800); await more.click();
-    const home = await sheet.locator("button[aria-current=page]").allInnerTexts(); expect(home).toEqual(["Back office"]);
+    const home = await sheet.locator("button[aria-current=page]").allInnerTexts(); expect(home.map((x: string) => x.toLowerCase())).toEqual(["back office"]);
     await ctx.close();
   });
+});
+describe("uploads: selfie and viewing", () => {
+  it("the face photo can be taken with the camera (face check runs, file goes through the normal upload) and every uploaded file can be viewed", async () => {
+    const u = await makeUser("selfie");
+    const d = await makeDraft({ id: u.id, email: u.email } as never, "APR");
+    await admin.from("documents").delete().eq("application_id", d.appId).eq("kind", "photo");          // the photo is the one missing
+    const fake = await chromium.launch({ args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
+    try {
+      const ctx = await fake.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US", permissions: ["camera"] }); await ctx.addCookies(cookiesFor(u.session)); const p = await ctx.newPage();
+      const errs: string[] = []; p.on("pageerror", (e: Error) => errs.push(String(e)));
+      await p.goto(`${APP}/apply?step=2&trip=${d.tripId}&app=${d.appId}`); await p.waitForSelector("text=Take a selfie", { timeout: 20_000 });
+      const slot = p.locator("form", { has: p.locator("input[name=kind][value=photo]") });
+      expect(await slot.getByRole("button", { name: "View" }).count(), "no file yet, nothing to view").toBe(0);
+      await slot.getByRole("button", { name: /Take a selfie/ }).click();
+      const dlg = p.getByRole("dialog", { name: "Take your photo" }); await dlg.waitFor();
+      await p.waitForFunction(() => { const v = document.querySelector("video") as HTMLVideoElement | null; return !!v && v.videoWidth > 0; }, null, { timeout: 15_000 });
+      await shot(p, "selfie-live");
+      await dlg.getByRole("button", { name: "Take photo" }).click();
+      await dlg.getByRole("button", { name: "Use this photo" }).waitFor(); await dlg.getByRole("button", { name: "Retake" }).click();          // retake works
+      await dlg.getByRole("button", { name: "Take photo" }).click(); await dlg.getByRole("button", { name: "Use this photo" }).click();
+      await dlg.waitFor({ state: "detached" });
+      const got = await slot.locator("input[type=file][name=file]").evaluate((el: HTMLInputElement) => ({ n: el.files?.length ?? 0, type: el.files?.[0]?.type, name: el.files?.[0]?.name }));
+      expect(got).toMatchObject({ n: 1, type: "image/jpeg" }); expect(got.name).toMatch(/^selfie-/);
+      await slot.getByRole("status").waitFor({ timeout: 90_000 });          // the face advice appears for the captured picture, before it is sent
+      await slot.getByRole("button", { name: "Upload" }).click();
+      await slot.getByRole("button", { name: "View" }).waitFor({ timeout: 30_000 });          // after the upload the file can be viewed
+      const row = (await admin.from("documents").select("id, mime, kind").eq("application_id", d.appId).eq("kind", "photo").is("deleted_at", null)).data!; expect(row).toHaveLength(1); expect(row[0].mime).toBe("image/jpeg");
+      await slot.getByRole("button", { name: "View" }).click();
+      const viewer = p.getByRole("dialog", { name: "Photo" }); await viewer.waitFor();
+      const img = viewer.locator("img"); await img.waitFor();
+      await p.waitForFunction(() => { const i = document.querySelector("[role=dialog] img") as HTMLImageElement | null; return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15_000 });
+      expect(await img.evaluate((i: HTMLImageElement) => i.getAttribute("src"))).toBe(`/api/documents/${row[0].id}`);
+      await shot(p, "doc-viewer");
+      await p.keyboard.press("Escape"); await viewer.waitFor({ state: "detached" });
+      // another signed-in person gets nothing from the same address
+      const other = await makeUser("selfie-other"); const c2 = await fake.newContext(); await c2.addCookies(cookiesFor(other.session));
+      const r = await c2.request.get(`${APP}/api/documents/${row[0].id}`); expect(r.status()).toBe(404);
+      // the trip page lists every uploaded file with a viewer
+      await p.goto(`${APP}/trips/${d.appId}`); await p.waitForSelector("text=Your uploaded documents", { timeout: 15_000 });
+      expect(await p.locator("section", { hasText: "Your uploaded documents" }).getByRole("button", { name: "View" }).count()).toBeGreaterThanOrEqual(5);
+      expect(errs).toEqual([]);
+      await ctx.close(); await c2.close();
+    } finally { await fake.close(); }
+  }, 240_000);
+
+  it("without a camera the selfie button falls back to the phone's camera input, and a denied camera says what to do", async () => {
+    const u = await makeUser("selfie2");
+    const d = await makeDraft({ id: u.id, email: u.email } as never, "APR");
+    await admin.from("documents").delete().eq("application_id", d.appId).eq("kind", "photo");
+    const ctx = await ctxFor(u); const p = await ctx.newPage();
+    await p.addInitScript(() => { Object.defineProperty(navigator, "mediaDevices", { value: undefined, configurable: true }); });
+    await p.goto(`${APP}/apply?step=2&trip=${d.tripId}&app=${d.appId}`); await p.waitForSelector("text=Take a selfie", { timeout: 20_000 });
+    const input = p.locator("input[capture=user]"); expect(await input.count()).toBe(1);
+    expect(await input.evaluate((e: HTMLInputElement) => e.accept)).toBe("image/*");
+    await ctx.close();
+    const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US" }); await ctx2.addCookies(cookiesFor(u.session)); const p2 = await ctx2.newPage();
+    await p2.addInitScript(() => { Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia: () => Promise.reject(new DOMException("denied", "NotAllowedError")) }, configurable: true }); });
+    await p2.goto(`${APP}/apply?step=2&trip=${d.tripId}&app=${d.appId}`); await p2.getByRole("button", { name: /Take a selfie/ }).click();
+    const al = p2.locator("p[role=alert]"); await al.waitFor(); expect(await al.innerText()).toMatch(/Allow camera access/);
+    await p2.getByRole("button", { name: "Close" }).click(); await ctx2.close();
+  }, 120_000);
+});
+
+describe("partner and agency pages", () => {
+  it("registration forms, the pending notice and the active dashboards render on a phone and a desktop without sideways scrolling", async () => {
+    const pt = await makeUser("pt-page"), ag = await makeUser("ag-page"), staff = await makeUser("adm-page", true), plain = await makeUser("plain-page");
+    // a visitor with no company sees the registration form
+    for (const [w, h] of [[390, 844], [1280, 800]] as const) {
+      const c = await ctxFor(plain, w, h); const p = await c.newPage();
+      await p.goto(`${APP}/partner`); await p.waitForSelector("text=Register your company", { timeout: 20_000 }); expect(await overflowX(p)).toBe(false); await shot(p, `partner-join-${w}`);
+      await p.goto(`${APP}/agency`); await p.waitForSelector("text=Register your agency", { timeout: 20_000 }); await shot(p, `agency-join-${w}`); expect(await overflowX(p), `agency join ${w}: ${await p.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 1).slice(0, 3).map((e) => e.tagName + "." + String(e.className).slice(0, 60)).join(" | "))}`).toBe(false);
+      await c.close();
+    }
+    // pending → active partner
+    const a = await applyForPartner(pt.id, { name: "Browser SIM Co", provider: "sim", contact_name: "Pim Partner", contact_email: "p@example.com", contact_phone: "+66 2 000 0000" }); if (!a.ok) throw new Error(a.error);
+    const ag1 = await applyForAgency(ag.id, { name: "Browser Travel Co", contact_name: "Anan Agent", contact_email: "a@example.com", contact_phone: "+66 2 000 0000", country: "Thailand", license_no: "" }); if (!ag1.ok) throw new Error(ag1.error);
+    try {
+      const c = await ctxFor(pt); const p = await c.newPage();
+      await p.goto(`${APP}/partner`); await p.waitForSelector("text=waiting for approval"); await shot(p, "partner-pending");
+      await admin.from("partners").update({ status: "active" }).eq("id", a.id);
+      const saved = await savePackage(pt.id, { category: "esim", name: "Browser eSIM 5GB", detail: "5 GB", terms: "", price_thb: 300, active: true }); if (!saved.ok) throw new Error(saved.error);
+      for (const [w, h] of [[390, 844], [1280, 800]] as const) {
+        const c2 = await ctxFor(pt, w, h); const p2 = await c2.newPage();
+        await p2.goto(`${APP}/partner`); await p2.waitForSelector("text=Redeem a voucher", { timeout: 20_000 }); expect(await overflowX(p2), `partner dashboard ${w}: ${await p2.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 1).slice(0, 4).map((e) => e.tagName + "." + String(e.className).slice(0, 70)).join(" | "))}`).toBe(false);
+        expect(await p2.locator("input[name=name]").first().inputValue()).toBe("Browser eSIM 5GB");
+        await p2.getByPlaceholder("TP-XXXXXXXX").fill("TP-ZZZZZZZZ"); await p2.getByRole("button", { name: "Redeem", exact: true }).click();
+        await p2.getByText("not valid for your company").waitFor(); await shot(p2, `partner-active-${w}`);
+        const csv = await c2.request.get(`${APP}/partner/settlement.csv`); expect(csv.status()).toBe(200); expect(await csv.text()).toContain("TOTAL");
+        await c2.close();
+      }
+      expect((await (await browser.newContext()).request.get(`${APP}/partner/settlement.csv`)).status(), "signed-out people get nothing").toBe(401);
+      await c.close();
+      // staff console
+      const cs = await ctxFor(staff, 1280, 800); const ps = await cs.newPage();
+      await ps.goto(`${APP}/admin/partners`); await ps.waitForSelector("text=Browser SIM Co", { timeout: 20_000 }); expect(await overflowX(ps)).toBe(false); await shot(ps, "admin-partners");
+      await ps.goto(`${APP}/admin/agencies`); await ps.waitForSelector("text=Browser Travel Co"); expect(await overflowX(ps)).toBe(false);
+      await cs.close();
+      // the plain traveler cannot open the staff pages
+      const cp = await ctxFor(plain); const pp = await cp.newPage(); await gone(pp, `${APP}/admin/partners`); await cp.close();
+    } finally {
+      await admin.from("partner_packages").delete().eq("partner_id", a.id); await admin.from("partners").delete().eq("id", a.id); await admin.from("agencies").delete().eq("id", ag1.id);
+    }
+  }, 240_000);
 });
 function traveler_client() { return createClient(SB_URL, SB_ANON, noAuth); }

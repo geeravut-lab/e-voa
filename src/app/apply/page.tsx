@@ -3,7 +3,7 @@ import { requireFeaturePage } from "@/lib/flags";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import { loadMaster, loadMasters } from "@/lib/master";
-import { loadFees, requiredDocuments, documentKinds } from "@/lib/applications/service";
+import { loadFees, requiredDocuments, documentKinds, documentFiles } from "@/lib/applications/service";
 import { offersFor } from "@/lib/partners/service";
 import { flightLookupConfigured } from "@/lib/flights";
 import { decryptText } from "@/lib/crypto";
@@ -60,6 +60,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
   const nameOf = (id: string) => { const x = trs?.find((r) => r.id === id); return x ? `${x.given_name} ${x.surname}` : ""; };
   const required = await requiredDocuments();
   const kindsOf = new Map<string, string[]>(await Promise.all(draft.map(async (a) => [a.id, await documentKinds(a.id)] as const)));
+  const filesOf = new Map(await Promise.all(draft.map(async (a) => [a.id, await documentFiles(a.id)] as const)));
 
   // ------------------------------------------------------------------ step 2
   if (step === 2) {
@@ -93,7 +94,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
             <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
               <h2 className="font-display text-lg font-bold">{t.apply_docs_title}</h2>
               <p className="text-sm text-muted">{t.apply_docs_hint}</p>
-              {[...required, "additional"].map((k) => <DocSlot key={k} appId={app.id} kind={k} have={(kindsOf.get(app.id) ?? []).includes(k)} required={required.includes(k)} />)}
+              {[...required, "additional"].map((k) => <DocSlot key={k} appId={app.id} kind={k} have={(kindsOf.get(app.id) ?? []).includes(k)} file={filesOf.get(app.id)?.get(k)} required={required.includes(k)} />)}
               <ActionForm action={removeApplicationAction}><input type="hidden" name="appId" value={app.id} /><input type="hidden" name="tripId" value={trip!.id} /><SubmitButton variant="danger">{t.apply_remove_traveler}</SubmitButton></ActionForm>
             </section>
           )}

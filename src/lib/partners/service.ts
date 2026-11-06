@@ -9,6 +9,7 @@ import { isLang, type Lang } from "@/lib/i18n/langs";
 import { saveDocument } from "@/lib/documents";
 import { DOC_LIST_ID, runPreCheck } from "@/lib/applications/service";
 import { partnerCall, listPackages, PartnerError, partnerBase, partnerConfigured, type Provider } from "./client";
+import { issueViaPortal } from "@/lib/partner-portal/service";
 import { addonOffer, parseAddonRules, DEFAULT_ADDON_RULES, providerOf, type AddonCategory } from "./rules";
 
 const admin = () => createAdminClient();
@@ -27,11 +28,11 @@ export async function syncPartnerPackages(): Promise<{ rows: number; failed: Pro
     if (r.error) throw new Error(r.error.message);
     rows += list.length;
     const keep = list.map((x) => x.code);
-    await db.from("partner_packages").update({ active: false }).eq("provider", provider).eq("category", category).not("package_code", "in", `(${keep.map((k) => `"${k}"`).join(",")})`);
+    await db.from("partner_packages").update({ active: false }).eq("provider", provider).eq("source", "api").eq("category", category).not("package_code", "in", `(${keep.map((k) => `"${k}"`).join(",")})`);
   };
   const ins = { ...INSURANCE_DEFAULT, ...(await getSetting<Record<string, unknown>>("insurance", INSURANCE_DEFAULT)) } as typeof INSURANCE_DEFAULT;
   // A partner that is not connected must not be offered: the traveler would pay for something we cannot issue.
-  const hide = (provider: Provider) => db.from("partner_packages").update({ active: false }).eq("provider", provider);
+  const hide = (provider: Provider) => db.from("partner_packages").update({ active: false }).eq("provider", provider).eq("source", "api");          // packages typed in by a portal partner are not ours to hide
   if (partnerConfigured("insurance")) await upsert("insurance", "insurance", [{ code: ins.plan_code, name: ins.name, thb: Number(ins.price_thb), usd: Number(ins.price_usd), cny: Number(ins.price_cny) }]);   // CIS has no package list API: the plan lives in the settings
   else { await hide("insurance"); failed.push("insurance"); }
   for (const [provider, category] of [["sim", "sim"], ["sim", "esim"], ["vip", "vip"], ["bhs", "health"]] as const) {
@@ -47,8 +48,8 @@ export async function syncPartnerPackages(): Promise<{ rows: number; failed: Pro
 /** Add-ons that may be offered for a trip right now (rules + what is in the catalogue). */
 export async function offersFor(tripPackage: "regular" | "express", arrivalAirportId: number | null) {
   const rules = parseAddonRules(await getSetting<unknown>("addon_rules", DEFAULT_ADDON_RULES));
-  const { data } = await admin().from("partner_packages").select("provider, package_code, category, name, detail, price_thb, price_usd, terms").eq("active", true).order("price_thb");
-  return (data ?? []).map((p) => ({ ...p, price_thb: Number(p.price_thb), offer: addonOffer(p.category as AddonCategory, { arrivalAirportId, package: tripPackage }, rules) }));
+  const { data } = await admin().from("partner_packages").select("provider, package_code, category, name, detail, price_thb, price_usd, terms, partner_id, partners(status)").eq("active", true).order("price_thb");
+  return (data ?? []).filter((p) => !p.partner_id || (p.partners as unknown as { status: string } | null)?.status === "active").map((p) => ({ ...p, price_thb: Number(p.price_thb), offer: addonOffer(p.category as AddonCategory, { arrivalAirportId, package: tripPackage }, rules) }));
 }
 
 /** Sets the add-ons chosen for one application (only unpaid ones can change). Rules are enforced here, not just on screen; prices come from the catalogue. */
@@ -112,6 +113,15 @@ export async function issueAddon(orderId: string): Promise<"issued" | "issuing" 
   const attempts = o.attempts + 1;
   await db.from("addon_orders").update({ attempts }).eq("id", o.id);
   try {
+    // A partner without an API (portal-managed) is "issued" here: a voucher code the partner redeems in its portal.
+    const portal = await issueViaPortal(o);
+    if (portal) {
+      const done = await db.from("addon_orders").update({ status: "issued", partner_id: portal.partner_id, partner_ref: portal.partner_ref, delivery: portal.delivery, last_error: null, issued_at: new Date().toISOString() }).eq("id", o.id).eq("status", "issuing").select("id");
+      if (done.data?.length !== 1) return "skipped";
+      await notifyAddon(o, "ready");
+      await audit({ actorId: null, actorRole: "system", action: "addon.issue", entity: "addon_order", entityId: o.id, detail: { category: o.category, portal: true } });
+      return "issued";
+    }
     const { data: app } = await db.from("applications").select("id, ref_no, traveler_id, trip_id, form").eq("id", o.application_id).single();
     const [{ data: tr }, { data: trip }] = await Promise.all([db.from("travelers").select("*").eq("id", app!.traveler_id).single(), db.from("trips").select("*").eq("id", app!.trip_id).single()]);
     const passport = decryptText(tr!.passport_no_enc);

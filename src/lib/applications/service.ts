@@ -101,6 +101,14 @@ export async function documentKinds(applicationId: string): Promise<string[]> {
   return [...new Set((data ?? []).map((d) => d.kind as string))];
 }
 
+/** The newest stored file of each kind (for the "view" button). Files are opened through /api/documents/[id], which only the owner and staff may call. */
+export async function documentFiles(applicationId: string): Promise<Map<string, { id: string; mime: string }>> {
+  const { data } = await createAdminClient().from("documents").select("id, kind, mime, created_at").eq("application_id", applicationId).is("deleted_at", null).order("created_at", { ascending: false });
+  const m = new Map<string, { id: string; mime: string }>();
+  for (const d of data ?? []) if (!m.has(d.kind as string)) m.set(d.kind as string, { id: d.id as string, mime: d.mime as string });
+  return m;
+}
+
 /** Checks one application that is in pre_check. Complete → queued for Immigration; waiting for the insurance document → left alone; problems → action_required with reasons. */
 export async function runPreCheck(applicationId: string, now = new Date()): Promise<"queued" | "waiting" | "action_required" | "skipped"> {
   const db = createAdminClient();

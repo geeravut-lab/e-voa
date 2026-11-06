@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useT } from "@/components/I18n";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 /** Questions with a search box (matches words in the question or the answer). Each answer opens and closes without leaving the page. */
 export function FaqList({ items }: { items: { q: string; a: string }[] }) {

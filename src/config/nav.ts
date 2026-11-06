@@ -45,6 +45,7 @@ export const NAV: NavItem[] = [
   { key: "prepare", label: "prepare_title", sub: "prepare_sub", href: "/prepare", icon: "list", art: "check", tone: "mint", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "status", label: "status_title", sub: "status_hint", href: "/status", icon: "search", art: "trips", tone: "rose", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "agency", label: "card_agency", sub: "card_agency_sub", href: "/agency", icon: "users", art: "travelers", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
+  { key: "partner", label: "card_partner", sub: "card_partner_sub", href: "/partner", icon: "sparkles", art: "extras", tone: "mint", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
   { key: "fees", label: "card_fees", sub: "card_fees_sub", href: "/fees", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "traveler", auth: false, status: "live", phase: "Phase 2", home: true, side: true },
   { key: "notifications", label: "card_notifications", sub: "card_notifications_sub", href: "/notifications", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", feature: "notifications", home: true },
   { key: "account", label: "card_account", sub: "card_account_sub", href: "/account", icon: "user", art: "account", tone: "sky", size: "half", area: "traveler", auth: true, status: "live", home: true },
@@ -58,6 +59,7 @@ export const NAV: NavItem[] = [
   { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "help", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "messaging", label: "admin_msg_title", sub: "admin_msg_hint", href: "/admin/messaging", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "agencies", label: "admin_agencies_title", sub: "admin_agencies_hint", href: "/admin/agencies", icon: "users", art: "admins", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "partners", label: "admin_partners_title", sub: "admin_partners_hint", href: "/admin/partners", icon: "users", art: "admins", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "immigration", label: "card_immigration", sub: "card_immigration_sub", href: "/admin/immigration", icon: "link", art: "ops", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "branding", label: "card_branding", sub: "card_branding_sub", href: "/admin/branding", icon: "palette", art: "branding", tone: "rose", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "features", label: "card_features", sub: "card_features_sub", href: "/admin/features", icon: "toggle", art: "features", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
@@ -80,13 +82,14 @@ export function resolveHref(item: NavItem, signedIn: boolean): string {
 export const PARENTS: { test: RegExp; label: DictKey; href: string }[] = [
   { test: /^\/account\/.+/, label: "card_account", href: "/account" },
   { test: /^\/agency\/.+/, label: "card_agency", href: "/agency" },
+  { test: /^\/partner\/.+/, label: "card_partner", href: "/partner" },
   { test: /^\/trips\/.+/, label: "card_trips", href: "/trips" },
   { test: /^\/pass\/.+/, label: "card_pass", href: "/pass" },
   { test: /^\/receipts\/.+/, label: "card_trips", href: "/trips" },
   { test: /^\/admin\/queue\/.+/, label: "card_ops", href: "/admin/queue" },
   { test: /^\/admin\/.+/, label: "nav_admin", href: "/admin" },
   { test: /^\/soon\/.+/, label: "nav_home", href: "/" },
-  { test: /^\/(notifications|account|account\/password|agency|trips|pass|fees|extras|eligibility|apply|help|prepare|guide|status|official|privacy|terms|travelers)$/, label: "nav_home", href: "/" },
+  { test: /^\/(notifications|account|account\/password|agency|partner|trips|pass|fees|extras|eligibility|apply|help|prepare|guide|status|official|privacy|terms|travelers)$/, label: "nav_home", href: "/" },
   { test: /^\/admin$/, label: "nav_home", href: "/" },
 ];
 export const parentOf = (path: string) => PARENTS.find((p) => p.test.test(path)) ?? null;

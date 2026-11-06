@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Spinner } from "@/components/Spinner";
 import { btnClass } from "@/components/buttonStyles";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 /** A one-choice form that reloads the page with ?name=value (so the answer can be linked). Shows the spinner while the new page loads. */
 export function GetForm({ label, name, placeholder, options, value, submit }: { label: string; name: string; placeholder: string; options: { id: number; label: string }[]; value: string; submit: string }) {

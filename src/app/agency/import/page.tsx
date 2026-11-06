@@ -7,7 +7,7 @@ import { importTravelersAction } from "@/app/actions/agency";
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export default async function ImportPage() {
         <a href="/agency/template.csv" className="font-semibold text-primary underline" download>{t.agency_import_template}</a>
       </section>
       <ActionForm action={importTravelersAction} className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
-        <input name="file" type="file" accept=".csv,text/csv" className="text-sm" aria-label={t.agency_import_file} />
+        <input name="file" type="file" accept=".csv,text/csv" className="block w-full min-w-0 text-sm" aria-label={t.agency_import_file} />
         <textarea name="text" rows={6} placeholder={t.agency_import_paste} className={`${inputCls} font-mono text-xs`} />
         <SubmitButton>{t.agency_import_go}</SubmitButton>
       </ActionForm>

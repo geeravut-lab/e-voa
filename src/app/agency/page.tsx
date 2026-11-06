@@ -9,7 +9,7 @@ import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
 import { StatusBadge } from "@/components/StatusBadge";
 import { btnClass } from "@/components/buttonStyles";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export default async function AgencyPage() {
         <ActionForm action={applyAgencyAction} className={box}>
           <h2 className="font-display text-lg font-bold">{t.agency_join}</h2>
           {f("name", t.agency_name)}{f("contact_name", t.agency_contact)}{f("contact_email", t.apply_email, "email")}{f("contact_phone", t.apply_phone, "tel")}{f("country", t.agency_country)}{f("license_no", t.agency_license, "text", false)}
-          <label className="block space-y-1"><span className="text-sm font-semibold">{t.agency_doc}</span><input name="doc" type="file" accept="image/jpeg,image/png,application/pdf" className="text-sm" /></label>
+          <label className="block space-y-1"><span className="text-sm font-semibold">{t.agency_doc}</span><input name="doc" type="file" accept="image/jpeg,image/png,application/pdf" className="block w-full min-w-0 text-sm" /></label>
           <p className="text-xs text-muted">{t.agency_review}</p><SubmitButton className="w-full">{t.agency_send}</SubmitButton>
         </ActionForm>
       </div>

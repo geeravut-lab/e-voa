@@ -61,3 +61,15 @@ draft → awaiting_payment → paid → pre_check → submitted → under_review
 | `trips.package` | The package is chosen in step 1 and copied to every application of the trip | owner |
 
 Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insurance`, `refund_policy`.
+
+## Phase 4 tables (migrations `20261109…` to `20261112…`)
+
+| Table / column | What | Who sees it |
+| --- | --- | --- |
+| `tax_invoices` (+ `company` setting) | Tax invoice per payment (company details from `/admin/company`), numbering, PDF | owner, admin |
+| `ai_usage` | Requests and tokens per day for the assistant budget | admin |
+| `notification_channels`, `message_log` | Linked LINE / WhatsApp accounts (with one-time codes) and a log used for the monthly quota | owner (own rows), admin |
+| `agencies` (+ terms, contact), `agency_members`, `applications.agency_id`, `trips.agency_id`, `documents.agency_id` | B2B accounts, team, the private registration document | members (own membership), admin |
+| `partners`, `partner_members`, `partner_settlements` | Portal partners, their staff, one paid-out settlement per partner and month | admin; members read their own membership and payouts |
+| `partner_packages.partner_id/source` | `source = 'portal'` rows belong to a partner and are never touched by the API catalogue sync; visible only while the partner is active (`partner_is_active()`) | everyone (active rows) |
+| `addon_orders.partner_id/settlement_id` | Who delivers an order and which payout covered it; `partner_ref.portal_code` is the unique voucher code | owner, admin |

@@ -181,3 +181,26 @@ export async function setAgencyAction(agencyId: string, _p: ActionResult, fd: Fo
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "agency.update", entity: "agency", entityId: agencyId, detail: { status, discount, pct } });
   return done("/admin/agencies");
 }
+
+export async function setPartnerAction(partnerId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const status = String(fd.get("status") ?? ""), pct = Number(fd.get("settlement_pct"));
+  if (!["pending", "active", "suspended"].includes(status) || !Number.isFinite(pct) || pct < 0 || pct > 100) return { ok: false, error: "err_form_incomplete" };
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const upd = await createAdminClient().from("partners").update({ status, settlement_pct: pct, portal_managed: fd.get("portal_managed") === "on", admin_note: String(fd.get("admin_note") ?? "").slice(0, 500), ...(status === "active" ? { approved_at: new Date().toISOString() } : {}) }).eq("id", partnerId).select("id");
+  if (upd.data?.length !== 1) return { ok: false, error: "err_not_found" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "partner.update", entity: "partner", entityId: partnerId, detail: { status, pct } });
+  return done("/admin/partners");
+}
+export async function settlePartnerAction(partnerId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const period = String(fd.get("period") ?? "");
+  const { isPeriod } = await import("@/lib/partner-portal/rules");
+  if (!isPeriod(period)) return { ok: false, error: "err_form_incomplete" };
+  const { closeSettlement } = await import("@/lib/partner-portal/service");
+  const r = await closeSettlement(a.viewer.user.id, partnerId, period, String(fd.get("note") ?? ""));
+  if (!r.ok) return r;
+  return done("/admin/partners");
+}

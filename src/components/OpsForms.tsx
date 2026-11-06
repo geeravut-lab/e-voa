@@ -2,7 +2,7 @@
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { useT } from "@/components/I18n";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 import { addNoteAction, requestFixAction, retrySendAction, cancelApplicationAction, refundExceptionAction, refundAddonAction, retryAddonAction } from "@/app/actions/ops";
 
 const hid = (appId: string) => <input type="hidden" name="appId" value={appId} />;

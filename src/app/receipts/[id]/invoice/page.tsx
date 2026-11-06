@@ -9,7 +9,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 
 export const dynamic = "force-dynamic";
 

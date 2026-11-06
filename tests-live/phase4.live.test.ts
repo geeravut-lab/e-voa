@@ -15,9 +15,13 @@ import { POST as lineWebhook } from "@/app/api/line/webhook/route";
 import sharp from "sharp";
 import { addMember, agencyStats, applyForAgency, importTravelers, isActiveMember, membershipOf, removeMember } from "@/lib/agency/service";
 import { CSV_TEMPLATE } from "@/lib/agency/csv";
+import { addMember as addPartnerMember, applyForPartner, closeSettlement, membershipOf as partnerOf, redeemVoucher, savePackage, settlementLines } from "@/lib/partner-portal/service";
+import { periodOf, settlementCsv } from "@/lib/partner-portal/rules";
+import { issueAddon, offersFor, syncPartnerPackages } from "@/lib/partners/service";
 import { admin, cleanupUsers, makeDraft, makeUser, sql } from "./helpers";
 
 let mock: { listen: (p?: number) => Promise<number>; close: () => Promise<void>; state: { aiRequests: { model: string; system: string; tools: string[]; output_config: unknown }[]; messagesSent: Record<string, unknown>[] } }; let mockBase = "";
+const partnerIds: string[] = []; const agencyIds: string[] = [];
 let masterWasEmpty = false; let aiRowBefore: { requests: number; input_tokens: number; output_tokens: number } | null = null; const today = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
 
 beforeAll(async () => {
@@ -31,6 +35,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const problems = await cleanupUsers();
+  for (const id of agencyIds) { const { data: ds } = await admin.from("documents").select("storage_path").eq("agency_id", id); if (ds?.length) await admin.storage.from("documents").remove(ds.map((d) => d.storage_path)); await admin.from("agencies").delete().eq("id", id); }
+  for (const id of partnerIds) { await admin.from("partner_packages").delete().eq("partner_id", id); await admin.from("partners").delete().eq("id", id); }
   const clean = [masterWasEmpty ? "delete from public.master_data; delete from public.master_sync;" : "",
     aiRowBefore ? `update public.ai_usage set requests=${aiRowBefore.requests}, input_tokens=${aiRowBefore.input_tokens}, output_tokens=${aiRowBefore.output_tokens} where day='${today()}';` : `delete from public.ai_usage where day='${today()}';`].join(" ").trim();
   await sql("delete from public.platform_settings where key = 'messaging'").catch((e) => problems.push(String(e)));
@@ -158,7 +164,7 @@ describe("agency portal", () => {
   it("a company registers (pending), its document stays private, and staff terms turn on the discount and the agency on its applications", async () => {
     const owner = await makeUser("ag-owner");
     const doc = new Uint8Array(await sharp({ create: { width: 400, height: 300, channels: 3, background: { r: 200, g: 200, b: 200 } } }).jpeg().toBuffer());
-    const r = await applyForAgency(owner.id, agencyInput, doc); expect(r.ok).toBe(true); if (!r.ok) return;
+    const r = await applyForAgency(owner.id, agencyInput, doc); expect(r.ok).toBe(true); if (!r.ok) return; agencyIds.push(r.id);
     expect(await applyForAgency(owner.id, agencyInput)).toMatchObject({ ok: false, error: "err_agency_exists" });
     expect(await membershipOf(owner.id)).toMatchObject({ role: "owner", agency: { id: r.id, status: "pending" } });
     expect(await isActiveMember(owner.id, r.id)).toBe(false);
@@ -205,5 +211,103 @@ describe("agency portal", () => {
     const again = await importTravelers(u.id, [head, row(1)].join("\n")); expect(again).toMatchObject({ created: 0, updated: 1 });
     expect((await admin.from("travelers").select("id").eq("owner_id", u.id)).data).toHaveLength(2);
     expect((await importTravelers(u.id, "given_name,surname\nA,B")).fatal).toMatch(/columns/);
+  });
+});
+
+describe("partner portal", () => {
+  const input = (name: string, provider = "sim") => ({ name, provider, contact_name: "Partner Person", contact_email: "partner@example.com", contact_phone: "+66 2 111 1111" });
+  const pkg = (o: Record<string, unknown> = {}) => ({ category: "esim", name: "Test eSIM 10GB", detail: "10 GB, 7 days", terms: "", price_thb: 400, active: true, ...o });
+  it("registers (pending), is approved, lists packages by the rules, and sells nothing while pending or suspended", async () => {
+    const owner = await makeUser("pt-owner");
+    const r = await applyForPartner(owner.id, input("Test SIM Co")); expect(r.ok).toBe(true); if (!r.ok) return; partnerIds.push(r.id);
+    expect(await applyForPartner(owner.id, input("Another"))).toMatchObject({ ok: false, error: "err_partner_exists" });
+    expect((await applyForPartner((await makeUser("pt-bad")).id, { ...input("X"), provider: "casino" }))).toMatchObject({ ok: false, error: "err_form_incomplete" });
+    expect(await partnerOf(owner.id)).toMatchObject({ role: "owner", partner: { id: r.id, status: "pending" } });
+    expect(await savePackage(owner.id, pkg())).toMatchObject({ ok: false, error: "err_forbidden" });             // not approved yet
+    await admin.from("partners").update({ status: "active", settlement_pct: 80 }).eq("id", r.id);
+    expect(await savePackage(owner.id, pkg({ category: "vip" }))).toMatchObject({ ok: false, error: "err_generic" });        // a SIM company cannot list VIP
+    expect(await savePackage(owner.id, pkg({ price_thb: 0 }))).toMatchObject({ ok: false, error: "err_form_incomplete" });
+    expect(await savePackage(owner.id, pkg({ price_thb: 999999 }))).toMatchObject({ ok: false, error: "err_form_incomplete" });
+    const saved = await savePackage(owner.id, pkg()); expect(saved.ok).toBe(true); if (!saved.ok) return;
+    const staff = await makeUser("pt-staff"); await admin.from("profiles").update({ email: staff.email }).eq("id", staff.id);
+    expect(await addPartnerMember(staff.id, r.id, "x@example.com")).toMatchObject({ ok: false, error: "err_forbidden" });
+    expect(await addPartnerMember(owner.id, r.id, staff.email)).toEqual({ ok: true });
+    expect(await savePackage(staff.id, pkg())).toMatchObject({ ok: false, error: "err_forbidden" });                         // staff redeem, they do not price
+    expect((await staff.client.from("partner_members").select("user_id")).data).toHaveLength(1);
+    // offered to travelers (rules apply as for any eSIM) and visible on the public list
+    expect((await offersFor("regular", 1)).some((o) => o.package_code === saved.code && o.offer.available)).toBe(true);
+    const anon = (await import("@supabase/supabase-js")).createClient(process.env.SB_URL!, process.env.SB_ANON!, { auth: { persistSession: false } });
+    expect((await anon.from("partner_packages").select("package_code").eq("package_code", saved.code)).data).toHaveLength(1);
+    // the daily package sync from the real partners must not switch a portal partner's packages off
+    await syncPartnerPackages();
+    expect((await admin.from("partner_packages").select("active").eq("package_code", saved.code).single()).data?.active).toBe(true);
+    // suspended: no longer offered or readable
+    await admin.from("partners").update({ status: "suspended" }).eq("id", r.id);
+    expect((await offersFor("regular", 1)).some((o) => o.package_code === saved.code)).toBe(false);
+    expect((await anon.from("partner_packages").select("package_code").eq("package_code", saved.code)).data).toEqual([]);
+    await admin.from("partners").update({ status: "active" }).eq("id", r.id);
+    // editing keeps the code; another partner cannot touch it
+    expect(await savePackage(owner.id, pkg({ price_thb: 450 }), saved.code)).toEqual({ ok: true, code: saved.code });
+    const other = await makeUser("pt-other"); const o2 = await applyForPartner(other.id, input("Other SIM Co")); if (o2.ok) partnerIds.push(o2.id);
+    await admin.from("partners").update({ status: "active" }).eq("id", o2.ok ? o2.id : "");
+    expect(await savePackage(other.id, pkg({ price_thb: 1 }), saved.code)).toMatchObject({ ok: false, error: "err_not_found" });
+    expect(Number((await admin.from("partner_packages").select("price_thb").eq("package_code", saved.code).single()).data?.price_thb)).toBe(450);
+  });
+
+  it("a paid order gets a voucher code, only the right partner redeems it once, and the month settles exactly once at the agreed share", async () => {
+    const owner = await makeUser("pt-own2"), other = await makeUser("pt-oth2"), buyer = await makeUser("pt-buyer");
+    const a = await applyForPartner(owner.id, input("Settle SIM Co")); const b = await applyForPartner(other.id, input("Rival SIM Co"));
+    if (!a.ok || !b.ok) throw new Error("apply failed"); partnerIds.push(a.id, b.id);
+    await admin.from("partners").update({ status: "active", settlement_pct: 80 }).in("id", [a.id, b.id]);
+    const p = await savePackage(owner.id, pkg({ price_thb: 500 })); if (!p.ok) throw new Error(p.error);
+    const d = await makeDraft(buyer, "APR");
+    const order = async (code: string, price: number) => (await admin.from("addon_orders").insert({ owner_id: buyer.id, application_id: d.appId, category: "esim", package_code: code, package_name: "Test eSIM 10GB", price_thb: price, status: "paid", request_ref: `AO-pt-${Math.random().toString(36).slice(2)}` }).select("id").single()).data!.id as string;
+    const o1 = await order(p.code, 500), o2 = await order(p.code, 500);
+    expect(await issueAddon(o1)).toBe("issued"); expect(await issueAddon(o1)).toBe("skipped");        // issuing twice changes nothing
+    const row = (await admin.from("addon_orders").select("status, partner_id, partner_ref, delivery").eq("id", o1).single()).data!;
+    expect(row).toMatchObject({ status: "issued", partner_id: a.id }); const code = (row.partner_ref as { portal_code: string }).portal_code; expect(code).toMatch(/^TP-/);
+    expect((row.delivery as { voucher_code: string }).voucher_code).toBe(code);
+    expect((await buyer.client.from("addon_orders").select("delivery").eq("id", o1).single()).data?.delivery).toMatchObject({ voucher_code: code });        // the traveler sees the code
+    // the wrong partner, a made-up code and a bad format all look the same
+    expect(await redeemVoucher(other.id, code)).toMatchObject({ ok: false, error: "err_voucher_invalid" });
+    expect(await redeemVoucher(owner.id, "TP-ZZZZZZZZ")).toMatchObject({ ok: false, error: "err_voucher_invalid" });
+    expect(await redeemVoucher(owner.id, "hello")).toMatchObject({ ok: false, error: "err_voucher_invalid" });
+    expect(await redeemVoucher(buyer.id, code)).toMatchObject({ ok: false, error: "err_forbidden" });
+    // typed by hand (lower case, spaces) still works, once
+    expect(await redeemVoucher(owner.id, ` ${code.toLowerCase().replace("-", " ")} `)).toMatchObject({ ok: true, item: "Test eSIM 10GB" });
+    expect(await redeemVoucher(owner.id, code)).toMatchObject({ ok: false, error: "err_voucher_used" });
+    expect((await admin.from("app_notifications").select("id").eq("user_id", buyer.id).eq("kind", "addon.used")).data).toHaveLength(1);
+    // a second sale, redeemed too
+    expect(await issueAddon(o2)).toBe("issued");
+    const code2 = ((await admin.from("addon_orders").select("partner_ref").eq("id", o2).single()).data!.partner_ref as { portal_code: string }).portal_code;
+    expect(code2).not.toBe(code); expect((await redeemVoucher(owner.id, code2)).ok).toBe(true);
+    // refunded orders are not redeemable
+    const o3 = await order(p.code, 500); await issueAddon(o3);
+    await admin.from("addon_orders").update({ status: "refunded" }).eq("id", o3);
+    const code3 = ((await admin.from("addon_orders").select("partner_ref").eq("id", o3).single()).data!.partner_ref as { portal_code: string }).portal_code;
+    expect(await redeemVoucher(owner.id, code3)).toMatchObject({ ok: false, error: "err_voucher_invalid" });
+    // settlement: 2 redeemed x 500 at 80%
+    const period = periodOf(new Date());
+    const lines = await settlementLines(a.id, period, 80); expect(lines).toHaveLength(2); expect(lines.reduce((s, l) => s + l.shareThb, 0)).toBe(800);
+    expect(settlementCsv(lines).trim().split("\n").pop()).toBe("TOTAL,,,2,1000.00,800.00");
+    expect((await settlementLines(b.id, period, 80))).toHaveLength(0);
+    expect(await closeSettlement(owner.id, b.id, period, "")).toMatchObject({ ok: false, error: "err_nothing_to_settle" });
+    expect(await closeSettlement(owner.id, a.id, period, "bank ref 1")).toEqual({ ok: true, orders: 2, partnerThb: 800 });
+    expect(await closeSettlement(owner.id, a.id, period, "again")).toMatchObject({ ok: false, error: "err_nothing_to_settle" });
+    expect((await owner.client.from("partner_settlements").select("partner_thb")).data).toHaveLength(1);        // the partner reads its own payout
+    expect((await other.client.from("partner_settlements").select("partner_thb")).data).toEqual([]);
+    expect(await settlementLines(a.id, period, 80)).toHaveLength(0);        // already paid: not counted again
+  });
+
+  it("a package of a partner that is suspended when the traveler's order is issued fails instead of selling something nobody can deliver", async () => {
+    const owner = await makeUser("pt-own3"), buyer = await makeUser("pt-buyer3");
+    const a = await applyForPartner(owner.id, input("Late SIM Co")); if (!a.ok) throw new Error("apply failed"); partnerIds.push(a.id);
+    await admin.from("partners").update({ status: "active" }).eq("id", a.id);
+    const p = await savePackage(owner.id, pkg()); if (!p.ok) throw new Error(p.error);
+    const d = await makeDraft(buyer, "APR");
+    const id = (await admin.from("addon_orders").insert({ owner_id: buyer.id, application_id: d.appId, category: "esim", package_code: p.code, package_name: "Test eSIM 10GB", price_thb: 400, status: "paid", request_ref: `AO-pt-${Math.random().toString(36).slice(2)}` }).select("id").single()).data!.id as string;
+    await admin.from("partners").update({ status: "suspended" }).eq("id", a.id);
+    expect(await issueAddon(id)).toBe("failed");
+    expect((await admin.from("addon_orders").select("status").eq("id", id).single()).data?.status).toBe("failed");
   });
 });

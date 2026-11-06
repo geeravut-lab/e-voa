@@ -4,7 +4,7 @@ import { useT } from "@/components/I18n";
 import { AsyncButton } from "@/components/Buttons";
 import { AppLink } from "@/components/AppLink";
 import { errorText } from "@/lib/i18n/dict";
-import { inputCls } from "@/components/apply/fields";
+import { inputCls } from "@/components/inputStyles";
 import { btnClass } from "@/components/buttonStyles";
 
 type Msg = { role: "user" | "assistant"; content: string };

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
-import { documentKinds, requiredDocuments } from "@/lib/applications/service";
+import { documentFiles, documentKinds, requiredDocuments } from "@/lib/applications/service";
 import { reasonText, docLabel } from "@/lib/reasons";
 import { decodeProblems } from "@/lib/applications/precheck";
 import { AppLink } from "@/components/AppLink";
@@ -11,6 +11,7 @@ import { StatusBadge, statusHint } from "@/components/StatusBadge";
 import { CancelPanel, ResubmitForm, UpgradeForm } from "@/components/TripActions";
 import { upgradeQuote } from "@/lib/payments/service";
 import { DocSlot } from "@/components/apply/DocSlot";
+import { DocViewer } from "@/components/apply/DocViewer";
 import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +24,12 @@ export default async function TripDetail({ params }: { params: Promise<{ id: str
   const db = await createClient();
   const { data: a } = await db.from("applications").select("id, ref_no, status, status_reason, package, trip_id, traveler_id, payment_id, immigration_ref, sla_due_at, created_at, decided_at").eq("id", id).eq("owner_id", v.user.id).maybeSingle();
   if (!a) notFound();
-  const [{ data: trip }, { data: tr }, { data: history }, { data: addons }, kinds, required] = await Promise.all([
+  const [{ data: trip }, { data: tr }, { data: history }, { data: addons }, kinds, required, files] = await Promise.all([
     db.from("trips").select("arrival_date, arrival_time, arrival_flight_no, departure_date").eq("id", a.trip_id).maybeSingle(),
     db.from("travelers").select("given_name, surname").eq("id", a.traveler_id).maybeSingle(),
     db.from("application_status_history").select("to_status, reason, at").eq("application_id", a.id).order("at", { ascending: true }),
     db.from("addon_orders").select("id, category, package_name, status, price_thb, delivery, partner_ref, last_error").eq("application_id", a.id).neq("status", "cancelled").order("created_at"),
-    documentKinds(a.id), requiredDocuments(),
+    documentKinds(a.id), requiredDocuments(), documentFiles(a.id),
   ]);
   const when = new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short" });
   const problems = a.status === "action_required" ? decodeProblems(a.status_reason) : [];
@@ -52,11 +53,18 @@ export default async function TripDetail({ params }: { params: Promise<{ id: str
         </div>
       </section>
 
+      {files.size > 0 && (
+        <section className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
+          <h2 className="font-display text-lg font-bold">{t.trip_docs_title}</h2>
+          <ul className="divide-y divide-line">{[...files].filter(([k]) => !["evoa", "signature"].includes(k)).map(([k, f]) => <li key={k} className="flex items-center justify-between gap-2 py-2 text-sm"><span className="font-semibold">{docLabel(t, k)}</span><DocViewer id={f.id} mime={f.mime} label={docLabel(t, k)} /></li>)}</ul>
+        </section>
+      )}
+
       {fixable && (
         <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
           <h2 className="font-display text-lg font-bold">{t.trip_fix_title}</h2>
           <p className="text-sm text-muted">{t.trip_fix_hint}</p>
-          {[...new Set([...problems.filter((p) => p.code === "missing_doc").map((p) => String(p.kind)), ...required.filter((k) => !kinds.includes(k) && k !== "insurance"), "additional"])].map((k) => <DocSlot key={k} appId={a.id} kind={k} have={kinds.includes(k)} required={k !== "additional"} />)}
+          {[...new Set([...problems.filter((p) => p.code === "missing_doc").map((p) => String(p.kind)), ...required.filter((k) => !kinds.includes(k) && k !== "insurance"), "additional"])].map((k) => <DocSlot key={k} appId={a.id} kind={k} have={kinds.includes(k)} file={files.get(k)} required={k !== "additional"} />)}
           <ResubmitForm appId={a.id} />
         </section>
       )}
