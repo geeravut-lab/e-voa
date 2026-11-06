@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Everything that waits for staff, computed live from the database (so it disappears by itself when it has been dealt with).
  * Each item says what happened, how many, and where to go. The bell for staff shows the total.
  */
-export type AttentionItem = { key: "submission_failed" | "sla_overdue" | "addons_failed" | "refunds_failed" | "agencies_pending" | "partners_pending" | "settle_due" | "errors_24h"; count: number; href: string; severity: "high" | "normal"; refs?: string[] };
+export type AttentionItem = { sig: string; seen?: boolean; key: "submission_failed" | "sla_overdue" | "addons_failed" | "refunds_failed" | "agencies_pending" | "partners_pending" | "settle_due" | "errors_24h"; count: number; href: string; severity: "high" | "normal"; refs?: string[] };
 
 const SLA_OPEN = ["paid", "pre_check", "submitted", "under_review", "action_required"];
 
@@ -30,8 +30,9 @@ export async function attentionItems(): Promise<AttentionItem[]> {
     if (overdueOnly) q = q.lt("sla_due_at", nowIso);
     return ((await q).data ?? []).map((r) => r.ref_no as string);
   };
+  const lastError = (errors.count ?? 0) > 0 ? ((await db.from("error_log").select("id").order("id", { ascending: false }).limit(1)).data?.[0]?.id ?? 0) : 0;
   const out: AttentionItem[] = [];
-  const add = (it: AttentionItem) => { if (it.count > 0) out.push(it); };
+  const add = (it: Omit<AttentionItem, "sig"> & { sig?: string }) => { if (it.count > 0) out.push({ ...it, sig: it.sig ?? `${it.count}:${it.refs?.[0] ?? ""}` }); };
   add({ key: "submission_failed", count: failed.count ?? 0, href: "/admin/queue?g=attention", severity: "high", refs: (failed.count ?? 0) ? await refs(["submission_failed"], false) : undefined });
   add({ key: "sla_overdue", count: overdue.count ?? 0, href: "/admin/queue?g=active", severity: "high", refs: (overdue.count ?? 0) ? await refs(SLA_OPEN, true) : undefined });
   add({ key: "addons_failed", count: addons.count ?? 0, href: "/admin/queue?g=attention", severity: "high" });
@@ -39,11 +40,27 @@ export async function attentionItems(): Promise<AttentionItem[]> {
   add({ key: "agencies_pending", count: agencies.count ?? 0, href: "/admin/agencies", severity: "normal" });
   add({ key: "partners_pending", count: partners.count ?? 0, href: "/admin/partners", severity: "normal" });
   add({ key: "settle_due", count: settle.count ?? 0, href: "/admin/partners", severity: "normal" });
-  add({ key: "errors_24h", count: errors.count ?? 0, href: "/admin/errors", severity: "normal" });
+  add({ key: "errors_24h", count: errors.count ?? 0, href: "/admin/errors", severity: "normal", sig: `last:${lastError}` });
   return out;
 }
 
-/** The number on the bell. Never throws: a failing count just shows nothing. */
-export async function attentionTotal(): Promise<number> {
-  try { return (await attentionItems()).reduce((n, i) => n + i.count, 0); } catch { return 0; }
+/** The same items with `seen` set for one administrator: seen = opened since it last changed. */
+export async function attentionFor(userId: string): Promise<AttentionItem[]> {
+  const items = await attentionItems();
+  const { data } = await createAdminClient().from("admin_alert_seen").select("key, signature").eq("user_id", userId);
+  const seen = new Map((data ?? []).map((r) => [r.key as string, r.signature as string]));
+  return items.map((i) => ({ ...i, seen: seen.get(i.key) === i.sig }));
+}
+
+/** Marks alerts as seen (one key, or all) at their current signature. */
+export async function markAttentionSeen(userId: string, key?: string): Promise<void> {
+  const items = (await attentionItems()).filter((i) => !key || i.key === key);
+  if (items.length === 0) return;
+  const { error } = await createAdminClient().from("admin_alert_seen").upsert(items.map((i) => ({ user_id: userId, key: i.key, signature: i.sig, seen_at: new Date().toISOString() })), { onConflict: "user_id,key" });
+  if (error) console.error("[attention] could not mark seen", error.message);
+}
+
+/** The number on the bell: what is still unseen. Never throws: a failing count just shows nothing. */
+export async function attentionTotal(userId: string): Promise<number> {
+  try { return (await attentionFor(userId)).filter((i) => !i.seen).reduce((n, i) => n + i.count, 0); } catch { return 0; }
 }

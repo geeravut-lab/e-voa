@@ -78,7 +78,7 @@ beforeAll(async () => {
   Object.assign(process.env, { PARTNER_INSURANCE_URL: `${mockBase}/insurance/CIS`, PARTNER_SIM_URL: `${mockBase}/sim`, PARTNER_VIP_URL: `${mockBase}/vip`, PARTNER_BHS_URL: `${mockBase}/bhs`, INSURANCE_G_API_KEY: "g", INSURANCE_TOKEN: "t", PARTNER_SECRET: "mock-secret", PARTNER_PUBLIC_KEY: "mock-public", STRIPE_SECRET_KEY: "proxy-injected" });
   if (masterWasEmpty) { await syncFlatLists(gw); await syncChildLists(gw); }
   await syncPartnerPackages();
-  server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: SB_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: SB_ANON, SUPABASE_SERVICE_ROLE_KEY: SB_SERVICE, NEXT_PUBLIC_SITE_URL: APP, FLIGHT_API_URL: mockBase, PORT: String(PORT) }, stdio: "pipe" });
+  server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, SETTINGS_TTL_MS: "4000", NEXT_PUBLIC_SUPABASE_URL: SB_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: SB_ANON, SUPABASE_SERVICE_ROLE_KEY: SB_SERVICE, NEXT_PUBLIC_SITE_URL: APP, FLIGHT_API_URL: mockBase, PORT: String(PORT) }, stdio: "pipe" });
   server.stderr?.on("data", (d) => { const s = String(d); if (/error/i.test(s) && !/UNDICI/.test(s)) console.error("[next]", s.slice(0, 300)); });
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`${APP}/fees`)).status === 200) break; } catch { /* not up yet */ } await new Promise((r) => setTimeout(r, 500)); }
   browser = await chromium.launch();
@@ -111,12 +111,13 @@ describe("traveler journey in the browser", () => {
     const u = await makeUser("elig"); const ctx = await ctxFor(u); const p = await ctx.newPage();
     const nat = (await admin.from("master_data").select("id, extra").eq("name", "nationality").limit(1)).data![0];
     await sql(`delete from public.platform_settings where key='eligibility'`);
+    await new Promise((r) => setTimeout(r, 4_500));   // the test server caches settings for 4 s (SETTINGS_TTL_MS)
     await p.goto(`${APP}/eligibility?n=${nat.id}`);
     expect(await p.getByText("We cannot answer yet").count()).toBe(1);
     const code = String((nat.extra as { CountryCode?: string }).CountryCode ?? "");
     if (code) {
       await sql(`insert into public.platform_settings (key, value) values ('eligibility', '{"voa":["${code}"],"visa_free":[]}') on conflict (key) do update set value=excluded.value`);
-      await new Promise((r) => setTimeout(r, 31_000));   // settings are cached for 30 s per server
+      await new Promise((r) => setTimeout(r, 4_500));
       await p.goto(`${APP}/eligibility?n=${nat.id}`);
       expect(await p.getByText("You can apply for a Visa on Arrival").count()).toBe(1);
     }
@@ -359,7 +360,7 @@ describe("menus, language, notifications", () => {
       await bar.locator("button[aria-haspopup=dialog]").click();
       const sheet = (await p.locator("[role=dialog] button").allInnerTexts()).join(" | ");
       for (const customer of ["Check eligibility", "Travel extras", "Traveler book", "Airport guide", "For agencies", "For partners", "Fees & refunds"]) expect(sheet, customer).not.toContain(customer);
-      expect(sheet).toContain("Agencies"); expect(sheet).toContain("Partners");
+      expect(sheet).toContain("Agencies"); expect(sheet).toContain("Partners"); expect(sheet, "staff have an Account entry").toContain("Account");
       await p.keyboard.press("Escape");
       // the Back office tab lights up only on the back-office home; More lights up on a page of its sheet
       const col = (l: ReturnType<typeof p.locator>) => l.evaluate((e: Element) => getComputedStyle(e).color);
@@ -370,9 +371,56 @@ describe("menus, language, notifications", () => {
       const d = await ctxFor(staff, 1280, 800); const pd = await d.newPage();
       await pd.goto(`${APP}/admin/notifications`); await pd.getByText(/agency registration\(s\) waiting for approval/).waitFor({ timeout: 20_000 }); await shot(pd, "admin-alerts");
       const side = (await pd.locator("aside nav a").allInnerTexts()).join(" | ");
-      expect(side).toContain("Notifications"); expect(side).toContain("Application queue"); expect(side).not.toMatch(/Apply for e-VOA|My applications|Travel extras|Airport guide/);
+      expect(side).toContain("Notifications"); expect(side).toContain("Application queue"); expect(side).toContain("Account"); expect(side).not.toMatch(/Apply for e-VOA|My applications|Travel extras|Airport guide/);
       await d.close(); await ctx.close();
     } finally { await admin.from("agencies").delete().eq("id", ag.id); }
+  });
+
+  it("back-office home: the Hello card with the admin name and the staff-only hint, no back link; the traveler home lists agency and partner after Account", async () => {
+    const staff = await makeUser("home-s", true); const u = await makeUser("home-t");
+    const ctx = await ctxFor(staff); const p = await ctx.newPage();
+    await p.goto(`${APP}/admin`); await p.waitForSelector("h1", { timeout: 20_000 });
+    expect(await p.locator("main h1").first().innerText()).toMatch(/^Hello/);
+    expect(await p.locator("main").innerText()).toContain("Only administrators can see this area");
+    expect(await p.getByText(/^Back to/).count(), "the back-office home has no back link").toBe(0);
+    expect(await overflowX(p)).toBe(false); await shot(p, "admin-home-390"); await ctx.close();
+    const c2 = await ctxFor(u); const p2 = await c2.newPage(); await p2.goto(`${APP}/`); await p2.waitForSelector("main h3", { timeout: 20_000 });
+    const titles = await p2.locator("main h3").allInnerTexts();
+    const at = (x: string) => titles.findIndex((y: string) => y.includes(x));
+    expect(at("For agencies")).toBeGreaterThan(at("Account")); expect(at("For partners")).toBeGreaterThan(at("For agencies")); await shot(p2, "home-cards-390");
+    await c2.close();
+  });
+
+  it("back-office alerts: opening one marks it seen (the bell count drops), 'mark all' clears the rest, and a new problem brings the count back", async () => {
+    const staff = await makeUser("alerts-s", true); const trav = await makeUser("alerts-t");
+    const ag = await applyForAgency(trav.id, { name: "Alert Test Agency", contact_name: "Alert Owner", contact_email: "a@example.com", contact_phone: "+66 2 000 0000", country: "Thailand", license_no: "" });
+    if (!ag.ok) throw new Error(ag.error);
+    try {
+      const ctx = await ctxFor(staff); const p = await ctx.newPage(); const bell = "header a[href='/admin/notifications'] span";
+      await p.goto(`${APP}/admin/notifications`); await p.getByText(/agency registration\(s\) waiting for approval/).waitFor({ timeout: 20_000 });
+      expect(await p.locator(bell).count(), "unseen alerts show a count").toBe(1);
+      const before = Number(await p.locator(bell).innerText());
+      await p.getByText(/agency registration\(s\) waiting for approval/).click(); await p.waitForURL(/\/admin\/agencies/, { timeout: 20_000 });
+      await p.goto(`${APP}/admin/notifications`); await p.getByText(/agency registration\(s\) waiting for approval/).waitFor();
+      const after = (await p.locator(bell).count()) ? Number(await p.locator(bell).innerText().then((x: string) => x.replace("+", ""))) : 0;
+      expect(after, "the opened alert no longer counts").toBe(Math.max(before - 1, 0));
+      expect(await p.getByText(/agency registration\(s\) waiting for approval/).count(), "it stays in the list until the work is done").toBe(1);
+      if (after > 0) { await p.getByRole("button", { name: /mark all/i }).click(); await p.waitForFunction((sel: string) => !document.querySelector(sel), bell, { timeout: 15_000 }); }
+      expect(await p.locator(bell).count()).toBe(0);
+      // a second agency makes the count grow again
+      const trav2 = await makeUser("alerts-t2"); const ag2 = await applyForAgency(trav2.id, { name: "Alert Test Agency Two", contact_name: "Alert Owner", contact_email: "b@example.com", contact_phone: "+66 2 000 0000", country: "Thailand", license_no: "" });
+      try { if (!ag2.ok) throw new Error(ag2.error); await p.goto(`${APP}/admin/notifications`); await p.getByText(/2 agency registration/).waitFor({ timeout: 20_000 }); expect(await p.locator(bell).count(), "a changed alert is unseen again").toBe(1); }
+      finally { if (ag2.ok) await admin.from("agencies").delete().eq("id", ag2.id); }
+      await ctx.close();
+    } finally { await admin.from("agencies").delete().eq("id", ag.id); }
+  });
+
+  it("the audit page offers the master switch and one tick box per kind of event, all ticked by default", async () => {
+    const staff = await makeUser("audit-s", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
+    await p.goto(`${APP}/admin/audit`); await p.getByText("Record the audit trail").waitFor({ timeout: 20_000 });
+    expect(await p.locator("input[name=kind]").count()).toBe(12);
+    expect(await p.locator("input[name=kind]:checked").count()).toBe(12); expect(await p.locator("input[name=enabled]:checked").count()).toBe(1);
+    expect(await overflowX(p)).toBe(false); await shot(p, "audit-settings-390"); await ctx.close();
   });
 
   it("the language is a drop-down; choosing one changes the page language", async () => {

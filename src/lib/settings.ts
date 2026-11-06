@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Admin edits clear this instance's cache; other instances catch up within the TTL ("about a minute" on screen).
 // Kept on globalThis because Next.js bundles server actions, pages and route handlers as separate module copies in one process:
 // a plain module-level Map would be cleared in one copy and stay stale in the others (found by the browser end-to-end test).
-const TTL_MS = 30_000;
+const TTL_MS = Number(process.env.SETTINGS_TTL_MS) >= 0 && process.env.SETTINGS_TTL_MS ? Number(process.env.SETTINGS_TTL_MS) : 30_000;          // tests that change a setting behind the app's back shorten it
 const g = globalThis as unknown as { __evoaSettingsCache?: Map<string, { at: number; value: unknown }> };
 const cache = (g.__evoaSettingsCache ??= new Map<string, { at: number; value: unknown }>());
 

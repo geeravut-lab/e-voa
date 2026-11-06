@@ -26,6 +26,8 @@ import { reasonText } from "@/lib/reasons";
 import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
+/** A stored passport number that cannot be read (for example the encryption key was changed after it was saved) must not break the page: the traveler simply types it again. */
+function safeDecrypt(v: string): string { try { return decryptText(v); } catch (e) { console.error("[apply] stored value cannot be decrypted:", (e as Error).message); return ""; } }
 const UUID = /^[0-9a-f-]{36}$/i;
 const opts = (rows: { id: number; label: string }[]) => rows.map((r) => ({ id: r.id, label: r.label }));
 const thb = (n: number) => `THB ${n.toLocaleString("en-US")}`;
@@ -76,7 +78,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
       if (reuse) {
         const { data: tr } = await db.from("travelers").select("*").eq("id", reuse).eq("owner_id", v.user.id).maybeSingle();
         if (tr) values = { travelerId: tr.id, given_name: tr.given_name, middle_name: tr.middle_name ?? "", surname: tr.surname, gender_id: tr.gender_id ?? undefined, salutation_id: tr.salutation_id ?? undefined, date_of_birth: tr.date_of_birth ?? undefined, nationality_id: tr.nationality_id ?? undefined,
-          passport_no: tr.passport_no_enc ? decryptText(tr.passport_no_enc) : "", passport_issue_date: tr.passport_issue_date ?? undefined, passport_expiry_date: tr.passport_expiry_date ?? undefined, passport_place_of_issue: tr.passport_place_of_issue ?? "", email: tr.email ?? v.user.email ?? "", phone: tr.phone ?? "" };
+          passport_no: tr.passport_no_enc ? safeDecrypt(tr.passport_no_enc) : "", passport_issue_date: tr.passport_issue_date ?? undefined, passport_expiry_date: tr.passport_expiry_date ?? undefined, passport_place_of_issue: tr.passport_place_of_issue ?? "", email: tr.email ?? v.user.email ?? "", phone: tr.phone ?? "" };
       }
       const f = (app?.form ?? {}) as Record<string, unknown> & { stay?: Record<string, unknown> };
       if (app) values = { ...values, appId: app.id, isd_code: String(f.isd_code ?? ""), residency_id: f.residency_id as number, permanent_address: String(f.permanent_address ?? ""), state: String(f.state ?? ""), yearly_income_id: f.yearly_income_id as number, occupation_id: f.occupation_id as number, first_time_traveller: f.first_time_traveller as number,

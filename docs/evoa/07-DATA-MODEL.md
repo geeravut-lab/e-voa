@@ -73,3 +73,5 @@ Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insura
 | `partners`, `partner_members`, `partner_settlements` | Portal partners, their staff, one paid-out settlement per partner and month | admin; members read their own membership and payouts |
 | `partner_packages.partner_id/source` | `source = 'portal'` rows belong to a partner and are never touched by the API catalogue sync; visible only while the partner is active (`partner_is_active()`) | everyone (active rows) |
 | `addon_orders.partner_id/settlement_id` | Who delivers an order and which payout covered it; `partner_ref.portal_code` is the unique voucher code | owner, admin |
+| `admin_alert_seen` (migration `20261113…`) | Which back-office alerts each administrator has opened (by alert key and signature) | that administrator |
+| `platform_settings.audit_config` | `{ enabled, disabled[] }`: whether and which groups of events the audit trail records | admin |

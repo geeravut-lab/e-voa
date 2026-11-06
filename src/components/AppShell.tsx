@@ -35,7 +35,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const signedIn = !!viewer.user;
   const isAdmin = viewer.isAdmin;
   // Staff see only the back-office menu; their bell counts what waits for them (not the traveler notices).
-  const attention = isAdmin ? await attentionTotal() : 0;
+  const attention = isAdmin ? await attentionTotal(viewer.user!.id) : 0;
   const unread = !isAdmin && signedIn && flags.notifications ? await unreadCount() : 0;
   if (viewer.user) {
     const id = viewer.user.id;

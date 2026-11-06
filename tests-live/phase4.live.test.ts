@@ -311,3 +311,17 @@ describe("partner portal", () => {
     expect((await admin.from("addon_orders").select("status").eq("id", id).single()).data?.status).toBe("failed");
   });
 });
+
+describe("audit trail settings", () => {
+  it("a switched-off kind or a switched-off trail records nothing; the setting is read by the writer", async () => {
+    const { audit } = await import("@/lib/audit");
+    const count = async (action: string) => Number((await sql<{ n: number }>(`select count(*) n from public.audit_log where action='${action}'`))[0].n);
+    const a = await makeUser("audit-a");
+    try {
+      await putSetting("audit_config", { enabled: true, disabled: ["payment"] }, a.id);
+      await audit({ actorId: a.id, action: "payment.audit_probe" }); expect(await count("payment.audit_probe"), "a switched-off kind").toBe(0);
+      await putSetting("audit_config", { enabled: false, disabled: [] }, a.id);
+      await audit({ actorId: a.id, action: "auth.audit_probe" }); expect(await count("auth.audit_probe"), "the whole trail off").toBe(0);
+    } finally { await sql("delete from public.platform_settings where key = 'audit_config'"); }
+  });
+});

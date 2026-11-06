@@ -1,6 +1,8 @@
 import "server-only";
 import { hasServiceRole } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSetting } from "@/lib/settings";
+import { DEFAULT_AUDIT_CONFIG, parseAuditConfig, shouldRecord } from "@/lib/audit-config";
 
 // Keys whose names suggest personal data are dropped before anything is written.
 const PERSONAL = /name|address|phone|mobile|email|password|token|secret|passport|note|text|message/i;
@@ -23,9 +25,13 @@ export async function audit(a: {
   entity?: string;
   entityId?: string;
   detail?: Record<string, unknown>;
+  force?: boolean;                 // kept whatever the audit settings say (used for the change of the audit settings itself)
 }): Promise<void> {
   if (!hasServiceRole()) return;
   try {
+    // an administrator can switch the trail off or choose which kinds of events are kept (/admin/audit); if the setting cannot be read, everything is recorded
+    const cfg = parseAuditConfig(await getSetting<unknown>("audit_config", DEFAULT_AUDIT_CONFIG));
+    if (!shouldRecord(a.action, cfg, a.force)) return;
     const { error } = await createAdminClient().from("audit_log").insert({
       actor_id: a.actorId,
       actor_role: a.actorRole ?? "user",

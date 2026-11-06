@@ -204,3 +204,16 @@ export async function settlePartnerAction(partnerId: string, _p: ActionResult, f
   if (!r.ok) return r;
   return done("/admin/partners");
 }
+
+export async function saveAuditConfigAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { AUDIT_CATEGORIES } = await import("@/lib/audit-config");
+  const enabled = fd.get("enabled") === "on";
+  const kept = new Set(fd.getAll("kind").map(String));
+  const disabled = AUDIT_CATEGORIES.map((c) => c.id).filter((id) => !kept.has(id));          // a ticked kind is recorded; an unticked one is not
+  const ok = await putSetting("audit_config", { enabled, disabled }, a.viewer.user.id);
+  if (!ok) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.audit", entity: "audit_config", detail: { enabled, disabled: disabled.join(",") }, force: true });
+  return done("/admin/audit");
+}
