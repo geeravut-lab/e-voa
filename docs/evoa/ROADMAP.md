@@ -65,7 +65,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Ops console `/admin/queue` (counts, SLA, filters) and detail (documents with audit, notes, request fix, retry send, cancel, exception refund, add-on retry/refund) | ✅ · staff cannot set approved/rejected: only Immigration can |
 | Tick: payments reconcile/expire, pre-check recheck, add-on queue, catalogue sync | ✅ (daily on Hobby) |
 | Tests: 13 live checks (real Supabase + Stripe TEST + simulator) and 5 browser journeys at 390×844 / 1280×800 pass; 127 unit tests | ✅ |
-| Closing items: PDPA consent + signed declaration, receipt PDF + e-mail, e-mail notices, public status check, traveler book, rate limits, error log, passport photo reading (in the browser), photo advice, autosave, full review, cancel / change dates / upgrade, FAQ, checklist, airport guide, official channels, sitemap/robots | ✅ tested: 146 unit, 23 live (Supabase + Stripe test + simulator), 8 browser |
+| Closing items: PDPA consent + signed declaration, receipt PDF + e-mail, e-mail notices, public status check, traveler book, rate limits, error log, passport photo reading (in the browser), photo advice, autosave, full review, cancel / change dates / upgrade, FAQ, checklist, airport guide, official channels, sitemap/robots | ✅ tested: 149 unit, 23 live (Supabase + Stripe test + simulator), 8 browser |
 | ⬜ Group/agency uploads · ⬜ Ops: bulk actions, assignment, saved filters | next |
 
 ## Phase 3 — Add-ons 🟡 (built and tested against the simulator; waits for real partner access)
