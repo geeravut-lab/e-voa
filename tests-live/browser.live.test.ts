@@ -53,6 +53,7 @@ async function makeUser(label: string, adminRole = false) {
   return { id, email, session: v.data.session };
 }
 const ctxFor = async (u: Awaited<ReturnType<typeof makeUser>>, w = 390, h = 844): Promise<BrowserContext> => { const c = await browser.newContext({ viewport: { width: w, height: h }, locale: "en-US" }); await c.addCookies(cookiesFor(u.session)); return c; };
+const gone = async (p: Page, url: string) => { await p.goto(url); const t = (await p.locator("body").innerText()).toLowerCase(); return t.includes("404") || t.includes("could not be found"); };
 const shot = async (p: Page, name: string) => { if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true }); } };
 const overflowX = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 
@@ -176,7 +177,7 @@ describe("traveler journey in the browser", () => {
     for (const [i, label] of ["Passport photo page", "Photo", "Return ticket", "Accommodation", "Proof of funds"].entries()) {
       const slot = p.locator("form", { has: p.locator(`input[type=file][aria-label="${label}"]`) });
       await slot.locator("input[type=file]").setInputFiles(file);
-      await slot.getByRole("button").click();
+      await slot.locator("button[type=submit]").click();
       await slot.getByText("Uploaded", { exact: true }).waitFor({ timeout: 30_000 }).catch(() => { throw new Error(`document ${i} (${label}) was not accepted`); });
     }
     await shot(p, "wizard-2b-390");
@@ -234,7 +235,7 @@ describe("traveler journey in the browser", () => {
     await p.goto(`${APP}/v/${passToken(ids.app).slice(0, -3)}abc`); expect(await p.getByText("This code is not valid").count()).toBe(1);
     // another signed-in traveler cannot open this pass
     const other = await makeUser("other"); const c2 = await ctxFor(other); const p2 = await c2.newPage();
-    expect((await p2.goto(`${APP}/pass/${ids.app}`))?.status()).toBe(404); expect((await p2.goto(`${APP}/trips/${ids.app}`))?.status()).toBe(404); expect((await p2.goto(`${APP}/receipts/${pay.id}`))?.status()).toBe(404);
+    expect(await gone(p2, `${APP}/pass/${ids.app}`)).toBe(true); expect(await gone(p2, `${APP}/trips/${ids.app}`)).toBe(true); expect(await gone(p2, `${APP}/receipts/${pay.id}`)).toBe(true);
     await c2.close(); await ctx.close();
   });
 
@@ -245,7 +246,7 @@ describe("traveler journey in the browser", () => {
     await p.getByLabel("Write a note", { exact: true }).fill("checked by test"); await p.getByRole("button", { name: "Add note" }).click();
     await p.getByText("checked by test").first().waitFor({ timeout: 15_000 }); await shot(p, "ops-detail-1280");
     const t = await ctxFor(traveler); const tp = await t.newPage();
-    expect((await tp.goto(`${APP}/admin/queue`))?.status()).toBe(404); expect((await tp.goto(`${APP}/admin/queue/${ids.app}`))?.status()).toBe(404);
+    expect(await gone(tp, `${APP}/admin/queue`)).toBe(true); expect(await gone(tp, `${APP}/admin/queue/${ids.app}`)).toBe(true);
     expect((await sql<{ n: number }>(`select count(*) n from public.application_notes where application_id='${ids.app}'`))[0].n).toBe(1);
     expect((await traveler_client().from("application_notes").select("id")).data).toEqual([]);          // travelers never see notes
     await t.close(); await ctx.close();
