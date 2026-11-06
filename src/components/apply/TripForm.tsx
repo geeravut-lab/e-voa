@@ -11,7 +11,7 @@ import { packageAvailability, arrivalInstant, applicationFees, type Fees } from 
 type Trip = { id?: string; package?: string; arrival_airport_id?: number | null; arrival_date?: string; arrival_time?: string | null; arrival_flight_no?: string | null; arrival_airline_id?: number | null; departure_date?: string | null; departure_time?: string | null; departure_flight_no?: string | null; departure_airline_id?: number | null; purpose_id?: number | null; boarded_country_id?: number | null; next_city?: string | null; type_of_flight_id?: number | null };
 
 /** Step 1: when and how you arrive, and which package. The flight number fills in airline, airport and time. */
-export function TripForm({ lockedPackage, traveler, trip, airports, airlines, purposes, countries, fees, canLookup }: { lockedPackage?: "regular" | "express"; traveler?: string; trip: Trip; airports: Opt[]; airlines: Opt[]; purposes: Opt[]; countries: Opt[]; fees: Fees; canLookup: boolean }) {
+export function TripForm({ agency, lockedPackage, traveler, trip, airports, airlines, purposes, countries, fees, canLookup }: { agency?: string; lockedPackage?: "regular" | "express"; traveler?: string; trip: Trip; airports: Opt[]; airlines: Opt[]; purposes: Opt[]; countries: Opt[]; fees: Fees; canLookup: boolean }) {
   const t = useT();
   const [pending, start] = useTransition();
   const [arrDate, setArrDate] = useState(trip.arrival_date ?? ""), [arrTime, setArrTime] = useState(trip.arrival_time ?? "");
@@ -33,6 +33,7 @@ export function TripForm({ lockedPackage, traveler, trip, airports, airlines, pu
     <ActionForm action={saveTripAction} className="space-y-5">
       {trip.id && <input type="hidden" name="tripId" value={trip.id} />}
       {traveler && <input type="hidden" name="traveler" value={traveler} />}
+      {agency && <input type="hidden" name="agency" value={agency} />}
       <section className="grid gap-4 rounded-card border border-line bg-surface p-5 shadow-card sm:grid-cols-2">
         <h2 className="font-display text-lg font-bold sm:col-span-2">{t.apply_arrival}</h2>
         <Field label={t.apply_arrival_date}>{(id) => <input id={id} name="arrival_date" type="date" required value={arrDate} onChange={(e) => setArrDate(e.target.value)} className={inputCls} />}</Field>

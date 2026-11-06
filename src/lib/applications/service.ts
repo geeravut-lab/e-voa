@@ -57,14 +57,20 @@ export async function createDraftApplication(ownerId: string, a: { tripId: strin
   const { data: trip } = await db.from("trips").select("id").eq("id", a.tripId).eq("owner_id", ownerId).maybeSingle();
   const { data: tr } = await db.from("travelers").select("id").eq("id", a.travelerId).eq("owner_id", ownerId).maybeSingle();
   if (!trip || !tr) return { ok: false, error: "err_not_found" };
+  // an application made for an agency's customer carries the agency (taken from the trip, never from the browser) and the agreed service-fee discount
+  const { data: tripRow } = await db.from("trips").select("agency_id").eq("id", a.tripId).maybeSingle();
+  const agency = tripRow?.agency_id ? (await db.from("agencies").select("id, status, discount_thb").eq("id", tripRow.agency_id).maybeSingle()).data : null;
+  const member = agency ? (await db.from("agency_members").select("user_id").eq("agency_id", agency.id).eq("user_id", ownerId).maybeSingle()).data : null;
+  const agencyId = agency && agency.status === "active" && member ? agency.id : null;
   const fees = applicationFees(await loadFees(), a.pkg);
+  if (agencyId && agency) fees.service = Math.max(0, fees.service - agency.discount_thb);
   const { data: existing } = await db.from("applications").select("id, status").eq("trip_id", a.tripId).eq("traveler_id", a.travelerId).not("status", "in", `(${TERMINAL.join(",")})`).maybeSingle();
   if (existing) {
     if (!travelerCanEdit(existing.status as AppStatus)) return { ok: false, error: "err_locked" };
-    const upd = await db.from("applications").update({ form: form.data, package: a.pkg, visa_fee_thb: fees.visa, service_fee_thb: fees.service }).eq("id", existing.id).select("id");
+    const upd = await db.from("applications").update({ form: form.data, package: a.pkg, visa_fee_thb: fees.visa, service_fee_thb: fees.service, agency_id: agencyId }).eq("id", existing.id).select("id");
     return upd.data?.length === 1 ? { ok: true, id: existing.id } : { ok: false, error: "err_generic" };
   }
-  const ins = await db.from("applications").insert({ owner_id: ownerId, trip_id: a.tripId, traveler_id: a.travelerId, package: a.pkg, form: form.data, visa_fee_thb: fees.visa, service_fee_thb: fees.service }).select("id").single();
+  const ins = await db.from("applications").insert({ owner_id: ownerId, agency_id: agencyId, trip_id: a.tripId, traveler_id: a.travelerId, package: a.pkg, form: form.data, visa_fee_thb: fees.visa, service_fee_thb: fees.service }).select("id").single();
   return ins.error || !ins.data ? { ok: false, error: "err_generic" } : { ok: true, id: ins.data.id };
 }
 

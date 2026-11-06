@@ -12,6 +12,9 @@ import { bindLine, confirmWhatsapp, disconnectChannel, monthCount, sendToChannel
 import { notifyUser } from "@/lib/notify";
 import { putSetting } from "@/lib/settings";
 import { POST as lineWebhook } from "@/app/api/line/webhook/route";
+import sharp from "sharp";
+import { addMember, agencyStats, applyForAgency, importTravelers, isActiveMember, membershipOf, removeMember } from "@/lib/agency/service";
+import { CSV_TEMPLATE } from "@/lib/agency/csv";
 import { admin, cleanupUsers, makeDraft, makeUser, sql } from "./helpers";
 
 let mock: { listen: (p?: number) => Promise<number>; close: () => Promise<void>; state: { aiRequests: { model: string; system: string; tools: string[]; output_config: unknown }[]; messagesSent: Record<string, unknown>[] } }; let mockBase = "";
@@ -147,5 +150,60 @@ describe("LINE and WhatsApp notices", () => {
     await sendToChannels({ userId: u.id, title: "Hello", kind: "x" });
     expect((await sql<{ status: string; last_error: string }>(`select status, last_error from public.notification_channels where owner_id='${u.id}'`))[0]).toMatchObject({ status: "stopped" });
     const n = sent().length; await sendToChannels({ userId: u.id, title: "Again", kind: "x" }); expect(sent().length).toBe(n);
+  });
+});
+
+describe("agency portal", () => {
+  const agencyInput = { name: "Test Travel Co", contact_name: "Owner Person", contact_email: "owner@example.com", contact_phone: "+66 2 000 0000", country: "Thailand", license_no: "TAT-1" };
+  it("a company registers (pending), its document stays private, and staff terms turn on the discount and the agency on its applications", async () => {
+    const owner = await makeUser("ag-owner");
+    const doc = new Uint8Array(await sharp({ create: { width: 400, height: 300, channels: 3, background: { r: 200, g: 200, b: 200 } } }).jpeg().toBuffer());
+    const r = await applyForAgency(owner.id, agencyInput, doc); expect(r.ok).toBe(true); if (!r.ok) return;
+    expect(await applyForAgency(owner.id, agencyInput)).toMatchObject({ ok: false, error: "err_agency_exists" });
+    expect(await membershipOf(owner.id)).toMatchObject({ role: "owner", agency: { id: r.id, status: "pending" } });
+    expect(await isActiveMember(owner.id, r.id)).toBe(false);
+    expect((await admin.from("documents").select("id").eq("agency_id", r.id)).data).toHaveLength(1);
+    // a trip made for a pending agency gets no agency and no discount
+    const before = await makeDraft(owner, "APR", { agencyId: r.id });
+    expect((await admin.from("applications").select("agency_id, service_fee_thb").eq("id", before.appId).single()).data).toMatchObject({ agency_id: null, service_fee_thb: 600 });
+    // staff approve with terms
+    await admin.from("agencies").update({ status: "active", discount_thb: 100, commission_pct: 10 }).eq("id", r.id);
+    expect(await isActiveMember(owner.id, r.id)).toBe(true);
+    const d = await makeDraft(owner, "APR", { agencyId: r.id });
+    expect((await admin.from("applications").select("agency_id, service_fee_thb, visa_fee_thb").eq("id", d.appId).single()).data).toMatchObject({ agency_id: r.id, service_fee_thb: 500, visa_fee_thb: 2000 });
+    // somebody who is not a member cannot attach a trip to the agency
+    const stranger = await makeUser("ag-stranger"); const s = await makeDraft(stranger, "APR", { agencyId: r.id });
+    expect((await admin.from("applications").select("agency_id, service_fee_thb").eq("id", s.appId).single()).data).toMatchObject({ agency_id: null, service_fee_thb: 600 });
+    // the registration document is never purged as a "loose upload"
+    await sql(`update public.documents set created_at = now() - interval '30 days' where agency_id='${r.id}'`);
+    const due = await admin.rpc("documents_due_for_purge", { p_days: 90, p_limit: 1000 }); const agencyDoc = (await admin.from("documents").select("id").eq("agency_id", r.id).single()).data!.id;
+    expect(((due.data ?? []) as { id: string }[]).some((x) => x.id === agencyDoc)).toBe(false);
+    // commission counts paid applications' service fees only
+    await admin.rpc("transition_application", { p_id: d.appId, p_to: "awaiting_payment", p_reason: null, p_source: "system", p_actor: null, p_only_from: ["draft"] });
+    await admin.rpc("transition_application", { p_id: d.appId, p_to: "paid", p_reason: null, p_source: "payment", p_actor: null, p_only_from: ["awaiting_payment"] });
+    const st = await agencyStats(r.id, new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)));
+    expect(st).toMatchObject({ applications: 1, paid: 1, serviceFeesThb: 500, commissionPct: 10, commissionThb: 50 });
+    // team: only the owner adds, only registered people, one agency per person
+    const colleague = await makeUser("ag-col"); await admin.from("profiles").update({ email: colleague.email }).eq("id", colleague.id);
+    expect(await addMember(colleague.id, r.id, "x@example.com")).toMatchObject({ ok: false, error: "err_forbidden" });
+    expect(await addMember(owner.id, r.id, "nobody-here@example.com")).toMatchObject({ ok: false, error: "err_agency_no_account" });
+    expect(await addMember(owner.id, r.id, colleague.email)).toEqual({ ok: true });
+    expect(await addMember(owner.id, r.id, colleague.email)).toMatchObject({ ok: false, error: "err_agency_exists" });
+    expect((await colleague.client.from("agency_members").select("user_id")).data).toHaveLength(1);        // sees only their own membership
+    expect((await stranger.client.from("agency_members").select("user_id")).data).toEqual([]);
+    expect(await removeMember(colleague.id, r.id, owner.id)).toBe(false); expect(await removeMember(owner.id, r.id, colleague.id)).toBe(true);
+  });
+
+  it("a CSV adds travelers to the agent's book: good rows are saved, bad rows are named, a second import updates instead of duplicating", async () => {
+    const u = await makeUser("ag-csv");
+    const head = CSV_TEMPLATE.split("\n")[0], row = (n: number, nat = "IND", sex = "M") => `Test${n},,Person${n},${sex},1985-01-0${n},${nat},P${1000000 + n},2021-03-09,2031-03-08,Delhi,t${n}@example.com,91234567${n}`;
+    const text = [head, row(1), row(2, "CHN", "F"), row(3, "XXX"), row(4, "IND", "Q")].join("\n");
+    const r = await importTravelers(u.id, text);
+    expect(r.fatal).toBeUndefined(); expect(r.created).toBe(2); expect(r.updated).toBe(0);
+    expect(r.errors.map((e) => e.row)).toEqual([4, 5]); expect(r.errors[0].message).toContain("XXX");
+    expect((await admin.from("travelers").select("id, relation").eq("owner_id", u.id)).data).toHaveLength(2);
+    const again = await importTravelers(u.id, [head, row(1)].join("\n")); expect(again).toMatchObject({ created: 0, updated: 1 });
+    expect((await admin.from("travelers").select("id").eq("owner_id", u.id)).data).toHaveLength(2);
+    expect((await importTravelers(u.id, "given_name,surname\nA,B")).fatal).toMatch(/columns/);
   });
 });

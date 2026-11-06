@@ -168,3 +168,16 @@ export async function saveMessagingAction(_p: ActionResult, fd: FormData): Promi
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.messaging", entity: "settings" });
   return done("/admin/messaging");
 }
+
+/** Staff decide about an agency: approve, suspend, and the terms agreed with it (service-fee discount per application, commission on service fees). */
+export async function setAgencyAction(agencyId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const status = String(fd.get("status") ?? ""), discount = Math.floor(Number(fd.get("discount_thb"))), pct = Number(fd.get("commission_pct"));
+  if (!["pending", "active", "suspended"].includes(status) || !Number.isFinite(discount) || discount < 0 || discount > 600 || !Number.isFinite(pct) || pct < 0 || pct > 50) return { ok: false, error: "err_form_incomplete" };
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const upd = await createAdminClient().from("agencies").update({ status, discount_thb: discount, commission_pct: pct, admin_note: String(fd.get("admin_note") ?? "").slice(0, 500), ...(status === "active" ? { approved_at: new Date().toISOString() } : {}) }).eq("id", agencyId).select("id");
+  if (upd.data?.length !== 1) return { ok: false, error: "err_not_found" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "agency.update", entity: "agency", entityId: agencyId, detail: { status, discount, pct } });
+  return done("/admin/agencies");
+}

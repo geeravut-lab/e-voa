@@ -18,6 +18,7 @@ import { startCheckout, failPayment, startUpgradeCheckout } from "@/lib/payments
 import { ADDON_CATEGORIES, type AddonCategory } from "@/lib/partners/rules";
 import { parseMrz } from "@/lib/mrz";
 import { rateLimit } from "@/lib/ratelimit";
+import { isActiveMember } from "@/lib/agency/service";
 import { saveDraft, deleteDrafts } from "@/lib/applications/drafts";
 import { decodeSignature, recordConsent } from "@/lib/compliance";
 import type { ActionResult } from "@/components/ActionForm";
@@ -87,7 +88,9 @@ export async function saveTripAction(_p: ActionResult, fd: FormData): Promise<Ac
     await db.from("applications").update({ package: pkg }).eq("trip_id", tripId).eq("status", "draft");
     if (backTo) { await audit({ actorId: a.user.id, action: "trip.change", entity: "trip", entityId: tripId }); revalidatePath("/trips"); redirect(backTo); }
   } else {
-    const ins = await db.from("trips").insert(row).select("id").single();
+    const wanted = String(fd.get("agency") ?? "");                                      // a trip for an agency's customer: only an active member of that agency may start one
+    const agencyId = /^[0-9a-f-]{36}$/i.test(wanted) && (await isActiveMember(a.user.id, wanted)) ? wanted : null;
+    const ins = await db.from("trips").insert({ ...row, agency_id: agencyId }).select("id").single();
     if (ins.error || !ins.data) return { ok: false, error: "err_generic" };
     tripId = ins.data.id; void trackEvent(a.user.id, "apply_start");
   }

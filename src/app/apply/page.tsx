@@ -47,7 +47,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
     const m = await loadMasters(["arrivalAirport", "airlines", "purposeOfVisit", "nationality"]);
     return (
       <div>{head}<Stepper step={1} t={t} />
-        <TripForm traveler={sp.traveler && UUID.test(sp.traveler) ? sp.traveler : undefined} trip={trip ?? {}} airports={opts(m.arrivalAirport)} airlines={opts(m.airlines)} purposes={opts(m.purposeOfVisit)} countries={opts(m.nationality)} fees={fees} canLookup={flightLookupConfigured()} />
+        <TripForm agency={sp.agency && UUID.test(sp.agency) ? sp.agency : undefined} traveler={sp.traveler && UUID.test(sp.traveler) ? sp.traveler : undefined} trip={trip ?? {}} airports={opts(m.arrivalAirport)} airlines={opts(m.airlines)} purposes={opts(m.purposeOfVisit)} countries={opts(m.nationality)} fees={fees} canLookup={flightLookupConfigured()} />
       </div>
     );
   }

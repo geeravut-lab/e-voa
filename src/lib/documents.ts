@@ -18,7 +18,7 @@ export function sniffDocument(b: Uint8Array): DocMime | null {
   return null;
 }
 
-type SaveInput = { ownerId: string; applicationId?: string | null; travelerId?: string | null; kind: DocKind; docListId?: number | null; bytes: Uint8Array };
+type SaveInput = { ownerId: string; agencyId?: string | null; applicationId?: string | null; travelerId?: string | null; kind: DocKind; docListId?: number | null; bytes: Uint8Array };
 
 /** Encrypts the file, stores it in the private bucket, records it. If recording fails the stored file is removed again. */
 export async function saveDocument(a: SaveInput): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -32,7 +32,7 @@ export async function saveDocument(a: SaveInput): Promise<{ ok: true; id: string
   const up = await db.storage.from(BUCKET).upload(path, encryptBytes(a.bytes), { contentType: "application/octet-stream", upsert: false });
   if (up.error) { console.error("[documents] upload failed", up.error.message); return { ok: false, error: "err_generic" }; }
   const ins = await db.from("documents").insert({
-    id, owner_id: a.ownerId, application_id: a.applicationId ?? null, traveler_id: a.travelerId ?? null, kind: a.kind, doc_list_id: a.docListId ?? null,
+    id, owner_id: a.ownerId, agency_id: a.agencyId ?? null, application_id: a.applicationId ?? null, traveler_id: a.travelerId ?? null, kind: a.kind, doc_list_id: a.docListId ?? null,
     storage_path: path, mime, size_bytes: a.bytes.length, sha256: sha256Hex(a.bytes), enc_version: ENC_VERSION,
   }).select("id");
   if (ins.error || ins.data?.length !== 1) {

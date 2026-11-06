@@ -40,7 +40,6 @@ export async function makeDraft(user: TUser, tag: string, o: { days?: number; pk
   if (!t.ok) throw new Error(t.error);
   const app = await createDraftApplication(user.id, { tripId: trip.id, travelerId: t.id, pkg, form: { residency_id: 1, permanent_address: "Delhi", state: "Delhi", yearly_income_id: 2, occupation_id: 2, isd_code: "+91", mobile: "912345678", email: user.email, first_time_traveller: 1, stay: { place_of_stay_id: 1, name: "Test Hotel", city_id: 1, district_id: 101, sub_district_id: 1011, pin_code: "10330", street: "1 Test Road", reference: "BK123" } } });
   if (!app.ok) throw new Error(app.error);
-  if (o.agencyId) await admin.from("applications").update({ agency_id: o.agencyId }).eq("id", app.id);
   for (const k of DOCS) { const r = await saveApplicationDocument(user.id, app.id, k, new Uint8Array(await picture())); if (!r.ok) throw new Error(`${k}: ${r.error}`); }
   return { tripId: trip.id as string, appId: app.id, travelerId: t.id };
 }
