@@ -44,7 +44,7 @@ export default async function BrandingPage() {
               <p className="text-sm text-muted">{t.brand_current}: {img ? new Date(img.version).toISOString().slice(0, 16).replace("T", " ") : t.brand_using_default}</p>
             </div>
             <ActionForm action={uploadBrandImageAction.bind(null, kind)} className="space-y-2">
-              <input type="file" name="file" required accept={kind === "logo" ? "image/png,image/jpeg,image/webp" : "image/png"} aria-label={t.upload} className={file} />
+              <input type="file" name="file" required accept={kind === "logo" ? "image/png,image/jpeg,image/webp" : "image/png"} aria-label={kind === "logo" ? t.brand_logo : t.brand_favicon} className={file} />
               <SubmitButton>{t.upload}</SubmitButton>
             </ActionForm>
             {img && (

@@ -3,7 +3,8 @@ import { hasServiceRole } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { EventName } from "@/config/events";
 
-const seenToday = new Map<string, string>();   // userId -> yyyy-mm-dd already recorded by this instance
+const gl = globalThis as unknown as { __evoaSeenToday?: Map<string, string> };
+const seenToday = (gl.__evoaSeenToday ??= new Map<string, string>());   // userId -> yyyy-mm-dd already recorded by this instance
 
 const bangkokDay = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
 

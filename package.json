@@ -9,7 +9,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "grant-admin": "node scripts/grant-admin.mjs",
-    "e2e:supabase": "node scripts/e2e-supabase.mjs"
+    "e2e:supabase": "node scripts/e2e-supabase.mjs",
+    "lint:colors": "node scripts/check-no-hex.mjs",
+    "mock": "node tools/mock-partners/server.mjs",
+    "e2e:phase1": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-sc": "^5.3.1",

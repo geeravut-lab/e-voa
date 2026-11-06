@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { Bell, LogIn } from "lucide-react";
+import { unstable_rethrow } from "next/navigation";
 import { NAV, resolveHref, type NavItem } from "@/config/nav";
 import { getViewer, displayNameOf } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
@@ -22,7 +23,8 @@ async function unreadCount(): Promise<number> {
   try {
     const { count } = await (await createClient()).from("app_notifications").select("id", { count: "exact", head: true }).is("read_at", null);
     return count ?? 0;
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return 0;
   }
 }

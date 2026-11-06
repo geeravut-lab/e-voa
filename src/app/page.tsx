@@ -42,7 +42,7 @@ export default async function HomePage() {
       </section>
 
       {!signedIn && (
-        <section className="flex flex-col gap-3 rounded-card border border-[#c9d8f7] bg-sky p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section className="flex flex-col gap-3 rounded-card border border-sky-line bg-sky p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-primary">{t.home_visitor_cta}</p>
           <NavRowLink href="/login" className={btnClass("primary", "shrink-0")}>{t.nav_signin}</NavRowLink>
         </section>

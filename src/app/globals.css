@@ -19,6 +19,7 @@
   --c-lotus: #ff4f8b;
   --c-rose-soft: #ffe3ee;
   --c-line: #e6e2d8;
+  --c-sky-line: #c9d8f7;
   --c-field: #7a8699;
   --c-success: #0e7a4f;
   --c-success-bg: #ddf6ea;
@@ -45,6 +46,7 @@
   --color-lotus: var(--c-lotus);
   --color-rose-soft: var(--c-rose-soft);
   --color-line: var(--c-line);
+  --color-sky-line: var(--c-sky-line);
   --color-field: var(--c-field);
   --color-success: var(--c-success);
   --color-success-bg: var(--c-success-bg);

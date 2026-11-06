@@ -8,7 +8,7 @@ import type { FeatureKey } from "./features";
  */
 export type IconName =
   | "home" | "plane" | "search" | "users" | "sparkles" | "map" | "chat" | "receipt" | "qr" | "bell" | "user"
-  | "list" | "palette" | "toggle" | "shield" | "scroll" | "chart" | "settings" | "queue";
+  | "list" | "link" | "palette" | "toggle" | "shield" | "scroll" | "chart" | "settings" | "queue";
 
 export type Tone = "gold" | "sky" | "mint" | "rose" | "sand" | "white";
 
@@ -47,6 +47,7 @@ export const NAV: NavItem[] = [
   { key: "account", label: "card_account", sub: "card_account_sub", href: "/account", icon: "user", art: "account", tone: "sky", size: "half", area: "traveler", auth: true, status: "live", home: true },
 
   { key: "ops", label: "card_ops", sub: "card_ops_sub", href: "/admin/queue", icon: "queue", art: "ops", tone: "gold", size: "wide", area: "admin", auth: true, status: "soon", phase: "Phase 2", home: true, side: true },
+  { key: "immigration", label: "card_immigration", sub: "card_immigration_sub", href: "/admin/immigration", icon: "link", art: "ops", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "branding", label: "card_branding", sub: "card_branding_sub", href: "/admin/branding", icon: "palette", art: "branding", tone: "rose", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "features", label: "card_features", sub: "card_features_sub", href: "/admin/features", icon: "toggle", art: "features", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "admins", label: "card_admins", sub: "card_admins_sub", href: "/admin/admins", icon: "shield", art: "admins", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },

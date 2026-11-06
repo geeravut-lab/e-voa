@@ -19,29 +19,35 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Q11 | Agency portal in Phase 2+, data model ready from day one |
 | Q12 | Document retention set by Admin; default delete images 90 days after travel |
 
-## Phase 0 — Foundation (this phase)
+## Phase 0 — Foundation ✅ (code and live checks done; two items wait for you)
 
 | Item | Status |
 | --- | --- |
 | Next.js 16 + Tailwind + Supabase project, Vercel config, env example | ✅ |
-| Brand ThaiPass e-VOA: logo, favicon, PWA icons, OG image | ✅ |
-| Admin can upload logo / favicon / change name (BRANDING knowledge) | ✅ code · 🟡 needs SQL + service key to run |
-| Home page with illustrated cards for every role + mobile bottom bar + "More" sheet | ✅ |
-| Spinner on every button / menu / link | ✅ |
-| Live sync (database ping → page refreshes itself, polling fallback) | ✅ code · 🟡 needs SQL + Realtime to run |
-| Sign in: Google, email code, LINE (Aivora SSO) | ✅ code · 🟡 needs your Supabase/Vercel setup (see 05-SETUP.md) |
-| Languages EN/TH/ZH-CN with easy extension | ✅ |
-| Feature switches, Audit trail, Admin management, Usage analytics, in-app notifications, settings (fees, retention) | ✅ |
-| Knowledge → feature mapping | ✅ [04-KNOWLEDGE-MAPPING.md](./04-KNOWLEDGE-MAPPING.md) |
-| Foundation SQL applied to your Supabase project; Auth URLs and OTP length set; 18 end-to-end checks pass on the real project | ✅ |
-| **Your action**: enable Google provider (client ID/secret), set env vars in Vercel, sign in once and grant the first owner, register the app at the Aivora hub (05-SETUP.md) | 🟡 |
-| Custom SMTP, then turn e-mail code sign-in back on | 🟡 |
-| Browser-level test of the three sign-in paths on the deployed site | 🟡 after Vercel env vars |
+| Brand ThaiPass e-VOA, admin upload of logo / favicon / name | ✅ tested in a real browser against the real project |
+| Home with illustrated cards, bottom bar, "More" sheet, spinners everywhere | ✅ |
+| Live sync (database ping → page refreshes itself, polling fallback) | ✅ 1.3 s between two tabs; fixed a Realtime client problem found by the test |
+| Sign in: Google, LINE (Aivora), e-mail code | ✅ code · 🟡 Google needs the client ID/secret in Supabase · ⏸ e-mail code switched off until you configure SMTP |
+| EN / TH / ZH-CN with easy extension; feature switches; audit trail; admins; analytics; notifications; fees and retention settings | ✅ |
+| PWA: service worker, offline page, "install as an app" card | ✅ |
+| "No hex colors outside globals.css" check (`npm run lint:colors`) | ✅ |
+| Partner simulator and the rule to test against it | ✅ `docs/evoa/06-MOCK-PARTNERS.md` |
+| Foundation + Phase 1 SQL applied to your Supabase; 51 browser checks and 20 live checks pass | ✅ |
+| **Your action:** Vercel env vars (incl. the new ones below), Google provider, first owner, Aivora registration, SMTP | 🟡 see 05-SETUP.md |
+| Browser test of the three sign-in paths on the deployed site | 🟡 after the Vercel variables |
+| Cron: Vercel Hobby allows one run per day → the tick runs daily; for every 10 minutes use Supabase pg_cron or another scheduler | 🟡 your decision |
 
-## Phase 1 — Immigration connection and data model (weeks 1–4)
+## Phase 1 — Immigration connection and data model ✅ (built and tested with the simulator; waits for the real API)
 
-⬜ Immigration API specification from Immigration Bureau (needed by week 2) · ⬜ `ImmigrationGateway` adapter (+ sandbox mock) · ⬜ master-data sync (nationality, airports, airlines, provinces/districts, document types) ·
-⬜ schema: travelers, trips, applications, documents, payments, status history, partners, agencies · ⬜ status state machine · ⬜ private encrypted document storage with short-lived links · ⬜ retention purge job on the cron tick
+| Item | Status |
+| --- | --- |
+| Schema: travelers, trips, applications, documents, payments, status history, master data, outbox, agencies; RLS | ✅ applied |
+| Status machine in the database (+ compare-and-set), SLA 24 h / 72 h, live ping on every change | ✅ all 196 pairs compared with TypeScript |
+| `ImmigrationGateway` (HTTP client with error kinds), docket builder, send queue with back-off, callback endpoint, polling fallback, additional documents | ✅ against the simulator; ⬜ against the real Immigration API (needs their specification and credentials) |
+| Reference-list sync (+ admin page `/admin/immigration`) | ✅ |
+| Encrypted passport numbers and document files, owner/admin-only viewing with audit, retention purge | ✅ needs `DATA_ENCRYPTION_KEY` in Vercel |
+| Tick job (queue, polling, list sync, purge) | ✅ |
+| Open questions for Immigration (idempotent docket? callback retries? digital pass?) | 🟡 listed in 06-MOCK-PARTNERS.md |
 
 ## Phase 2 — Application and payment (weeks 3–6)
 

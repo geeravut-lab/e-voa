@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getT } from "@/lib/i18n/server";
+import { BACKGROUND_COLOR, THEME_COLOR } from "@/config/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#FBFAF6",
-    theme_color: "#1557E0",
+    background_color: BACKGROUND_COLOR,
+    theme_color: THEME_COLOR,
     icons: custom
       ? [
           { src: `/brand/favicon?v=${custom}`, sizes: "192x192", type: "image/png", purpose: "any" },

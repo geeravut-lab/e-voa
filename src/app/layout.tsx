@@ -9,6 +9,8 @@ import { AppShell } from "@/components/AppShell";
 import { getT } from "@/lib/i18n/server";
 import { LANGS } from "@/lib/i18n/langs";
 import { SITE_URL } from "@/lib/env";
+import { THEME_COLOR } from "@/config/theme";
+import { PwaRegister } from "@/components/PwaRegister";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, brandName, brand } = await getT();
@@ -29,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#1557E0", width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: THEME_COLOR, width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { lang } = await getT();
@@ -37,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={LANGS[lang].htmlLang} dir={LANGS[lang].dir}>
       <body>
         <AppShell>{children}</AppShell>
+        <PwaRegister />
       </body>
     </html>
   );

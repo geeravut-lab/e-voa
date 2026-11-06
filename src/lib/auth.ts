@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { redirect, notFound } from "next/navigation";
+import { redirect, notFound, unstable_rethrow } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { hasSupabase } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -29,6 +29,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
       isOwner: !!admin.data?.is_owner,
     };
   } catch (e) {
+    unstable_rethrow(e); // never swallow Next.js control-flow errors (dynamic rendering, redirects)
     console.error("[auth] viewer lookup failed", (e as Error).message);
     return VISITOR;
   }

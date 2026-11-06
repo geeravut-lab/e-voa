@@ -4,7 +4,7 @@ const base =
 const variants = {
   primary: "bg-primary text-white shadow-[0_8px_16px_-8px_rgb(21_87_224/0.6)] hover:bg-primary-hover",
   gold: "bg-gold text-ink hover:brightness-95",
-  ghost: "border-[1.5px] border-[#c9d8f7] bg-surface text-primary hover:bg-sky",
+  ghost: "border-[1.5px] border-sky-line bg-surface text-primary hover:bg-sky",
   danger: "bg-danger text-white hover:brightness-95",
 } as const;
 export type Variant = keyof typeof variants;

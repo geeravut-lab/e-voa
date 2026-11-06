@@ -4,7 +4,7 @@
 
 | Item | State |
 | --- | --- |
-| Foundation SQL (`supabase/migrations/20261106000100_foundation.sql`) | ✅ applied to project `ytzktizvmeayugdfzzlk`; 7 tables with RLS, 7 policies, private bucket `brand-assets`, seed settings |
+| Foundation SQL (`…000100_foundation.sql`) and Phase 1 SQL (`…000200_phase1_core.sql`) | ✅ both applied to project `ytzktizvmeayugdfzzlk`; 7 tables with RLS, 7 policies, private bucket `brand-assets`, seed settings |
 | Auth: Site URL `https://e-voa.vercel.app`; redirect list `…/auth/callback` + `http://localhost:3000/auth/callback`; e-mail code length 6, expiry 15 min | ✅ |
 | End-to-end test on the real project (`npm run e2e:supabase`): profile trigger, session minting, RLS, live sync over Realtime | ✅ all 18 checks pass |
 | Google provider | ⬜ **not enabled yet** (`external_google_enabled=false`, no client id). You must paste the Google client ID and secret in Supabase → Authentication → Providers → Google, and add Supabase's callback URL to the Google OAuth client |
@@ -36,8 +36,13 @@ Environment variables (Production and Preview):
 | `NEXT_PUBLIC_SITE_URL` | `https://e-voa.vercel.app` | yes |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key | **NO — never `NEXT_PUBLIC_`** |
 | `CRON_SECRET` | any long random string | no |
+| `DATA_ENCRYPTION_KEY` | 32 random bytes, base64 (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`). **Back it up: without it passport numbers and files cannot be read.** | **NO** |
+| `IMMIGRATION_API_URL` / `IMMIGRATION_API_TOKEN` / `IMMIGRATION_API_FROM` | From Immigration (not available yet). Leave empty until then | **NO** |
+| `IMMIGRATION_CALLBACK_SECRET` | Random string you give to Immigration for `POST /api/immigration/callback` | **NO** |
 | `AIVORA_HUB_URL` | `https://aivora-lc.netlify.app` (default) | no |
 | `AIVORA_APP_SLUG` | `e-voa` (default) | no |
+
+Cron: `vercel.json` runs `/api/cron/tick` once a day (the Hobby plan limit). To run it every 10 minutes (queue retries, polling), either upgrade to Pro, or call `https://e-voa.vercel.app/api/cron/tick` with `Authorization: Bearer <CRON_SECRET>` from Supabase pg_cron + pg_net or any scheduler.
 
 Framework preset: Next.js, root directory = repository root. Redeploy after saving variables.
 

@@ -18,6 +18,8 @@ Docs: `docs/evoa/README.md` (index) · `docs/evoa/ROADMAP.md` (phases and status
 11. Do not copy API keys or tokens found in the legacy documents (`TieThai & WeGoThiland Documents/`) into code or docs.
 
 12. **Supabase operations** (when the environment has the Supabase hosts allowed and a token injected): use the Management API (`https://api.supabase.com/v1/projects/<ref>/…`) for SQL and Auth settings. Never print or store a key; read-only checks first; ask the owner before anything destructive (DROP, DELETE, truncating, changing Auth on production) or irreversible. Test with a temporary user and delete it (`npm run e2e:supabase`).
+14. **Test with the simulator**: whenever something touches Immigration, insurance, SIM/eSIM, VIP or Beauty & Health, build or extend the scenario in `tools/mock-partners` (flows and API docs: `TieThai & WeGoThiland Documents/Flow & API Docs`, adapted to ThaiPass) and test against it first. Keep `npm test` and `npm run e2e:phase1` green. See `docs/evoa/06-MOCK-PARTNERS.md`.
+15. **Cleaning up test data on the real project**: tests delete only what they created, in the same run. Any other bulk deletion needs the owner's explicit OK first. Simulator data (reference lists) must never stay in the real database.
 13. **Realtime client**: create it with the `accessToken` option and `await realtime.setAuth(token)` before subscribing. The default auth layer closed a lone private channel in testing.
 
 ## Commands
@@ -27,6 +29,9 @@ npm run dev         # local development
 npm run typecheck   # tsc
 npm test            # vitest (pure logic: i18n, brand, live-sync rules, SSO payload, safe redirects)
 npm run build       # production build
+npm run mock          # partner simulator on :4010
+npm run e2e:phase1    # Phase 1 live checks (real Supabase + simulator)
+npm run lint:colors   # no hex colors outside globals.css
 npm run e2e:supabase  # live check of the Supabase project (needs SB_URL, SB_ANON, SB_SERVICE in the environment)
 ```
 

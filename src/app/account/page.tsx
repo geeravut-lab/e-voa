@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/Buttons";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { PageHead } from "@/components/PageHead";
 import { SignOutButton } from "@/components/Nav";
+import { InstallApp } from "@/components/InstallApp";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function AccountPage() {
           </ActionForm>
         </section>
       )}
+      <InstallApp />
       <SignOutButton />
     </div>
   );

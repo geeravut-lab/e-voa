@@ -4,8 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 // platform_settings is read often and changed rarely: cache per server instance for 30 s.
 // Admin edits clear this instance's cache; other instances catch up within the TTL ("about a minute" on screen).
+// Kept on globalThis because Next.js bundles server actions, pages and route handlers as separate module copies in one process:
+// a plain module-level Map would be cleared in one copy and stay stale in the others (found by the browser end-to-end test).
 const TTL_MS = 30_000;
-const cache = new Map<string, { at: number; value: unknown }>();
+const g = globalThis as unknown as { __evoaSettingsCache?: Map<string, { at: number; value: unknown }> };
+const cache = (g.__evoaSettingsCache ??= new Map<string, { at: number; value: unknown }>());
 
 /** Reads one setting. Fails open: if the table or service key is unavailable the caller's fallback is used. */
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {

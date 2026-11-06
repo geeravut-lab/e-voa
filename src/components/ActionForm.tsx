@@ -23,7 +23,7 @@ export function ActionForm({
     <form action={formAction} className={className}>
       {children}
       <div aria-live="polite" className="min-h-6 text-sm">
-        {state?.ok === true && <p className="font-semibold text-success">✓ {t[successKey]}</p>}
+        {state?.ok === true && <p className="font-semibold text-success">✓ {state.message ?? t[successKey]}</p>}
         {state?.ok === false && <p className="font-semibold text-danger">✕ {errorText(state.error, t)}</p>}
       </div>
     </form>
