@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
     const gl = await admin.auth.admin.generateLink({ type: "magiclink", email: u.user.email });
     const tokenHash = gl.data?.properties?.hashed_token;
     if (gl.error || !tokenHash) { console.error("[sso] generateLink failed", gl.error?.code, gl.error?.message); return fail(500, "err_generic"); }
-    const v = await admin.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+    // verifyOtp turns the client it runs on into THAT USER's client. Use a throw-away one so `admin` keeps its service-role rights.
+    const v = await createAdminClient().auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
     if (v.error || !v.data.session) { console.error("[sso] verifyOtp failed", v.error?.code, v.error?.message); return fail(500, "err_generic"); }
 
     await Promise.all([audit({ actorId: userId, action: "auth.login", detail: { provider: "aivora" } }), trackEvent(userId, "login", "aivora")]);

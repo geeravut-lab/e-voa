@@ -33,8 +33,10 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Languages EN/TH/ZH-CN with easy extension | ✅ |
 | Feature switches, Audit trail, Admin management, Usage analytics, in-app notifications, settings (fees, retention) | ✅ |
 | Knowledge → feature mapping | ✅ [04-KNOWLEDGE-MAPPING.md](./04-KNOWLEDGE-MAPPING.md) |
-| **Your action**: run the SQL, set env vars in Vercel, grant the first owner (05-SETUP.md) | 🟡 |
-| End-to-end test against your real Supabase (cannot be done from the build sandbox) | 🟡 |
+| Foundation SQL applied to your Supabase project; Auth URLs and OTP length set; 18 end-to-end checks pass on the real project | ✅ |
+| **Your action**: enable Google provider (client ID/secret), set env vars in Vercel, sign in once and grant the first owner, register the app at the Aivora hub (05-SETUP.md) | 🟡 |
+| Custom SMTP, then turn e-mail code sign-in back on | 🟡 |
+| Browser-level test of the three sign-in paths on the deployed site | 🟡 after Vercel env vars |
 
 ## Phase 1 — Immigration connection and data model (weeks 1–4)
 

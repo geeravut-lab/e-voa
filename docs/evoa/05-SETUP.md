@@ -1,10 +1,24 @@
 # Setup: Supabase + Vercel + GitHub (do this once)
 
+## Status on 6 Nov 2026 (Supabase work done by Claude through the Management API)
+
+| Item | State |
+| --- | --- |
+| Foundation SQL (`supabase/migrations/20261106000100_foundation.sql`) | ✅ applied to project `ytzktizvmeayugdfzzlk`; 7 tables with RLS, 7 policies, private bucket `brand-assets`, seed settings |
+| Auth: Site URL `https://e-voa.vercel.app`; redirect list `…/auth/callback` + `http://localhost:3000/auth/callback`; e-mail code length 6, expiry 15 min | ✅ |
+| End-to-end test on the real project (`npm run e2e:supabase`): profile trigger, session minting, RLS, live sync over Realtime | ✅ all 18 checks pass |
+| Google provider | ⬜ **not enabled yet** (`external_google_enabled=false`, no client id). You must paste the Google client ID and secret in Supabase → Authentication → Providers → Google, and add Supabase's callback URL to the Google OAuth client |
+| E-mail code sign-in | ⏸ switched **off** (feature flag `login_email`). The free plan with Supabase's built-in mailer cannot change e-mail templates (the mail has a link, not a code) and sends only 2 e-mails per hour. Needs custom SMTP (Resend, SendGrid, Amazon SES …) then the template with `{{ .Token }}`; then turn the switch back on at `/admin/features` |
+| Vercel env vars, first owner, Aivora hub registration | ⬜ yours (sections 2–4 below) |
+| Project region | ⚠ `ap-northeast-1` (Tokyo), not Singapore as planned in Q9. Moving later means a new project and a data migration |
+
+> Tip for Claude sessions: Supabase hosts are allowed in the environment and a Personal Access Token is injected for `api.supabase.com`. From Node use `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. Revoke the token when the work is done.
+
 The code build sandbox cannot reach your Supabase project, so **the sign-in, brand upload and live-sync features have not been tested against it yet**. Follow this list, then use the checks at the end.
 
 ## 1. Supabase (`https://ytzktizvmeayugdfzzlk.supabase.co`)
 
-1. **SQL Editor** → paste and run `supabase/migrations/20261106000100_foundation.sql` (safe to re-run).
+1. ~~SQL Editor → run `supabase/migrations/20261106000100_foundation.sql`~~ (already applied; safe to re-run).
 2. **Project Settings → API**: copy the *anon / publishable* key and the *service_role* key (you need them in step 2).
 3. **Authentication → URL Configuration**: Site URL `https://e-voa.vercel.app`; Redirect URLs: `https://e-voa.vercel.app/auth/callback`, `http://localhost:3000/auth/callback` (and your Vercel preview pattern if you use previews).
 4. **Authentication → Providers**: Google is already set (its authorized redirect is the Supabase callback URL shown in that page). Email must be enabled.

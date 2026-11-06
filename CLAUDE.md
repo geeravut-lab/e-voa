@@ -17,6 +17,9 @@ Docs: `docs/evoa/README.md` (index) · `docs/evoa/ROADMAP.md` (phases and status
 10. Brand name, logo and favicon come from `/brand/logo`, `/brand/favicon` and `getT().brandName`. Never hard-code them in components.
 11. Do not copy API keys or tokens found in the legacy documents (`TieThai & WeGoThiland Documents/`) into code or docs.
 
+12. **Supabase operations** (when the environment has the Supabase hosts allowed and a token injected): use the Management API (`https://api.supabase.com/v1/projects/<ref>/…`) for SQL and Auth settings. Never print or store a key; read-only checks first; ask the owner before anything destructive (DROP, DELETE, truncating, changing Auth on production) or irreversible. Test with a temporary user and delete it (`npm run e2e:supabase`).
+13. **Realtime client**: create it with the `accessToken` option and `await realtime.setAuth(token)` before subscribing. The default auth layer closed a lone private channel in testing.
+
 ## Commands
 
 ```bash
@@ -24,6 +27,7 @@ npm run dev         # local development
 npm run typecheck   # tsc
 npm test            # vitest (pure logic: i18n, brand, live-sync rules, SSO payload, safe redirects)
 npm run build       # production build
+npm run e2e:supabase  # live check of the Supabase project (needs SB_URL, SB_ANON, SB_SERVICE in the environment)
 ```
 
 Before saying a change is done: typecheck, tests and build pass; for UI changes look at it at 390×844 and 1280×800.

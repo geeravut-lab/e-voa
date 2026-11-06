@@ -35,6 +35,7 @@ export function LiveSync({ userId, isAdmin }: { userId: string; isAdmin: boolean
     const channels: RealtimeChannel[] = [];
     const states = new Map<string, string>();
     let sb: ReturnType<typeof createClient> | null = null;
+    let currentToken = "";
 
     const refreshSoon = () => {
       if (stopped || !cfg.refresh) return;
@@ -75,7 +76,8 @@ export function LiveSync({ userId, isAdmin }: { userId: string; isAdmin: boolean
       const r = await fetch("/api/live/token", { cache: "no-store" });
       if (r.status === 401) { stopped = true; return null; }
       const { token } = (await r.json()) as { token: string };
-      sb?.realtime.setAuth(token);
+      currentToken = token;
+      await sb?.realtime.setAuth(token);
       return token;
     };
 
@@ -91,8 +93,10 @@ export function LiveSync({ userId, isAdmin }: { userId: string; isAdmin: boolean
       loop();
       if (!LIVE_REALTIME) return;
       try {
-        // Plain client: it must NOT manage the login session (no persistence, no auto refresh, no cookies).
-        sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+        // This client must NOT manage the login session (no cookies, no refresh). Passing `accessToken` gives it no auth layer at all,
+        // so nothing can overwrite the socket's token with the anon key after we join (tested against the real Realtime service:
+        // with the default auth layer a lone private channel was closed right after joining).
+        sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { accessToken: async () => currentToken });
         const token = await setAuth();
         if (!token || stopped) return;
         for (const topic of topics) {
