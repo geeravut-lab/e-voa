@@ -43,3 +43,14 @@ export async function deleteTravelerAction(_p: ActionResult, fd: FormData): Prom
   revalidatePath("/travelers");
   return { ok: true };
 }
+
+/** The traveler asks for the tax invoice of a paid payment (buyer details typed once; the seller's come from the company setting). */
+export async function requestInvoiceAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const v = await getViewer(); if (!v.user) return { ok: false, error: "err_not_signed_in" };
+  if (!(await rateLimit(`invoice:${v.user.id}`, 10, 3600))) return { ok: false, error: "err_rate_limited" };
+  const { issueInvoice } = await import("@/lib/invoice-service");
+  const r = await issueInvoice(v.user.id, String(fd.get("paymentId") ?? ""), Object.fromEntries(fd));
+  if (!r.ok) return r;
+  revalidatePath(`/receipts/${fd.get("paymentId")}/invoice`);
+  return { ok: true };
+}

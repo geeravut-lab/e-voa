@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { PREPARE } from "@/lib/content/guide";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
 
-export const metadata: Metadata = { title: "What to prepare", description: "Checklist of what you need before applying for the Thailand Visa on Arrival." };
+export const generateMetadata = () => pageMeta({ path: "/prepare", title: "prepare_title", description: "seo_prepare" });
 
 export default async function PreparePage() {
   const { t, lang } = await getT();

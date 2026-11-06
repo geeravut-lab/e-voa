@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { loadChannels } from "@/lib/channels";
 import { SITE_URL } from "@/lib/env";
 import { PageHead } from "@/components/PageHead";
 
-export const metadata: Metadata = { title: "Official channels", description: "How to recognise our real website and contact channels and avoid look-alike sites." };
+export const generateMetadata = () => pageMeta({ path: "/official", title: "official_title", description: "seo_official" });
 export const dynamic = "force-dynamic";
 
 export default async function OfficialPage() {

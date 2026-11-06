@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: { serverActions: { bodySizeLimit: "2mb" } }, // brand logo uploads (limit 1 MB) travel through a server action
   images: { formats: ["image/avif", "image/webp"] },
+  // the invoice PDF reads its font files from disk: make sure the serverless bundle contains them
+  outputFileTracingIncludes: { "/receipts/[id]/invoice/pdf": ["./node_modules/@fontsource/noto-sans-thai/files/*-{400,700}-normal.woff"] },
   async headers() {
     return [
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },

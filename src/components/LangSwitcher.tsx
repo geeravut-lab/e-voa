@@ -29,6 +29,8 @@ export function LangSwitcher({ compact = false }: { compact?: boolean }) {
               setTarget(code);
               start(async () => {
                 await setLangAction(code);
+                const u = new URL(window.location.href);                  // a ?lang= in the address would keep overriding the new choice
+                if (u.searchParams.has("lang")) { u.searchParams.delete("lang"); router.replace(u.pathname + u.search); }
                 router.refresh();
               });
             }}

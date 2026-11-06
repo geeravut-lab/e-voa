@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import { requireFeaturePage } from "@/lib/flags";
 import { getT } from "@/lib/i18n/server";
 import { loadMaster } from "@/lib/master";
@@ -9,7 +10,7 @@ import { GetForm } from "@/components/GetForm";
 import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Check eligibility", description: "Find out whether your nationality can apply for the Thailand Visa on Arrival (e-VOA)." };
+export const generateMetadata = () => pageMeta({ path: "/eligibility", title: "card_check", description: "seo_eligibility" });
 
 /** "Do I need a visa?" The answer uses only the lists the admin entered from the official source; with no list it says so instead of guessing. */
 export default async function EligibilityPage({ searchParams }: { searchParams: Promise<{ n?: string }> }) {

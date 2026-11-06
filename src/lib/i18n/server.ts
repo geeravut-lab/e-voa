@@ -7,6 +7,8 @@ import { isLang, LANG_COOKIE, pickLang, type Lang } from "./langs";
 
 /** Language order: cookie (explicit choice) → browser's Accept-Language → English. */
 export async function getLang(): Promise<Lang> {
+  const asked = (await headers()).get("x-evoa-lang");            // ?lang= (set by the proxy): this request only
+  if (isLang(asked)) return asked;
   const c = (await cookies()).get(LANG_COOKIE)?.value;
   if (isLang(c)) return c;
   return pickLang((await headers()).get("accept-language"));

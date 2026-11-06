@@ -120,3 +120,28 @@ export async function saveChannelsAction(_p: ActionResult, fd: FormData): Promis
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.channels", entity: "settings" });
   return done("/admin/channels");
 }
+
+/** The seller's details printed on every tax invoice (name, tax id, address, VAT registration). Checked shape only: the accountant confirms the content. */
+export async function saveCompanyAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseCompany } = await import("@/lib/invoice");
+  const raw = Object.fromEntries(fd);
+  const value = parseCompany({ ...raw, vat_registered: fd.get("vat_registered") === "on", visa_fee_pass_through: fd.get("visa_fee_pass_through") === "on" });
+  if (String(raw.tax_id ?? "").trim() && !value.tax_id) return { ok: false, error: "err_tax_id" };
+  if (!(await putSetting("company", value, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.company", entity: "settings" });
+  return done("/admin/company");
+}
+
+/** Airport-specific notes for the public Airport guide, per airport and language (counters, lanes, hours): written by staff from the airport / Thai Immigration, never generated. */
+export async function saveAirportNotesAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseAirportNotes } = await import("@/lib/airports");
+  const raw: Record<string, Record<string, string>> = {};
+  for (const [k, v] of fd.entries()) { const m = /^([A-Z]{3}):([A-Za-z-]+)$/.exec(k); if (m && typeof v === "string") (raw[m[1]] ??= {})[m[2]] = v; }
+  if (!(await putSetting("airport_notes", parseAirportNotes(raw), a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.airports", entity: "settings" });
+  return done("/admin/airports");
+}

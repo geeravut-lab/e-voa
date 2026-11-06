@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import { requireFeaturePage } from "@/lib/flags";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
@@ -8,7 +9,7 @@ import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Travel extras", description: "Optional travel insurance, SIM/eSIM, VIP airport service and health services for your trip to Thailand." };
+export const generateMetadata = () => pageMeta({ path: "/extras", title: "card_extras", description: "seo_extras" });
 
 export default async function ExtrasPage() {
   await requireFeaturePage("extras");

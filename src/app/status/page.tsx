@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { checkStatusAction } from "@/app/actions/public";
 import { ActionForm } from "@/components/ActionForm";
@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
 import { inputCls } from "@/components/apply/fields";
 
-export const metadata: Metadata = { title: "Check application status" };
+export const generateMetadata = () => pageMeta({ path: "/status", title: "status_title", description: "seo_status" });
 
 export default async function StatusPage() {
   const { t } = await getT();

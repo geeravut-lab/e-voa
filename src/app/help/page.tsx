@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { FAQ } from "@/lib/content/faq";
 import { FaqList } from "@/components/FaqList";
@@ -6,7 +6,7 @@ import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
 
-export const metadata: Metadata = { title: "Help and questions", description: "Answers about applying for the Thailand Visa on Arrival (e-VOA): who can apply, cost, time, refunds, documents and the airport." };
+export const generateMetadata = () => pageMeta({ path: "/help", title: "faq_title", description: "seo_help" });
 
 export default async function HelpPage() {
   const { t, lang } = await getT();
@@ -22,6 +22,7 @@ export default async function HelpPage() {
         <AppLink href="/official" className={btnClass("ghost")}>{t.official_title}</AppLink>
         <AppLink href="/prepare" className={btnClass("ghost")}>{t.prepare_title}</AppLink>
         <AppLink href="/guide" className={btnClass("ghost")}>{t.card_guide}</AppLink>
+        <AppLink href="/articles" className={btnClass("ghost")}>{t.articles_title}</AppLink>
       </section>
     </div>
   );

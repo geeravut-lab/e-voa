@@ -187,6 +187,13 @@ describe("traveler journey in the browser", () => {
     const file = "/tmp/p2b/doc.jpg"; writeFileSync(file, await sharp({ create: { width: 900, height: 1200, channels: 3, background: { r: 90, g: 140, b: 200 } } }).jpeg().toBuffer());
     for (const [i, label] of ["Passport photo page", "Face photo", "Return flight ticket", "Accommodation booking", "Proof of funds"].entries()) {
       const slot = p.locator("form", { has: p.locator(`input[type=file][aria-label="${label}"]`) });
+      if (label === "Face photo") {                                       // the face check runs in the browser as soon as a photo is chosen (real group photo shipped with the detector's package)
+        await slot.locator("input[type=file]").setInputFiles("node_modules/@vladmandic/face-api/demo/sample1.jpg");
+        await slot.getByText(/More than one face/).waitFor({ timeout: 60_000 });
+        await slot.locator("input[type=file]").setInputFiles("node_modules/@vladmandic/face-api/demo/sample2.jpg");
+        await slot.getByText(/Photo advice|One face, well placed/).waitFor({ timeout: 60_000 });
+        expect(await slot.getByText(/More than one face/).count(), "advice follows the newly chosen photo").toBe(0);
+      }
       await slot.locator("input[type=file]").setInputFiles(file);
       await slot.locator("button[type=submit]").click();
       if (label === "Face photo") await slot.getByText(/Photo advice/).waitFor({ timeout: 30_000 });

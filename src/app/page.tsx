@@ -1,3 +1,5 @@
+import { alternatesOf } from "@/lib/seo";
+import { getLang } from "@/lib/i18n/server";
 import { NAV, resolveHref } from "@/config/nav";
 import { getViewer, displayNameOf } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
@@ -62,3 +64,5 @@ export default async function HomePage() {
     </div>
   );
 }
+
+export const generateMetadata = async () => ({ alternates: alternatesOf("/", await getLang()) });
