@@ -145,3 +145,26 @@ export async function saveAirportNotesAction(_p: ActionResult, fd: FormData): Pr
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.airports", entity: "settings" });
   return done("/admin/airports");
 }
+
+/** The help assistant's switch, model and spending limits. A model name must look like a Claude model id; numbers are clamped to sane ranges. */
+export async function saveAiAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseAi } = await import("@/lib/ai/settings");
+  const raw = Object.fromEntries(fd);
+  if (!/^claude-[a-z0-9.-]{3,40}$/.test(String(raw.model ?? ""))) return { ok: false, error: "err_ai_model" };
+  if (!(await putSetting("ai", parseAi({ ...raw, enabled: fd.get("enabled") === "on" }), a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.ai", entity: "settings" });
+  return done("/admin/ai");
+}
+
+/** LINE / WhatsApp: on-off and the monthly message quota of each channel (the quota keeps the bill predictable; notices past it still go to the app and e-mail). */
+export async function saveMessagingAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseMessaging } = await import("@/lib/messaging/settings");
+  const raw = Object.fromEntries(fd);
+  if (!(await putSetting("messaging", parseMessaging({ ...raw, line_enabled: fd.get("line_enabled") === "on", whatsapp_enabled: fd.get("whatsapp_enabled") === "on" }), a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.messaging", entity: "settings" });
+  return done("/admin/messaging");
+}

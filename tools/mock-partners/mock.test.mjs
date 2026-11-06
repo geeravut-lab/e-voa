@@ -213,4 +213,25 @@ describe("Flight lookup and insurance files", () => {
     const cb = await until(() => received.find((x) => x.url === "/ins/Confirm_COI" && x.body.RequestNo === "RQ-FILES")); expect(cb).toBeTruthy();
     expect((await fetch(cb.body.ecard_url)).headers.get("content-type")).toBe("image/png");
   });
+
+  it("answers like the Messages API: plain text, a tool call then text, a key is required, overload on demand", async () => {
+    const h = { "x-api-key": "k", "anthropic-version": "2023-06-01", "Content-Type": "application/json" };
+    const ask = (messages) => call("/ai/v1/messages", { method: "POST", headers: h, body: { model: "claude-opus-5-5", max_tokens: 100, system: "s", messages, tools: [{ name: "get_fees" }] } });
+    expect((await call("/ai/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: { model: "m", messages: [] } })).status).toBe(401);
+    expect((await ask([{ role: "user", content: "hello" }])).json).toMatchObject({ stop_reason: "end_turn", content: [{ type: "text", text: "Mock answer: hello" }] });
+    const first = (await ask([{ role: "user", content: "what is the fee?" }])).json;
+    expect(first.stop_reason).toBe("tool_use"); const use = first.content.find((c) => c.type === "tool_use"); expect(use.name).toBe("get_fees");
+    const done = (await ask([{ role: "user", content: "what is the fee?" }, { role: "assistant", content: first.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: use.id, content: "{\"visa\":2000}" }] }])).json;
+    expect(done.content[0].text).toContain("2000");
+    expect((await ask([{ role: "user", content: "BREAK-API" }])).status).toBe(529);
+  });
+  it("takes LINE push and WhatsApp messages, and refuses bad ones the way the real services do", async () => {
+    const auth = { Authorization: "Bearer t", "Content-Type": "application/json" };
+    expect((await call("/line/v2/bot/message/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: { to: "U1", messages: [] } })).status).toBe(401);
+    expect((await call("/line/v2/bot/message/push", { method: "POST", headers: auth, body: { to: "U1", messages: [{ type: "text", text: "hi" }] } })).status).toBe(200);
+    expect((await call("/line/v2/bot/message/push", { method: "POST", headers: auth, body: { to: "UBLOCKED", messages: [{ type: "text", text: "hi" }] } })).status).toBe(400);
+    const wa = (to, body = {}) => call("/whatsapp/v21.0/123/messages", { method: "POST", headers: auth, body: { messaging_product: "whatsapp", to, type: "template", template: { name: "status_update", language: { code: "en" }, components: [{ type: "body", parameters: [{ type: "text", text: "EV-26-000001" }] }] }, ...body } });
+    expect((await wa("66912345678")).status).toBe(200); expect((await wa("66912345000")).json.error.code).toBe(131030);
+    const st = (await call("/__admin/state")).json; expect(st.messagesSent.map((m) => m.channel)).toEqual(["line", "whatsapp"]); expect(st.messagesSent[1].params).toEqual(["EV-26-000001"]);
+  });
 });

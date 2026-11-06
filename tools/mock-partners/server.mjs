@@ -87,7 +87,7 @@ export function createMockServer(opts = {}) {
     },
     log: opts.log ?? (process.env.MOCK_QUIET === "1" ? () => {} : (m) => console.log(`[mock] ${m}`)),
   };
-  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], seq: 0, errOnce: new Set() };
+  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], messagesSent: [], seq: 0, errOnce: new Set() };
   const timers = new Set();
 
   const send = (res, code, body, headers = {}) => { const s = JSON.stringify(body); res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(s), ...headers }); res.end(s); };
@@ -173,6 +173,55 @@ export function createMockServer(opts = {}) {
       return send(res, 200, { status: 200, message: "Success", result: { isSuccess: true, errorDesc: "" } });
     }
     return send(res, 404, { status: 404, message: "Incorrect Request" });
+  }
+
+  // ------------------------------------------------------------------ Anthropic Messages API (help assistant)
+  // Enough of the real shape for the app's loop: the answer is picked from the last user text; tool questions get a tool_use first, then text built from the tool results.
+  async function anthropicMock(req, res) {
+    const key = req.headers["x-api-key"] ?? String(req.headers.authorization ?? "").replace(/^Bearer\s+/i, ""), body = await readBody(req);      // the current SDK sends the key as a Bearer token; older ones as x-api-key
+    if (!key) return send(res, 401, { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } });
+    if (!body || !Array.isArray(body.messages) || typeof body.model !== "string") return send(res, 400, { type: "error", error: { type: "invalid_request_error", message: "bad request" } });
+    state.aiRequests.push({ model: body.model, system: body.system, tools: (body.tools ?? []).map((t) => t.name), output_config: body.output_config, messages: body.messages });
+    const last = body.messages[body.messages.length - 1];
+    const usage = { input_tokens: 400, output_tokens: 60, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
+    const reply = (content, stop_reason) => send(res, 200, { id: `msg_mock_${++state.seq}`, type: "message", role: "assistant", model: body.model, content, stop_reason, stop_sequence: null, usage });
+    if (Array.isArray(last.content) && last.content.some((c) => c.type === "tool_result")) {
+      const results = last.content.filter((c) => c.type === "tool_result").map((c) => (typeof c.content === "string" ? c.content : JSON.stringify(c.content))).join(" | ");
+      return reply([{ type: "text", text: `Mock reply from tools: ${results.slice(0, 600)}` }], "end_turn");
+    }
+    const text = typeof last.content === "string" ? last.content : (last.content ?? []).map((c) => c.text ?? "").join(" ");
+    const use = (name, input = {}) => reply([{ type: "text", text: "Let me check." }, { type: "tool_use", id: `toolu_mock_${++state.seq}`, name, input }], "tool_use");
+    if (/BREAK-API/.test(text)) return send(res, 529, { type: "error", error: { type: "overloaded_error", message: "Overloaded" } });
+    if (/application|status|สถานะ/i.test(text)) return use("get_my_applications");
+    if (/fee|price|cost|ราคา/i.test(text)) return use("get_fees");
+    if (/eligib|nationalit/i.test(text)) return use("check_eligibility", { nationality: "India" });
+    return reply([{ type: "text", text: `Mock answer: ${text.slice(0, 200)}` }], "end_turn");
+  }
+
+  // ------------------------------------------------------------------ LINE Messaging API + WhatsApp Cloud API (notifications)
+  // push: records the message, answers like the real services; "FAIL" in the text or a user id ending in BLOCKED simulate a refusal.
+  async function messaging(req, res, path, url) {
+    const body = await readBody(req); const auth = String(req.headers.authorization ?? "");
+    if (path === "/line/v2/bot/message/push") {
+      if (!auth.startsWith("Bearer ")) return send(res, 401, { message: "Authentication failed" });
+      const to = String(body.to ?? ""), text = (body.messages ?? []).map((m) => m.text ?? "").join("\n");
+      if (!to || !Array.isArray(body.messages)) return send(res, 400, { message: "The request body has 1 error(s)" });
+      if (to.endsWith("BLOCKED")) return send(res, 400, { message: "Failed to send messages" });
+      state.messagesSent.push({ channel: "line", to, text }); return send(res, 200, { sentMessages: [{ id: String(++state.seq) }] });
+    }
+    if (path === "/line/v2/bot/message/reply") {
+      if (!auth.startsWith("Bearer ")) return send(res, 401, { message: "Authentication failed" });
+      state.messagesSent.push({ channel: "line-reply", to: String(body.replyToken ?? ""), text: (body.messages ?? []).map((m) => m.text ?? "").join("\n") }); return send(res, 200, {});
+    }
+    const wa = /^\/whatsapp\/v\d+\.\d+\/([^/]+)\/messages$/.exec(path);
+    if (wa) {
+      if (!auth.startsWith("Bearer ")) return send(res, 401, { error: { message: "Invalid OAuth access token", code: 190 } });
+      if (!body.to || (body.type === "template" ? !body.template?.name : body.type !== "text")) return send(res, 400, { error: { message: "Parameter value is not valid", code: 100 } });
+      if (String(body.to).endsWith("000")) return send(res, 400, { error: { message: "Recipient phone number not in allowed list", code: 131030 } });
+      state.messagesSent.push({ channel: "whatsapp", to: String(body.to), template: body.template?.name ?? null, params: (body.template?.components ?? []).flatMap((c) => (c.parameters ?? []).map((p) => p.text)), text: body.text?.body ?? null });
+      return send(res, 200, { messaging_product: "whatsapp", contacts: [{ input: body.to, wa_id: body.to }], messages: [{ id: `wamid.${++state.seq}` }] });
+    }
+    return send(res, 404, { message: "not found" });
   }
 
   // ------------------------------------------------------------------ partners (shared auth)
@@ -266,10 +315,10 @@ export function createMockServer(opts = {}) {
   // ------------------------------------------------------------------ simulator controls
   async function admin(req, res, path) {
     const b = req.method === "POST" ? await readBody(req) : {};
-    if (path === "/__admin/state") return send(res, 200, { config: { ...cfg, partnerSecret: "***", callbackSecret: "***" }, applications: [...state.applications.values()], insurance: [...state.insurance.values()], sim: [...state.sim.values()], vip: [...state.vip.values()], bhs: [...state.bhs.values()], callbacksSent: state.callbacksSent });
+    if (path === "/__admin/state") return send(res, 200, { config: { ...cfg, partnerSecret: "***", callbackSecret: "***" }, applications: [...state.applications.values()], insurance: [...state.insurance.values()], sim: [...state.sim.values()], vip: [...state.vip.values()], bhs: [...state.bhs.values()], callbacksSent: state.callbacksSent, aiRequests: state.aiRequests, messagesSent: state.messagesSent });
     if (path === "/__admin/decide" && req.method === "POST") { const app = state.applications.get(b.webReferenceNumber); if (!app) return send(res, 404, { error: "unknown application" }); await decide(app, Number(b.statusId), b.statusDesc); return send(res, 200, { ok: true, status: app.status }); }
     if (path === "/__admin/config" && req.method === "POST") { for (const k of ["decisionDelayMs", "duplicateMode"]) if (b[k] !== undefined) cfg[k] = b[k]; for (const k of Object.keys(cfg.callbacks)) if (b.callbacks?.[k] !== undefined) cfg.callbacks[k] = b.callbacks[k]; return send(res, 200, { ok: true }); }
-    if (path === "/__admin/reset" && req.method === "POST") { for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
+    if (path === "/__admin/reset" && req.method === "POST") { for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
     // partner-side events: the partner tells ThaiPass that something happened (SIM picked up, VIP used, voucher used, lab result)
     if (path === "/__admin/partner/sim-confirm" && req.method === "POST") { const r = state.sim.get(b.TransactionID); if (!r) return send(res, 404, { error: "unknown TransactionID" }); r.used = true; await callback("sim", "/SIM/TRUE/sim_confirm", { PassportNumber: r.PassportNumber, TransactionID: r.TransactionID, ConfirmBy: b.ConfirmBy ?? "airport-counter-1", Remark: b.Remark ?? "" }); return send(res, 200, { ok: true }); }
     if (path === "/__admin/partner/vip-confirm" && req.method === "POST") { const r = state.vip.get(b.TransactionID); if (!r) return send(res, 404, { error: "unknown TransactionID" }); r.used = true; await callback("vip", "/Services/VIP/vip_confirm", { PassportNumber: r.PassportNumber, TransactionID: r.TransactionID, ConfirmBy: b.ConfirmBy ?? "vip-staff-1", Remark: b.Remark ?? "" }); return send(res, 200, { ok: true }); }
@@ -286,6 +335,8 @@ export function createMockServer(opts = {}) {
       if (path.startsWith("/__admin/")) return await admin(req, res, path);
       if (path.startsWith("/immigration/th/v1/")) return await immigration(req, res, path, url);
       if (path === "/flights/lookup") return flights(req, res, url);
+      if (path === "/ai/v1/messages" && req.method === "POST") return await anthropicMock(req, res);
+      if (/^\/(line|whatsapp)\//.test(path)) return await messaging(req, res, path, url);
       if (/^\/(insurance|sim|vip|bhs)\//.test(path)) return await partner(req, res, path, url);
       return send(res, 404, { status: 404, message: "Incorrect Request" });
     } catch (e) { cfg.log(`error ${e.stack}`); send(res, 500, { status: 500, message: "Internal Server Error" }); }
