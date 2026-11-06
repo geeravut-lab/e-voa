@@ -1,0 +1,62 @@
+import { requireAdminPage } from "@/lib/auth";
+import { getT } from "@/lib/i18n/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { hasServiceRole } from "@/lib/env";
+import { grantAdminAction, revokeAdminAction } from "@/app/actions/admin";
+import { ActionForm } from "@/components/ActionForm";
+import { SubmitButton } from "@/components/Buttons";
+import { PageHead } from "@/components/PageHead";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminsPage() {
+  const viewer = await requireAdminPage();
+  const { t } = await getT();
+  let rows: { user_id: string; is_owner: boolean; email: string | null }[] = [];
+  if (hasServiceRole()) {
+    const db = createAdminClient();
+    const { data: admins } = await db.from("admins").select("user_id, is_owner").order("created_at");
+    const ids = (admins ?? []).map((a) => a.user_id);
+    const { data: profiles } = ids.length ? await db.from("profiles").select("id, email").in("id", ids) : { data: [] as { id: string; email: string | null }[] };
+    const email = new Map((profiles ?? []).map((p) => [p.id, p.email]));
+    rows = (admins ?? []).map((a) => ({ ...a, email: email.get(a.user_id) ?? null }));
+  }
+  return (
+    <div className="space-y-4">
+      <PageHead title={t.admins_title} art="admins" tone="sky" />
+      <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
+        <h2 className="font-display text-lg font-bold">{t.admins_grant}</h2>
+        <ActionForm action={grantAdminAction} className="space-y-2">
+          <input type="email" name="email" required placeholder={t.admins_email} aria-label={t.admins_email} className="min-h-11 w-full rounded-control border-[1.5px] border-field bg-surface px-3" />
+          <SubmitButton>{t.admins_grant}</SubmitButton>
+        </ActionForm>
+      </section>
+      {rows.length === 0 ? (
+        <p className="text-muted">{t.admins_empty}</p>
+      ) : (
+        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface shadow-card">
+          {rows.map((r) => {
+            const me = r.user_id === viewer.user.id;
+            return (
+              <li key={r.user_id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{r.email ?? r.user_id}</p>
+                  <p className="flex gap-2 text-xs font-bold">
+                    {r.is_owner && <span className="rounded-full bg-gold-soft px-2 py-0.5 text-gold-deep">{t.admins_owner}</span>}
+                    {me && <span className="rounded-full bg-sky px-2 py-0.5 text-primary">{t.admins_you}</span>}
+                  </p>
+                </div>
+                {/* The remove button is not drawn for yourself or the owner; the server action and the database refuse as well. */}
+                {!me && !r.is_owner && (
+                  <ActionForm action={revokeAdminAction.bind(null, r.user_id)}>
+                    <SubmitButton variant="danger">{t.admins_revoke}</SubmitButton>
+                  </ActionForm>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
