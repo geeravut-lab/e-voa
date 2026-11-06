@@ -593,6 +593,7 @@ export const zhCN = {
   admin_channels_title: "官方渠道",
   admin_channels_hint: "向所有访客显示的地址",
   admin_channels_note: "仅接受 https 链接、邮箱和电话，其他内容会被丢弃。留空即隐藏。",
+  imm_sample_warning: "当前加载的是示例参考列表（少量机场、国家和城市），用于在接入移民局之前试用申请流程。首次从移民局同步时会被真实列表替换。加载期间请勿接收真实申请。",
   err_generic: "出错了，请重试。",
   err_not_signed_in: "请先登录。",
   err_forbidden: "您无权访问此内容。",

@@ -94,6 +94,7 @@ afterAll(async () => {
   await mock?.close();
 }, 300_000);
 
+const ids = { app: "", trip: "" }; let traveler: Awaited<ReturnType<typeof makeUser>>;
 describe("traveler journey in the browser", () => {
   it("public pages work on a phone without sideways scrolling", async () => {
     const u = await makeUser("pub"); const ctx = await ctxFor(u); const p = await ctx.newPage();
@@ -118,7 +119,6 @@ describe("traveler journey in the browser", () => {
     await ctx.close();
   });
 
-  let ids = { app: "", trip: "" }; let traveler: Awaited<ReturnType<typeof makeUser>>;
   it("wizard: trip with flight lookup → traveler from passport lines → documents → extras → pay (browser is sent to Stripe)", async () => {
     traveler = await makeUser("trav"); const ctx = await ctxFor(traveler); const p = await ctx.newPage();
     const errs: string[] = []; p.on("pageerror", (e: unknown) => errs.push(String(e)));
@@ -142,8 +142,17 @@ describe("traveler journey in the browser", () => {
     await p.waitForURL(/step=2&trip=/, { timeout: 20_000 });
     ids.trip = new URL(p.url()).searchParams.get("trip")!;
 
-    // step 2: the passport lines fill the form and the check digits are verified
+    // step 2 (a): a PHOTO of the passport page is read on the device (synthetic picture with the two lines at the bottom)
     const dob = "900501", exp = `${String(day.getUTCFullYear() + 5).slice(2)}0301`;
+    mkdirSync("/tmp/p2b", { recursive: true });
+    const lines = mrz("L898902C3", dob, exp).split("\n");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900"><rect width="100%" height="100%" fill="white"/><rect x="60" y="60" width="300" height="360" fill="rgb(200,205,215)"/><text x="420" y="140" font-size="40" font-family="DejaVu Sans, sans-serif" fill="rgb(40,40,40)">PASSPORT  UTO</text>${lines.map((l, i) => `<text x="75" y="${760 + i * 62}" font-size="46" font-family="DejaVu Sans Mono, monospace" fill="black" xml:space="preserve">${l.replace(/</g, "&lt;")}</text>`).join("")}</svg>`;
+    writeFileSync("/tmp/p2b/passport-photo.png", await sharp(Buffer.from(svg)).png().toBuffer());
+    await p.locator("#scan-input").setInputFiles("/tmp/p2b/passport-photo.png");
+    await p.getByText(/Read and verified|check digit does not match|could not read/).first().waitFor({ timeout: 120_000 });
+    expect(await p.getByLabel("Surname", { exact: true }).inputValue(), "passport photo was read").toBe("ERIKSSON");
+    await shot(p, "wizard-2-scan-390");
+    // step 2 (b): the two lines typed or pasted fill the form and the check digits are verified
     await p.getByLabel("Read the passport lines", { exact: true }).fill(mrz("L898902C3", dob, exp));
     await p.getByRole("button", { name: "Fill in from passport" }).click();
     await p.getByText("Read and verified").waitFor({ timeout: 15_000 });
@@ -173,11 +182,12 @@ describe("traveler journey in the browser", () => {
     ids.app = new URL(p.url()).searchParams.get("app")!;
 
     // documents: one upload per slot, each shows "Uploaded"
-    mkdirSync("/tmp/p2b", { recursive: true }); const file = "/tmp/p2b/doc.jpg"; writeFileSync(file, await sharp({ create: { width: 900, height: 1200, channels: 3, background: { r: 90, g: 140, b: 200 } } }).jpeg().toBuffer());
+    const file = "/tmp/p2b/doc.jpg"; writeFileSync(file, await sharp({ create: { width: 900, height: 1200, channels: 3, background: { r: 90, g: 140, b: 200 } } }).jpeg().toBuffer());
     for (const [i, label] of ["Passport photo page", "Face photo", "Return flight ticket", "Accommodation booking", "Proof of funds"].entries()) {
       const slot = p.locator("form", { has: p.locator(`input[type=file][aria-label="${label}"]`) });
       await slot.locator("input[type=file]").setInputFiles(file);
       await slot.locator("button[type=submit]").click();
+      if (label === "Face photo") await slot.getByText(/Photo advice/).waitFor({ timeout: 30_000 });
       await slot.getByText("Uploaded", { exact: true }).waitFor({ timeout: 30_000 }).catch(() => { throw new Error(`document ${i} (${label}) was not accepted`); });
     }
     await shot(p, "wizard-2b-390");
@@ -200,7 +210,18 @@ describe("traveler journey in the browser", () => {
     await shot(p, "wizard-4-390");
     const toStripe = p.waitForRequest((r: Req) => r.url().startsWith("https://checkout.stripe.com/"), { timeout: 40_000 });
     await p.route("https://checkout.stripe.com/**", (r: Req) => r.abort());
-    await p.getByRole("button", { name: /^Pay/ }).click();
+    // the full review shows what was typed, and Pay stays off until the agreement, the declaration and the signature are done
+    expect(await p.getByText("ERIKSSON").count()).toBeGreaterThan(0); expect(await p.getByText("Test Hotel").count()).toBeGreaterThan(0); expect(await p.getByText("Your trip").count()).toBe(1);
+    const payBtn = p.getByRole("button", { name: /^Pay/ });
+    expect(await payBtn.isDisabled()).toBe(true);
+    for (const n of ["consent_terms", "consent_immigration", "consent_partners", "declare"]) await p.locator(`input[name=${n}]`).check();
+    expect(await payBtn.isDisabled(), "still needs the signature").toBe(true);
+    const pad = p.getByRole("img", { name: "Signature area" }); const box = (await pad.boundingBox())!;
+    await p.mouse.move(box.x + 20, box.y + 60); await p.mouse.down(); for (let i = 1; i <= 12; i++) await p.mouse.move(box.x + 20 + i * 15, box.y + 60 + Math.sin(i) * 30); await p.mouse.up();
+    await shot(p, "wizard-4b-390");
+    await p.waitForFunction(() => !(document.querySelector("button[type=submit][aria-busy]") as HTMLButtonElement | null)?.disabled, null, { timeout: 5000 }).catch(() => undefined);
+    expect(await payBtn.isDisabled()).toBe(false);
+    await payBtn.click();
     expect((await toStripe).url()).toMatch(/^https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_/);
     const pay = (await sql<{ id: string; amount_thb: string; status: string }>(`select id, amount_thb, status from public.payments where owner_id='${traveler.id}'`))[0];
     expect(pay.status).toBe("pending"); expect(Number(pay.amount_thb)).toBeGreaterThan(2600);
@@ -222,6 +243,12 @@ describe("traveler journey in the browser", () => {
     await p.goto(`${APP}/receipts/${pay.id}`); expect(await p.getByText(/RC-\d{2}-\d{6}/).count()).toBeGreaterThan(0); await shot(p, "receipt-390");
     await p.goto(`${APP}/trips`); await p.getByText(/EV-\d{2}-\d{6}/).first().waitFor();
     await shot(p, "trips-390");
+    // while the application waits, the traveler can upgrade or cancel; the cost of cancelling is stated first
+    await p.goto(`${APP}/trips/${ids.app}`); await p.getByText("Change or cancel").waitFor({ timeout: 15_000 });
+    expect(await p.getByRole("button", { name: /Upgrade to Express/ }).count()).toBe(1);
+    await p.getByRole("button", { name: "Cancel this application" }).click();
+    expect(await p.getByText("the visa fee and the service fee are not refunded", { exact: false }).count()).toBe(1);
+    await shot(p, "trip-manage-390");
     // approve the way Immigration would (the insurance callback + decision are covered in phase2.live.test.ts; here the state is set through the same function)
     await admin.rpc("transition_application", { p_id: ids.app, p_to: "submitted", p_reason: null, p_source: "immigration", p_actor: null, p_only_from: ["pre_check", "action_required"] });
     await admin.rpc("transition_application", { p_id: ids.app, p_to: "approved", p_reason: null, p_source: "immigration", p_actor: null, p_only_from: ["submitted"] });
@@ -250,6 +277,44 @@ describe("traveler journey in the browser", () => {
     expect((await sql<{ n: number }>(`select count(*) n from public.application_notes where application_id='${ids.app}'`))[0].n).toBe(1);
     expect((await traveler_client().from("application_notes").select("id")).data).toEqual([]);          // travelers never see notes
     await t.close(); await ctx.close();
+  });
+});
+describe("public pages, status check, help and content", () => {
+  it("anyone can check a status with reference + passport + date of birth; a wrong detail gives the same plain answer", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US" }); const p = await ctx.newPage();
+    const ref = (await sql<{ ref_no: string }>(`select ref_no from public.applications where id='${ids.app}'`))[0].ref_no;
+    await p.goto(`${APP}/status`);
+    const fill = async (r: string, pass: string, dob: string) => { await p.getByLabel("Application reference", { exact: true }).fill(r); await p.getByLabel("Passport number", { exact: true }).fill(pass); await p.getByLabel("Date of birth", { exact: true }).fill(dob); await p.getByRole("button", { name: "Check status" }).click(); };
+    await fill(ref, "L898902C3", "1990-05-01"); await p.getByText(/Approved —/).waitFor({ timeout: 15_000 });
+    await fill(ref, "L898902C4", "1990-05-01"); await p.getByText("No application matches these details").waitFor({ timeout: 15_000 });
+    await fill("EV-26-999999", "L898902C3", "1990-05-01"); await p.getByText("No application matches these details").waitFor({ timeout: 15_000 });
+    await shot(p, "status-390"); expect(await overflowX(p)).toBe(false);
+    await ctx.close();
+  });
+
+  it("help searches the questions; checklist, airport guide, official channels, privacy and terms open; sitemap and robots are right", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US" }); const p = await ctx.newPage();
+    await p.goto(`${APP}/help`); const all = await p.locator("details").count(); expect(all).toBeGreaterThanOrEqual(10);
+    await p.getByPlaceholder("Search the questions").fill("refund"); expect(await p.locator("details").count()).toBeGreaterThan(0); expect(await p.locator("details").count()).toBeLessThan(all);
+    await p.getByPlaceholder("Search the questions").fill("zzzzqqq"); await p.getByText("No question matches").waitFor();
+    await p.getByPlaceholder("Search the questions").fill(""); await p.locator("summary").first().click(); expect(await p.locator("details[open]").count()).toBe(1);
+    expect(await p.locator('script[type="application/ld+json"]').count()).toBe(1); await shot(p, "help-390");
+    for (const [path, text] of [["/prepare", "Passport"], ["/guide", "Follow the signs"], ["/official", "Avoid look-alike sites"], ["/privacy", "Who we are"], ["/terms", "Fees and refunds"]] as const) { await p.goto(APP + path); expect(await p.getByText(text).count(), path).toBeGreaterThan(0); expect(await overflowX(p), path).toBe(false); }
+    const sm = await (await p.request.get(`${APP}/sitemap.xml`)).text(); expect(sm).toContain("/fees"); expect(sm).not.toContain("/admin");
+    const rb = await (await p.request.get(`${APP}/robots.txt`)).text(); expect(rb).toContain("Disallow: /admin"); expect(rb).toContain("Sitemap:");
+    await ctx.close();
+  });
+
+  it("the traveler book lists the saved traveler (not deletable while on an application); staff see the declaration and the error page", async () => {
+    const ctx = await ctxFor(traveler); const p = await ctx.newPage();
+    await p.goto(`${APP}/travelers`); await p.getByText("ANNA").first().waitFor({ timeout: 15_000 });
+    expect(await p.getByRole("link", { name: "Use for a new trip" }).count()).toBe(1); expect(await p.getByRole("button", { name: "Delete" }).count()).toBe(0); await shot(p, "travelers-390");
+    const receipt = (await sql<{ id: string }>(`select id from public.payments where owner_id='${traveler.id}'`))[0].id;
+    const pdf = await p.request.get(`${APP}/receipts/${receipt}/pdf`); expect(pdf.status()).toBe(200); expect(pdf.headers()["content-type"]).toBe("application/pdf"); expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
+    const staff = await makeUser("ops2", true); const sctx = await ctxFor(staff, 1280, 800); const sp2 = await sctx.newPage();
+    await sp2.goto(`${APP}/admin/queue/${ids.app}`); await sp2.getByText("Declaration:", { exact: false }).first().waitFor({ timeout: 15_000 });
+    await sp2.goto(`${APP}/admin/errors`); expect(await sp2.getByText("Errors").count()).toBeGreaterThan(0);
+    await sctx.close(); await ctx.close();
   });
 });
 function traveler_client() { return createClient(SB_URL, SB_ANON, noAuth); }

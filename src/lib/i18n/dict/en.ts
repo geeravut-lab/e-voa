@@ -610,6 +610,7 @@ export const en = {
   admin_channels_title: "Official channels",
   admin_channels_hint: "Addresses shown to every visitor",
   admin_channels_note: "Only a https link, an e-mail address and a phone number are accepted; anything else is dropped. Leave a box empty to hide it.",
+  imm_sample_warning: "Sample reference lists are loaded (a few airports, countries and cities) so the application can be tried before Immigration is connected. They are replaced by the real lists on the first sync from Immigration. Do not take real applications while they are loaded.",
   // errors
   err_generic: "Something went wrong. Please try again.",
   err_not_signed_in: "Please sign in first.",

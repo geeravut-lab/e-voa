@@ -23,11 +23,14 @@ export default async function ImmigrationPage() {
     const { data } = await createAdminClient().from("immigration_outbox").select("status");
     for (const r of data ?? []) queue[r.status] = (queue[r.status] ?? 0) + 1;
   }
+  const sampleRow = hasServiceRole() ? await createAdminClient().from("master_data").select("id").eq("extra->>sample", "true").limit(1) : null;
+  const isSample = (sampleRow?.data?.length ?? 0) > 0;
   const fmtDate = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "short" });
   const names = [...MASTER_FLAT, "district", "subDistrict"] as string[];
   return (
     <div className="space-y-4">
       <PageHead title={t.imm_title} art="ops" tone="sky" />
+      {isSample && <p role="alert" className="rounded-card border border-gold bg-gold-soft p-4 text-sm font-semibold text-gold-deep">⚠ {t.imm_sample_warning}</p>}
       <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
         {configured ? (
           <>
