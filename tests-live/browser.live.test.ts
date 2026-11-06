@@ -53,7 +53,7 @@ async function makeUser(label: string, adminRole = false) {
   return { id, email, session: v.data.session };
 }
 const ctxFor = async (u: Awaited<ReturnType<typeof makeUser>>, w = 390, h = 844): Promise<BrowserContext> => { const c = await browser.newContext({ viewport: { width: w, height: h }, locale: "en-US" }); await c.addCookies(cookiesFor(u.session)); return c; };
-const gone = async (p: Page, url: string) => { await p.goto(url); const t = (await p.locator("body").innerText()).toLowerCase(); return t.includes("404") || t.includes("could not be found"); };
+const gone = async (p: Page, url: string) => { await p.goto(url); await p.waitForTimeout(1000); const t = (await p.locator("body").innerText()).toLowerCase(); if (!(t.includes("404") || t.includes("could not be found"))) console.log("NOT 404:", url, t.slice(0, 200)); return t.includes("404") || t.includes("could not be found"); };
 const shot = async (p: Page, name: string) => { if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true }); } };
 const overflowX = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 
@@ -174,7 +174,7 @@ describe("traveler journey in the browser", () => {
 
     // documents: one upload per slot, each shows "Uploaded"
     mkdirSync("/tmp/p2b", { recursive: true }); const file = "/tmp/p2b/doc.jpg"; writeFileSync(file, await sharp({ create: { width: 900, height: 1200, channels: 3, background: { r: 90, g: 140, b: 200 } } }).jpeg().toBuffer());
-    for (const [i, label] of ["Passport photo page", "Photo", "Return ticket", "Accommodation", "Proof of funds"].entries()) {
+    for (const [i, label] of ["Passport photo page", "Face photo", "Return flight ticket", "Accommodation booking", "Proof of funds"].entries()) {
       const slot = p.locator("form", { has: p.locator(`input[type=file][aria-label="${label}"]`) });
       await slot.locator("input[type=file]").setInputFiles(file);
       await slot.locator("button[type=submit]").click();
