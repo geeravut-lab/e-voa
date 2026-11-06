@@ -68,13 +68,14 @@ export function resolveHref(item: NavItem, signedIn: boolean): string {
 
 /** Back link: parent page by path pattern (written once; every page gets it). null = a top-level page, no back link. */
 export const PARENTS: { test: RegExp; label: DictKey; href: string }[] = [
+  { test: /^\/account\/.+/, label: "card_account", href: "/account" },
   { test: /^\/trips\/.+/, label: "card_trips", href: "/trips" },
   { test: /^\/pass\/.+/, label: "card_pass", href: "/pass" },
   { test: /^\/receipts\/.+/, label: "card_trips", href: "/trips" },
   { test: /^\/admin\/queue\/.+/, label: "card_ops", href: "/admin/queue" },
   { test: /^\/admin\/.+/, label: "nav_admin", href: "/admin" },
   { test: /^\/soon\/.+/, label: "nav_home", href: "/" },
-  { test: /^\/(notifications|account|trips|pass|fees|extras|eligibility|apply)$/, label: "nav_home", href: "/" },
+  { test: /^\/(notifications|account|account\/password|trips|pass|fees|extras|eligibility|apply)$/, label: "nav_home", href: "/" },
   { test: /^\/admin$/, label: "nav_home", href: "/" },
 ];
 export const parentOf = (path: string) => PARENTS.find((p) => p.test.test(path)) ?? null;

@@ -8,6 +8,8 @@ import { LangSwitcher } from "@/components/LangSwitcher";
 import { PageHead } from "@/components/PageHead";
 import { SignOutButton } from "@/components/Nav";
 import { InstallApp } from "@/components/InstallApp";
+import { AppLink } from "@/components/AppLink";
+import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,9 @@ export default async function AccountPage() {
           </ActionForm>
         </section>
       )}
+      <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
+        <AppLink href="/account/password" className={btnClass("ghost", "w-full")}>{t.password_title}</AppLink>
+      </section>
       <InstallApp />
       <SignOutButton />
     </div>

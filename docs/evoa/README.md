@@ -11,6 +11,7 @@
 | 7 | [05-SETUP.md](./05-SETUP.md) | One-time Supabase / Vercel / LINE setup and acceptance checks |
 | 8 | [06-MOCK-PARTNERS.md](./06-MOCK-PARTNERS.md) | Partner simulator (Immigration, insurance, SIM/eSIM, VIP, Beauty & Health) and how to choose outcomes |
 | 9 | [07-DATA-MODEL.md](./07-DATA-MODEL.md) | Tables, status machine, who can read and write, data protection |
-| 10 | [ROADMAP.md](./ROADMAP.md) | Decisions, phases and status (updated after every prompt) |
+| 10 | [08-STATUS.md](./08-STATUS.md) | สรุปสถานะทุก Phase รายฟีเจอร์ + สิ่งที่ค้าง + ข้อเสนอลำดับถัดไป |
+| 11 | [ROADMAP.md](./ROADMAP.md) | Decisions, phases and status (updated after every prompt) |
 
 > Brand decision (Q2): the product name is **ThaiPass e-VOA**. Documents 02 and 03 and the preview page were written under the working name "Thailand Global E-VOA"; the logo in `brand/` already uses the new name.

@@ -27,7 +27,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Brand ThaiPass e-VOA, admin upload of logo / favicon / name | ✅ tested in a real browser against the real project |
 | Home with illustrated cards, bottom bar, "More" sheet, spinners everywhere | ✅ |
 | Live sync (database ping → page refreshes itself, polling fallback) | ✅ 1.3 s between two tabs; fixed a Realtime client problem found by the test |
-| Sign in: Google, LINE (Aivora), e-mail code | ✅ code · 🟡 Google needs the client ID/secret in Supabase · ⏸ e-mail code switched off until you configure SMTP |
+| Sign in: Google, LINE (Aivora), e-mail + password (typed twice when creating; no e-mail needed) | ✅ code · 🟡 Google/LINE need `SUPABASE_SERVICE_ROLE_KEY` etc. in Vercel (see `/api/health`) · forgot-password needs SMTP |
 | EN / TH / ZH-CN with easy extension; feature switches; audit trail; admins; analytics; notifications; fees and retention settings | ✅ |
 | PWA: service worker, offline page, "install as an app" card | ✅ |
 | "No hex colors outside globals.css" check (`npm run lint:colors`) | ✅ |

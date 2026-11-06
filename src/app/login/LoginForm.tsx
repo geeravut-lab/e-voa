@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/components/I18n";
 import { AsyncButton } from "@/components/Buttons";
 import { Spinner } from "@/components/Spinner";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MIN_PASSWORD = 8;
 
 function GoogleG() {
   return (
@@ -21,14 +21,16 @@ function GoogleG() {
 
 export function LoginForm({ next, google, line, email: emailOn, hubUrl, appSlug }: { next: string; google: boolean; line: boolean; email: boolean; hubUrl: string; appSlug: string }) {
   const t = useT();
-  const router = useRouter();
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [lineBusy, setLineBusy] = useState(false);
 
   const supabase = () => createClient();
+  const done = async () => { window.location.assign(next); await new Promise(() => {}); };   // hard navigation: the next request must carry the new session cookie
 
   const signInGoogle = async () => {
     setError(null);
@@ -40,24 +42,40 @@ export function LoginForm({ next, google, line, email: emailOn, hubUrl, appSlug 
     else await new Promise(() => {}); // the browser is leaving for Google: keep the spinner until it does
   };
 
-  const sendCode = async () => {
-    setError(null);
+  const signIn = async () => {
+    setError(null); setInfo(null);
     if (!EMAIL_RE.test(email.trim())) return setError(t.err_email_invalid);
-    const { error: e } = await supabase().auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
-    if (e) { console.error("[login] otp send", e.message); return setError(t.login_failed); }
-    setSent(true);
+    if (!password) return setError(t.err_password_missing);
+    const { error: e } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
+    if (e) { console.error("[login] password", e.message); return setError(t.err_password_wrong); }
+    await done();
   };
 
-  const verify = async () => {
-    setError(null);
-    const { error: e } = await supabase().auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
-    if (e) { console.error("[login] otp verify", e.message); return setError(t.err_otp_invalid); }
-    // Hard navigation: the next request must carry the brand-new session cookie.
-    window.location.assign(next);
-    await new Promise(() => {});
+  const signUp = async () => {
+    setError(null); setInfo(null);
+    if (!EMAIL_RE.test(email.trim())) return setError(t.err_email_invalid);
+    if (password.length < MIN_PASSWORD) return setError(t.err_password_short);
+    if (password !== again) return setError(t.err_password_mismatch);
+    const { data, error: e } = await supabase().auth.signUp({ email: email.trim(), password });
+    if (e) { console.error("[login] sign up", e.message); return setError(/registered|exists/i.test(e.message) ? t.err_email_taken : t.login_failed); }
+    if (data.session) return done();
+    // No session: this e-mail already has an account (Supabase does not say so), or e-mail confirmation is switched on again.
+    const r = await supabase().auth.signInWithPassword({ email: email.trim(), password });
+    if (!r.error) return done();
+    setError(t.err_email_taken);
+  };
+
+  const forgot = async () => {
+    setError(null); setInfo(null);
+    if (!EMAIL_RE.test(email.trim())) return setError(t.err_email_invalid);
+    const { error: e } = await supabase().auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/account/password")}` });
+    if (e) { console.error("[login] reset", e.message); return setError(t.login_failed); }
+    setInfo(t.login_reset_sent.replace("{email}", email.trim()));
   };
 
   const lineHref = `${hubUrl}/sso/authorize?app=${encodeURIComponent(appSlug)}&return=${encodeURIComponent(`${typeof window === "undefined" ? "" : window.location.origin}/sso/callback?next=${encodeURIComponent(next)}`)}`;
+  const input = "min-h-11 w-full rounded-control border-[1.5px] border-field bg-surface px-3";
+  const switchTo = (m: typeof mode) => { setMode(m); setError(null); setInfo(null); setPassword(""); setAgain(""); };
 
   return (
     <div className="space-y-4">
@@ -81,25 +99,37 @@ export function LoginForm({ next, google, line, email: emailOn, hubUrl, appSlug 
       {emailOn && (google || line) && (
         <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />{t.login_or}<span className="h-px flex-1 bg-line" /></div>
       )}
-      {emailOn && !sent && (
+      {emailOn && (
         <form className="space-y-3" onSubmit={(ev) => { ev.preventDefault(); }}>
+          <h2 className="font-display text-lg font-bold">{mode === "signup" ? t.login_create_title : mode === "forgot" ? t.login_forgot_title : t.login_password_title}</h2>
           <label htmlFor="email" className="block text-sm font-semibold">{t.login_email}</label>
-          <input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.login_email_ph}
-            className="min-h-11 w-full rounded-control border-[1.5px] border-field bg-surface px-3" />
-          <AsyncButton className="w-full" onClick={sendCode}>{t.login_send_code}</AsyncButton>
+          <input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.login_email_ph} className={input} />
+          {mode !== "forgot" && (
+            <>
+              <label htmlFor="password" className="block text-sm font-semibold">{t.login_password}</label>
+              <input id="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className={input} />
+              {mode === "signup" && <p className="text-xs text-muted">{t.login_password_hint}</p>}
+            </>
+          )}
+          {mode === "signup" && (
+            <>
+              <label htmlFor="password2" className="block text-sm font-semibold">{t.login_password_again}</label>
+              <input id="password2" type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} className={input} />
+            </>
+          )}
+          <AsyncButton className="w-full" onClick={mode === "signup" ? signUp : mode === "forgot" ? forgot : signIn}>
+            {mode === "signup" ? t.login_create : mode === "forgot" ? t.login_forgot_send : t.login_verify}
+          </AsyncButton>
+          <div className="flex flex-wrap justify-between gap-2 text-sm font-semibold text-primary">
+            {mode === "signin" && <><button type="button" className="min-h-11" onClick={() => switchTo("signup")}>{t.login_to_create}</button><button type="button" className="min-h-11" onClick={() => switchTo("forgot")}>{t.login_to_forgot}</button></>}
+            {mode !== "signin" && <button type="button" className="min-h-11" onClick={() => switchTo("signin")}>{t.login_to_signin}</button>}
+          </div>
         </form>
       )}
-      {emailOn && sent && (
-        <form className="space-y-3" onSubmit={(ev) => { ev.preventDefault(); }}>
-          <p className="rounded-control bg-mint p-3 text-sm text-teal-deep">{t.login_code_sent.replace("{email}", email.trim())}</p>
-          <label htmlFor="code" className="block text-sm font-semibold">{t.login_code}</label>
-          <input id="code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            className="min-h-11 w-full rounded-control border-[1.5px] border-field bg-surface px-3 text-center text-xl tracking-[0.4em] tabular" />
-          <AsyncButton className="w-full" onClick={verify} disabled={code.length < 6}>{t.login_verify}</AsyncButton>
-          <button type="button" className="min-h-11 w-full text-sm font-semibold text-primary" onClick={() => { setSent(false); setCode(""); setError(null); router.refresh(); }}>{t.login_change_email}</button>
-        </form>
-      )}
-      <div aria-live="polite" className="min-h-5 text-sm">{error && <p className="font-semibold text-danger">✕ {error}</p>}</div>
+      <div aria-live="polite" className="min-h-5 text-sm">
+        {error && <p className="font-semibold text-danger">✕ {error}</p>}
+        {info && <p className="rounded-control bg-mint p-3 text-teal-deep">{info}</p>}
+      </div>
     </div>
   );
 }

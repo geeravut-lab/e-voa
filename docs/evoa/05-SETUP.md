@@ -49,6 +49,18 @@ Environment variables (Production and Preview):
 | `AIVORA_HUB_URL` | `https://aivora-lc.netlify.app` (default) | no |
 | `AIVORA_APP_SLUG` | `e-voa` (default) | no |
 
+After saving the variables, **redeploy**, then open `https://e-voa.vercel.app/api/health`: it lists (yes/no, never the values) what is configured. `"ok": true` is required for sign-in and applications. `NEXT_PUBLIC_*` values are baked in at build time, so they only take effect after a new deployment.
+
+### Stripe webhook (test mode)
+1. Stripe Dashboard → switch to **Test mode** → Developers → **Webhooks** → **Add endpoint** (or "Add destination").
+2. Endpoint URL: `https://e-voa.vercel.app/api/stripe/webhook`.
+3. Events: `checkout.session.completed` and `checkout.session.expired`.
+4. Save, open the endpoint, **Reveal** the *Signing secret* (`whsec_…`) and put it in Vercel as `STRIPE_WEBHOOK_SECRET`; redeploy.
+5. Pay once with card `4242 4242 4242 4242`, any future date, any CVC. The return page also asks Stripe directly, so payment is confirmed even if the webhook is late.
+
+### E-mail (Resend) for "forgot password" and notices
+Resend's test sender `onboarding@resend.dev` can only deliver to the e-mail of your own Resend account (use `geeravut@gmail.com`). In Supabase → Authentication → Emails → **SMTP Settings**: enable custom SMTP, sender `onboarding@resend.dev`, host `smtp.resend.com`, port `465`, username `resend`, password = a Resend API key (Resend → API Keys). Registering with other e-mails works without SMTP (password sign-up needs no e-mail); only reset mails to other addresses need your own domain.
+
 Cron: `vercel.json` runs `/api/cron/tick` once a day (the Hobby plan limit). To run it every 10 minutes (queue retries, polling), either upgrade to Pro, or call `https://e-voa.vercel.app/api/cron/tick` with `Authorization: Bearer <CRON_SECRET>` from Supabase pg_cron + pg_net or any scheduler.
 
 Framework preset: Next.js, root directory = repository root. Redeploy after saving variables.
