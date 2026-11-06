@@ -126,7 +126,8 @@ describe("traveler journey in the browser", () => {
     await p.getByLabel("Arrival date", { exact: true }).fill(iso(day));
     await p.getByLabel("Flight number", { exact: true }).first().fill("TG316");
     await p.getByRole("button", { name: "Find" }).click();
-    await p.getByText(/Found:/).waitFor({ timeout: 15_000 });
+    await p.getByText(/Found:|Flight not found/).first().waitFor({ timeout: 15_000 });
+    expect(await p.locator("[role=status]").allInnerTexts(), "flight lookup note").toEqual([expect.stringContaining("Found:")]);
     expect(await p.getByLabel("Time", { exact: true }).first().inputValue()).toMatch(/^\d{2}:\d{2}$/);
     await p.getByLabel("Boarded in (country)", { exact: true }).selectOption({ index: 1 });
     await p.getByLabel("Purpose of visit", { exact: true }).selectOption({ index: 1 });
