@@ -106,6 +106,7 @@ Register the app at the Aivora hub: slug `e-voa`, callback `https://e-voa.vercel
 | `INSURANCE_G_API_KEY`, `INSURANCE_TOKEN`, `PARTNER_INSURANCE_URL` | The insurance partner (new keys issued for ThaiPass) | No. Empty = insurance is not offered |
 | `PARTNER_SECRET`, `PARTNER_PUBLIC_KEY`, `PARTNER_SIM_URL`, `PARTNER_VIP_URL`, `PARTNER_BHS_URL` | The SIM/eSIM, VIP and Beauty & Health partners. The code uses one key pair for all three; if they give different pairs, say so and the code is adjusted | No. Empty = that add-on is not offered |
 | `PARTNER_CALLBACK_SECRET` | You create it (same command) and give it to the partners with `https://e-voa.vercel.app/api/partners/<insurance|sim|vip|bhs>/<their original path>` | When a partner is connected |
+| `RESEND_API_KEY`, `MAIL_FROM` | Resend → API Keys. Needed for e-mail notices and PDF receipts (the Supabase SMTP setting only covers sign-in e-mails). `MAIL_FROM` defaults to `ThaiPass e-VOA <onboarding@resend.dev>`, which delivers only to your own Resend account address until you verify a domain | Optional |
 | `FLIGHT_API_URL`, `FLIGHT_API_KEY` | A flight-data provider. The reply format must match what the code reads (see `src/lib/flights.ts`); a different provider needs a small adapter | No. Empty = the traveler types airline, airport and time |
 
 Never put the simulator's values in Vercel, never reuse keys found in the legacy documents, and never put any of these in a file or a commit.

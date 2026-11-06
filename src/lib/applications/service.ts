@@ -138,6 +138,7 @@ export async function cancelByTraveler(ownerId: string, applicationId: string): 
   const db = createAdminClient();
   const { data: app } = await db.from("applications").select("id, ref_no, status").eq("id", applicationId).eq("owner_id", ownerId).maybeSingle();
   if (!app) return { ok: false, error: "err_not_found" };
+  if (app.status === "cancelled") return { ok: false, error: "err_bad_transition" };          // a second cancel is not a success: nothing changed
   const { data: row, error } = await db.rpc("transition_application", { p_id: app.id, p_to: "cancelled", p_reason: "cancelled by traveler", p_source: "user", p_actor: ownerId, p_only_from: ["paid", "pre_check", "action_required", "submission_failed"] });
   if (error || (row as { status?: string } | null)?.status !== "cancelled") return { ok: false, error: "err_bad_transition" };
   const { refundUnusedAddons } = await import("@/lib/payments/service");
