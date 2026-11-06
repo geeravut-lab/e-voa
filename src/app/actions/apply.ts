@@ -17,6 +17,8 @@ import { setAddons } from "@/lib/partners/service";
 import { startCheckout, failPayment } from "@/lib/payments/service";
 import { ADDON_CATEGORIES, type AddonCategory } from "@/lib/partners/rules";
 import { parseMrz } from "@/lib/mrz";
+import { rateLimit } from "@/lib/ratelimit";
+import { decodeSignature, recordConsent } from "@/lib/compliance";
 import type { ActionResult } from "@/components/ActionForm";
 
 const need = async () => {
@@ -76,7 +78,8 @@ export async function saveTripAction(_p: ActionResult, fd: FormData): Promise<Ac
     if (ins.error || !ins.data) return { ok: false, error: "err_generic" };
     tripId = ins.data.id; void trackEvent(a.user.id, "apply_start");
   }
-  redirect(`/apply?step=2&trip=${tripId}`);
+  const reuse = /^[0-9a-f-]{36}$/i.test(String(fd.get("traveler") ?? "")) ? `&app=new&traveler=${fd.get("traveler")}` : "";
+  redirect(`/apply?step=2&trip=${tripId}${reuse}`);
 }
 
 // ------------------------------------------------------------------ step 2: traveler, form, documents
@@ -144,8 +147,19 @@ export async function saveAddonsAction(_p: ActionResult, fd: FormData): Promise<
 // ------------------------------------------------------------------ step 4: pay
 export async function checkoutAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const a = await need(); if (!a.ok) return { ok: false, error: a.error };
-  const r = await startCheckout(a.user.id, a.user.email ?? null, String(fd.get("tripId") ?? ""), await getLang());
+  if (!(await rateLimit(`checkout:${a.user.id}`, 12, 3600))) return { ok: false, error: "err_rate_limited" };
+  const tripId = String(fd.get("tripId") ?? "");
+  const signature = decodeSignature(String(fd.get("signature") ?? "")), signerName = String(fd.get("signer_name") ?? "").trim();
+  const on = (k: string) => fd.get(k) === "on";
+  if (!on("consent_terms") || !on("consent_immigration") || !on("declare")) return { ok: false, error: "err_consent_required" };
+  if (signerName.length < 2 || !signature) return { ok: false, error: "err_signature_required" };
+  const { count: addonCount } = await createAdminClient().from("addon_orders").select("id", { count: "exact", head: true }).eq("owner_id", a.user.id).eq("status", "pending_payment").in("application_id", ((await createAdminClient().from("applications").select("id").eq("trip_id", tripId).eq("owner_id", a.user.id)).data ?? []).map((x) => x.id));
+  if ((addonCount ?? 0) > 0 && !on("consent_partners")) return { ok: false, error: "err_consent_required" };
+  const r = await startCheckout(a.user.id, a.user.email ?? null, tripId, await getLang());
   if (!r.ok) return { ok: false, error: r.error };
+  const c = await recordConsent(a.user.id, tripId, { signerName, signature, withPartners: (addonCount ?? 0) > 0 });
+  if (!c.ok) { await failPayment(r.paymentId, "consent could not be recorded"); return { ok: false, error: c.error }; }
+  await audit({ actorId: a.user.id, action: "consent.recorded", entity: "trip", entityId: tripId });
   redirect(r.url);
 }
 

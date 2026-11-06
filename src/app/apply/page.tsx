@@ -10,7 +10,8 @@ import { decryptText } from "@/lib/crypto";
 import { applicationFees } from "@/lib/pricing";
 import { DEFAULT_REFUND_POLICY, parseRefundPolicy } from "@/lib/payments/refund-policy";
 import { getSetting } from "@/lib/settings";
-import { removeApplicationAction, saveAddonsAction, checkoutAction } from "@/app/actions/apply";
+import { removeApplicationAction, saveAddonsAction } from "@/app/actions/apply";
+import { CheckoutForm } from "@/components/apply/CheckoutForm";
 import { ActionForm } from "@/components/ActionForm";
 import { AppLink } from "@/components/AppLink";
 import { SubmitButton } from "@/components/Buttons";
@@ -45,7 +46,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
     const m = await loadMasters(["arrivalAirport", "airlines", "purposeOfVisit", "nationality"]);
     return (
       <div>{head}<Stepper step={1} t={t} />
-        <TripForm trip={trip ?? {}} airports={opts(m.arrivalAirport)} airlines={opts(m.airlines)} purposes={opts(m.purposeOfVisit)} countries={opts(m.nationality)} fees={fees} canLookup={flightLookupConfigured()} />
+        <TripForm traveler={sp.traveler && UUID.test(sp.traveler) ? sp.traveler : undefined} trip={trip ?? {}} airports={opts(m.arrivalAirport)} airlines={opts(m.airlines)} purposes={opts(m.purposeOfVisit)} countries={opts(m.nationality)} fees={fees} canLookup={flightLookupConfigured()} />
       </div>
     );
   }
@@ -195,10 +196,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
         <p className="text-muted">{t.pay_test_mode}</p>
       </section>
       {missingDocs && <p role="alert" className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{t.pay_docs_missing}</p>}
-      <ActionForm action={checkoutAction}>
-        <input type="hidden" name="tripId" value={trip!.id} />
-        <div className="flex gap-2"><AppLink href={`/apply?step=3&trip=${trip!.id}`} className={btnClass("ghost")}>{t.back}</AppLink><SubmitButton variant="gold" className="flex-1" disabled={draft.length === 0}>{t.pay_now} · {thb(total)}</SubmitButton></div>
-      </ActionForm>
+      <CheckoutForm tripId={trip!.id} totalLabel={thb(total)} hasAddons={rows.some((r) => r.mine.length > 0)} canPay={draft.length > 0} backHref={`/apply?step=3&trip=${trip!.id}`} defaultName={nameOf(draft[0]?.traveler_id ?? "")} />
     </div>
   );
 }

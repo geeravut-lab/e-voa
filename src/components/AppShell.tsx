@@ -118,7 +118,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 pb-32 pt-4 md:px-8 md:pb-12 md:pt-8">
             <BackLink />
             {children}
-            <p className="mt-10 border-t border-line pt-4 text-xs leading-relaxed text-muted">{t.disclaimer}</p>
+            <div className="mt-10 space-y-2 border-t border-line pt-4 text-xs leading-relaxed text-muted">
+              <p>{t.disclaimer}</p>
+              <nav aria-label={t.footer_links} className="flex flex-wrap gap-x-4 gap-y-1 font-semibold text-primary">
+                <NavRowLink href="/privacy">{t.privacy_title}</NavRowLink><NavRowLink href="/terms">{t.terms_title}</NavRowLink><NavRowLink href="/fees">{t.card_fees}</NavRowLink><NavRowLink href="/help">{t.faq_title}</NavRowLink><NavRowLink href="/official">{t.official_title}</NavRowLink>
+              </nav>
+            </div>
           </main>
         </div>
       </div>

@@ -17,7 +17,7 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
   const db = createAdminClient();
   const { data: a } = await db.from("applications").select("*").eq("id", id).maybeSingle();
   if (!a) notFound();
-  const [{ data: tr }, { data: trip }, { data: history }, { data: docs }, { data: notes }, { data: addons }, { data: pay }, { data: outbox }] = await Promise.all([
+  const [{ data: tr }, { data: trip }, { data: history }, { data: docs }, { data: notes }, { data: addons }, { data: pay }, { data: outbox }, { data: decl }, { data: cons }] = await Promise.all([
     db.from("travelers").select("given_name, surname, passport_last4, nationality_id, email, phone").eq("id", a.traveler_id).maybeSingle(),
     db.from("trips").select("arrival_date, arrival_time, arrival_flight_no, departure_date").eq("id", a.trip_id).maybeSingle(),
     db.from("application_status_history").select("from_status, to_status, reason, source, at").eq("application_id", a.id).order("at"),
@@ -26,6 +26,8 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
     db.from("addon_orders").select("id, package_name, category, status, price_thb, refunded_thb, last_error, attempts").eq("application_id", a.id).neq("status", "cancelled"),
     a.payment_id ? db.from("payments").select("id, receipt_no, status, amount_thb, refunded_thb, paid_at").eq("id", a.payment_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("immigration_outbox").select("status, attempts, last_error, next_attempt_at").eq("application_id", a.id).order("created_at", { ascending: false }).limit(1),
+    db.from("declarations").select("signer_name, version, signed_at").eq("application_id", a.id).maybeSingle(),
+    db.from("consents").select("kind, version").eq("application_id", a.id),
   ]);
   const when = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "short" });
   const box = "space-y-3 rounded-card border border-line bg-surface p-5 shadow-card";
@@ -63,6 +65,12 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
           {(docs ?? []).length === 0 && <li className="py-2 text-muted">{t.ops_none}</li>}
         </ul>
         <p className="text-xs text-muted">{t.ops_docs_audited}</p>
+      </section>
+
+      <section className={box}>
+        <h2 className="font-display text-lg font-bold">{t.consent_title}</h2>
+        {decl ? <p className="text-sm tabular">✓ {t.declare_title}: {decl.signer_name} · {when.format(new Date(decl.signed_at))} · v {decl.version}</p> : <p className="text-sm text-muted">{t.ops_none}</p>}
+        {(cons ?? []).length > 0 && <p className="text-xs text-muted">{(cons ?? []).map((c) => c.kind).join(" · ")}</p>}
       </section>
 
       {pay && (

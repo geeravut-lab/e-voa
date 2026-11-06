@@ -34,7 +34,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         </tbody></table>
         <p className="text-xs text-muted">{t.receipt_note}</p>
       </article>
-      <div className="flex flex-wrap gap-2 print:hidden"><PrintButton /><AppLink href="/trips" className={btnClass("ghost")}>{t.back}</AppLink></div>
+      <div className="flex flex-wrap gap-2 print:hidden"><a href={`/receipts/${p.id}/pdf`} className={btnClass("gold")}>{t.receipt_pdf}</a><PrintButton /><AppLink href="/trips" className={btnClass("ghost")}>{t.back}</AppLink></div>
     </div>
   );
 }

@@ -40,6 +40,13 @@ export async function runTick(): Promise<Record<string, unknown>> {
       const oldest = data?.[0]?.last_synced_at ? Date.parse(data[0].last_synced_at) : 0;
       return Date.now() - oldest > 20 * 3600_000 ? syncFlatLists(gw) : "fresh";
     }],
+    ["housekeeping", async () => {
+      const db = createAdminClient(); const day = 86_400_000, iso = (ms: number) => new Date(Date.now() - ms).toISOString();
+      await db.from("rate_limits").delete().lt("window_start", iso(day));
+      await db.from("error_log").delete().lt("at", iso(30 * day));
+      await db.from("form_drafts").delete().lt("updated_at", iso(30 * day));
+      return "ok";
+    }],
     ["purge", async () => {
       const r = await getSetting("retention", DEFAULT_RETENTION);
       return purgeExpiredDocuments(r.document_days ?? DEFAULT_RETENTION.document_days);

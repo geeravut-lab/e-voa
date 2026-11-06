@@ -2,7 +2,7 @@ import type { Dict } from "@/lib/i18n/dict";
 import { decodeProblems } from "@/lib/applications/precheck";
 
 const DOC_KEYS: Record<string, keyof Dict> = {
-  passport_bio: "doc_passport_bio", photo: "doc_photo", return_ticket: "doc_return_ticket", accommodation: "doc_accommodation", funds: "doc_funds", insurance: "doc_insurance", other: "doc_other", additional: "doc_additional", evoa: "doc_evoa",
+  passport_bio: "doc_passport_bio", photo: "doc_photo", return_ticket: "doc_return_ticket", accommodation: "doc_accommodation", funds: "doc_funds", insurance: "doc_insurance", other: "doc_other", additional: "doc_additional", evoa: "doc_evoa", signature: "doc_signature",
 };
 export const docLabel = (t: Dict, kind: string) => (DOC_KEYS[kind] ? t[DOC_KEYS[kind]] : kind);
 

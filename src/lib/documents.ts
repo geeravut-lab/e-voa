@@ -6,7 +6,7 @@ import { decryptBytes, encryptBytes, sha256Hex, ENC_VERSION } from "@/lib/crypto
 
 const BUCKET = "documents";
 export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024 - 1024; // bucket limit is 5 MB; leave room for the encryption header and tag
-export type DocKind = "passport_bio" | "photo" | "return_ticket" | "accommodation" | "funds" | "insurance" | "additional" | "evoa" | "other";
+export type DocKind = "passport_bio" | "photo" | "return_ticket" | "accommodation" | "funds" | "insurance" | "additional" | "evoa" | "other" | "signature";
 export type DocMime = "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
 
 /** The real type of a file from its first bytes (never from the extension or the browser's claim). */

@@ -3,6 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSetting } from "@/lib/settings";
 import { audit } from "@/lib/audit";
 import { notifyUser } from "@/lib/notify";
+import { mailConfigured, renderMail, sendMail } from "@/lib/mailer";
+import { rateLimit } from "@/lib/ratelimit";
+import { buildReceiptPdf } from "@/lib/receipt-pdf";
+import { loadBrand } from "@/lib/brand/server";
 import { SITE_URL } from "@/lib/env";
 import { DICTS, fmt } from "@/lib/i18n/dict";
 import { isLang, type Lang } from "@/lib/i18n/langs";
@@ -133,7 +137,8 @@ export async function afterPayment(paymentId: string): Promise<void> {
   }
   await db.from("addon_orders").update({ status: "paid" }).eq("payment_id", paymentId).eq("status", "pending_payment");
   const t = DICTS[await langOf(pay.owner_id)];
-  await notifyUser({ userId: pay.owner_id, title: t.notif_paid_title, body: fmt(t.notif_paid_body, { amount: Number(pay.amount_thb).toLocaleString("en-US"), receipt: pay.receipt_no ?? "" }), link: `/receipts/${paymentId}`, kind: "payment.paid", dedupeKey: `pay:${paymentId}:paid` });
+  await notifyUser({ userId: pay.owner_id, title: t.notif_paid_title, body: fmt(t.notif_paid_body, { amount: Number(pay.amount_thb).toLocaleString("en-US"), receipt: pay.receipt_no ?? "" }), link: `/receipts/${paymentId}`, kind: "payment.paid", dedupeKey: `pay:${paymentId}:paid`, mail: false });
+  await mailReceipt(paymentId).catch((e) => console.error("[payments] receipt mail failed", (e as Error).message));
   const { issueAddon } = await import("@/lib/partners/service");
   const { data: addons } = await db.from("addon_orders").select("id").eq("payment_id", paymentId).eq("status", "paid");
   for (const x of addons ?? []) await issueAddon(x.id).catch((e) => console.error("[payments] add-on issue failed", (e as Error).message));
@@ -220,3 +225,18 @@ export async function refundUnusedAddons(applicationId: string, reason: string):
 
 /** Staff decision outside the policy (goodwill): any amount up to what is left on the payment. Always audited with the staff member's id. */
 export const refundException = (paymentId: string, amountThb: number, reason: string, actor: string) => doRefund({ paymentId, amountThb, kind: "exception", reason, actor });
+
+/** The receipt (PDF attached) by e-mail, once per payment. Only when mail is configured. */
+async function mailReceipt(paymentId: string): Promise<void> {
+  if (!mailConfigured() || !(await rateLimit(`receiptmail:${paymentId}`, 1, 315_360_000))) return;
+  const db = admin();
+  const { data: p } = await db.from("payments").select("id, owner_id, receipt_no, amount_thb, items, paid_at").eq("id", paymentId).maybeSingle();
+  if (!p?.receipt_no) return;
+  const { data: prof } = await db.from("profiles").select("email, lang").eq("id", p.owner_id).maybeSingle();
+  if (!prof?.email) return;
+  const t = DICTS[isLang(prof.lang) ? prof.lang : "en"], brand = (await loadBrand()).name;
+  const items = (Array.isArray(p.items) ? p.items : []) as { label: string; amountThb: number }[];
+  const pdf = await buildReceiptPdf({ brand, receiptNo: p.receipt_no, paidAt: p.paid_at, lines: items.map((i) => ({ label: i.label, amountThb: Number(i.amountThb) })), totalThb: Number(p.amount_thb), refunds: [], note: DICTS.en.receipt_note });
+  const { html, text } = renderMail({ brand, title: t.mail_receipt_title, lines: [fmt(t.mail_receipt_body, { amount: Number(p.amount_thb).toLocaleString("en-US"), receipt: p.receipt_no })], button: { text: t.mail_open, url: `${SITE_URL}/trips` }, footer: t.mail_footer });
+  await sendMail({ to: prof.email, subject: `${brand}: ${t.mail_receipt_title} ${p.receipt_no}`, html, text, attachments: [{ filename: `${p.receipt_no}.pdf`, content: Buffer.from(pdf) }] });
+}
