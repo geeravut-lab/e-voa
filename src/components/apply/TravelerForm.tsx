@@ -1,13 +1,15 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { Spinner } from "@/components/Spinner";
 import { useT } from "@/components/I18n";
-import { readMrzAction, } from "@/app/actions/apply";
+import { readMrzAction, saveDraftAction } from "@/app/actions/apply";
 import { loadChildrenAction } from "@/app/actions/lookup";
 import { saveTravelerAction } from "@/app/actions/apply";
 import { Field, Select, inputCls, type Opt } from "./fields";
+import { PassportScanner } from "./PassportScanner";
+import type { MrzResult } from "@/lib/mrz";
 
 export type TravelerValues = {
   travelerId?: string; appId?: string; given_name?: string; middle_name?: string; surname?: string; gender_id?: number; salutation_id?: number; date_of_birth?: string; nationality_id?: number;
@@ -18,24 +20,35 @@ export type TravelerValues = {
 type Lists = { salutations: Opt[]; genders: Opt[]; nationalities: (Opt & { code?: string })[]; countries: Opt[]; incomes: Opt[]; occupations: Opt[]; stays: Opt[]; cities: Opt[]; districts: Opt[]; subDistricts: Opt[] };
 
 /** Step 2: one traveler. The two lines at the bottom of the passport photo page can be pasted to fill the form; every check digit is verified first. */
-export function TravelerForm({ tripId, v, lists, canRemove }: { tripId: string; v: TravelerValues; lists: Lists; canRemove?: boolean }) {
+export function TravelerForm({ tripId, slot, v, lists }: { tripId: string; slot: string; v: TravelerValues; lists: Lists }) {
   const t = useT();
   const [pending, start] = useTransition();
   const [mrz, setMrz] = useState(""), [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [f, setF] = useState<TravelerValues>(v);
   const set = (p: Partial<TravelerValues>) => setF((x) => ({ ...x, ...p }));
+  const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
+  const first = useRef(true);
+  useEffect(() => {                                                    // autosave a moment after the last change
+    if (first.current) { first.current = false; return; }
+    setSaved("saving");
+    const timer = setTimeout(async () => { const { travelerId: _t, appId: _a, ...data } = f; setSaved((await saveDraftAction(tripId, slot, data)) ? "saved" : "idle"); }, 1500);
+    return () => clearTimeout(timer);
+  }, [f, tripId, slot]);
   const [districts, setDistricts] = useState<Opt[]>(lists.districts), [subs, setSubs] = useState<Opt[]>(lists.subDistricts);
   const [busyGeo, startGeo] = useTransition();
 
-  const read = () => start(async () => {
-    setNote(null);
-    const r = await readMrzAction(mrz);
-    if (!r) return setNote({ ok: false, text: t.apply_mrz_unreadable });
+  const fill = (r: MrzResult) => {
     const nat = lists.nationalities.find((n) => n.code === r.nationality);
     const male = r.sex === "M";
     const gender = lists.genders.find((g) => (male ? /^m/i : /^f/i).test(g.label));
     set({ surname: r.surname, given_name: r.givenNames.split(" ")[0] ?? "", middle_name: r.givenNames.split(" ").slice(1).join(" "), passport_no: r.passportNumber, date_of_birth: r.dateOfBirth, passport_expiry_date: r.expiryDate,
       ...(nat ? { nationality_id: nat.id } : {}), ...(gender ? { gender_id: gender.id } : {}) });
+  };
+  const read = () => start(async () => {
+    setNote(null);
+    const r = await readMrzAction(mrz);
+    if (!r) return setNote({ ok: false, text: t.apply_mrz_unreadable });
+    fill(r);
     setNote(r.valid ? { ok: true, text: t.apply_mrz_ok } : { ok: false, text: t.apply_mrz_check_failed });
   });
 
@@ -56,6 +69,7 @@ export function TravelerForm({ tripId, v, lists, canRemove }: { tripId: string; 
 
       <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
         <h2 className="font-display text-lg font-bold">{t.apply_mrz_title}</h2>
+        <PassportScanner onResult={fill} />
         <p className="text-sm text-muted">{t.apply_mrz_hint}</p>
         <textarea value={mrz} onChange={(e) => setMrz(e.target.value)} rows={2} spellCheck={false} placeholder={"P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\nL898902C36UTO7408122F1204159ZE184226B<<<<<10"} className={`${inputCls} font-mono text-xs`} aria-label={t.apply_mrz_title} />
         <button type="button" onClick={read} disabled={pending || mrz.trim().length < 20} aria-busy={pending} className="inline-flex min-h-11 items-center gap-2 rounded-control border-[1.5px] border-sky-line bg-surface px-4 text-sm font-bold text-primary disabled:opacity-60">{pending && <Spinner size={14} />}{t.apply_mrz_read}</button>
@@ -107,6 +121,7 @@ export function TravelerForm({ tripId, v, lists, canRemove }: { tripId: string; 
         <Field label={t.apply_street} wide>{(id) => <input id={id} name="street" required maxLength={100} value={f.street ?? ""} onChange={(e) => set({ street: e.target.value })} className={inputCls} />}</Field>
         <Field label={t.apply_reference} hint={t.apply_reference_hint} wide>{(id) => <input id={id} name="reference" required maxLength={50} value={f.reference ?? ""} onChange={(e) => set({ reference: e.target.value })} className={inputCls} />}</Field>
       </section>
+      <p aria-live="polite" className="min-h-5 text-xs text-muted">{saved === "saving" ? t.autosave_saving : saved === "saved" ? `✓ ${t.autosave_saved}` : ""}</p>
       <SubmitButton className="w-full">{t.apply_save_traveler}</SubmitButton>
     </ActionForm>
   );

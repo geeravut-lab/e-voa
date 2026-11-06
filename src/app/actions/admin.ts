@@ -109,3 +109,14 @@ export async function saveEligibilityAction(_p: ActionResult, fd: FormData): Pro
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.eligibility", entity: "settings", detail: { voa: voa.length, visa_free: visa_free.length } });
   return done("/admin/eligibility");
 }
+
+/** The addresses shown on the public "Official channels" page. Anything that is not a plain https link / e-mail / phone is dropped. */
+export async function saveChannelsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseChannels } = await import("@/lib/channels");
+  const value = parseChannels(Object.fromEntries(fd));
+  if (!(await putSetting("official_channels", value, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.channels", entity: "settings" });
+  return done("/admin/channels");
+}

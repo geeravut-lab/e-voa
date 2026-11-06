@@ -8,6 +8,7 @@ import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Fees and refunds", description: "Visa fee, service fee and refund rules for the Thailand Visa on Arrival (e-VOA), shown before you pay." };
 const thb = (n: number) => `THB ${n.toLocaleString("en-US")}`;
 
 /** Prices and the refund rule, shown before anybody pays. Every number comes from the settings the admin edits. */

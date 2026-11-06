@@ -7,17 +7,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertFeature } from "@/lib/flags";
 import { audit } from "@/lib/audit";
 import { trackEvent } from "@/lib/analytics";
-import { getLang } from "@/lib/i18n/server";
+import { getLang, getT } from "@/lib/i18n/server";
 import { arrivalInstant, packageAvailability } from "@/lib/pricing";
 import { lookupFlight, type FlightInfo } from "@/lib/flights";
-import { createDraftApplication, resubmitAfterFix, saveApplicationDocument, upsertTraveler } from "@/lib/applications/service";
+import { cancelByTraveler, createDraftApplication, resubmitAfterFix, saveApplicationDocument, upsertTraveler } from "@/lib/applications/service";
 import { sendAdditionalDocuments } from "@/lib/immigration/pipeline";
 import { gatewayFromEnv } from "@/lib/immigration/gateway";
 import { setAddons } from "@/lib/partners/service";
-import { startCheckout, failPayment } from "@/lib/payments/service";
+import { startCheckout, failPayment, startUpgradeCheckout } from "@/lib/payments/service";
 import { ADDON_CATEGORIES, type AddonCategory } from "@/lib/partners/rules";
 import { parseMrz } from "@/lib/mrz";
 import { rateLimit } from "@/lib/ratelimit";
+import { saveDraft, deleteDrafts } from "@/lib/applications/drafts";
 import { decodeSignature, recordConsent } from "@/lib/compliance";
 import type { ActionResult } from "@/components/ActionForm";
 
@@ -62,17 +63,29 @@ export async function saveTripAction(_p: ActionResult, fd: FormData): Promise<Ac
   if (!p.success) return { ok: false, error: "err_form_incomplete" };
   const d = p.data;
   if (d.departure_date < d.arrival_date) return { ok: false, error: "err_form_incomplete" };
-  const av = packageAvailability(new Date(), arrivalInstant(d.arrival_date, d.arrival_time));
-  if (!av[d.package]) return { ok: false, error: "err_package_unavailable" };
   const db = createAdminClient();
-  const row = { owner_id: a.user.id, package: d.package, arrival_airport_id: d.arrival_airport_id, arrival_date: d.arrival_date, arrival_time: d.arrival_time ?? null, arrival_flight_no: d.arrival_flight_no.toUpperCase(), arrival_airline_id: d.arrival_airline_id,
+  // Changing dates of a trip that is already paid: allowed only while nothing has gone to Immigration, and the package cannot change then (use Upgrade).
+  let pkg = d.package; let backTo: string | null = null;
+  if (d.tripId) {
+    const { data: tripApps } = await db.from("applications").select("id, status, package, immigration_ref").eq("trip_id", d.tripId).eq("owner_id", a.user.id).not("status", "in", "(cancelled,expired)");
+    const placed = (tripApps ?? []).filter((x) => x.status !== "draft");
+    if (placed.some((x) => x.status !== "action_required" || x.immigration_ref)) return { ok: false, error: "err_locked" };
+    if (placed.length) {
+      if (placed.some((x) => !packageAvailability(new Date(), arrivalInstant(d.arrival_date, d.arrival_time))[x.package as "regular" | "express"])) return { ok: false, error: "err_package_unavailable" };
+      pkg = placed[0].package as "regular" | "express"; backTo = `/trips/${placed[0].id}`;
+    }
+  }
+  const av = packageAvailability(new Date(), arrivalInstant(d.arrival_date, d.arrival_time));
+  if (!av[pkg]) return { ok: false, error: "err_package_unavailable" };
+  const row = { owner_id: a.user.id, package: pkg, arrival_airport_id: d.arrival_airport_id, arrival_date: d.arrival_date, arrival_time: d.arrival_time ?? null, arrival_flight_no: d.arrival_flight_no.toUpperCase(), arrival_airline_id: d.arrival_airline_id,
     departure_date: d.departure_date, departure_time: d.departure_time ?? null, departure_flight_no: d.departure_flight_no.toUpperCase(), departure_airline_id: d.departure_airline_id, purpose_id: d.purpose_id, boarded_country_id: d.boarded_country_id, next_city: d.next_city, type_of_flight_id: d.type_of_flight_id };
   let tripId = d.tripId;
   if (tripId) {
     const upd = await db.from("trips").update(row).eq("id", tripId).eq("owner_id", a.user.id).select("id");
     if (upd.data?.length !== 1) return { ok: false, error: "err_not_found" };
     // the package is part of every application of this trip: keep them in step while they are still drafts
-    await db.from("applications").update({ package: d.package }).eq("trip_id", tripId).eq("status", "draft");
+    await db.from("applications").update({ package: pkg }).eq("trip_id", tripId).eq("status", "draft");
+    if (backTo) { await audit({ actorId: a.user.id, action: "trip.change", entity: "trip", entityId: tripId }); revalidatePath("/trips"); redirect(backTo); }
   } else {
     const ins = await db.from("trips").insert(row).select("id").single();
     if (ins.error || !ins.data) return { ok: false, error: "err_generic" };
@@ -107,8 +120,17 @@ export async function saveTravelerAction(_p: ActionResult, fd: FormData): Promis
     residency_id: d.residency_id, permanent_address: d.permanent_address, state: d.state, yearly_income_id: d.yearly_income_id, occupation_id: d.occupation_id, isd_code: d.isd_code, mobile: d.phone, email: d.email, first_time_traveller: d.first_time_traveller,
     stay: { place_of_stay_id: d.place_of_stay_id, name: d.stay_name, city_id: d.city_id, district_id: d.district_id, sub_district_id: d.sub_district_id, pin_code: d.pin_code, street: d.street, reference: d.reference } } });
   if (!app.ok) return { ok: false, error: app.error };
+  await deleteDrafts(a.user.id, d.tripId, ["new", app.id]);
   revalidatePath("/apply");
   redirect(`/apply?step=2&trip=${d.tripId}&app=${app.id}`);
+}
+
+/** Autosave while the traveler types (called a moment after the last change). Quiet: returns only whether it was kept. */
+export async function saveDraftAction(tripId: string, slot: string, data: unknown): Promise<boolean> {
+  const a = await need(); if (!a.ok || !/^[0-9a-f-]{36}$/i.test(tripId)) return false;
+  if (!(await rateLimit(`draft:${a.user.id}`, 240, 3600))) return false;
+  const { data: trip } = await createAdminClient().from("trips").select("id").eq("id", tripId).eq("owner_id", a.user.id).maybeSingle();
+  return trip ? saveDraft(a.user.id, tripId, slot, data) : false;
 }
 
 export async function uploadDocumentAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
@@ -116,9 +138,11 @@ export async function uploadDocumentAction(_p: ActionResult, fd: FormData): Prom
   const appId = String(fd.get("appId") ?? ""), kind = String(fd.get("kind") ?? ""), file = fd.get("file");
   if (!/^[0-9a-f-]{36}$/i.test(appId)) return { ok: false, error: "err_not_found" };
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "err_file_missing" };
+  if (!(await rateLimit(`upload:${a.user.id}`, 60, 3600))) return { ok: false, error: "err_rate_limited" };
   const r = await saveApplicationDocument(a.user.id, appId, kind, new Uint8Array(await file.arrayBuffer()));
   if (!r.ok) return r;
   revalidatePath("/apply"); revalidatePath(`/trips/${appId}`);
+  if (r.warnings?.length) { const { t } = await getT(); return { ok: true, message: `${t.apply_doc_uploaded}. ${t.photo_advice}: ${r.warnings.map((w) => (t as unknown as Record<string, string>)[`photo_w_${w}`]).join(" ")}` }; }
   return { ok: true };
 }
 
@@ -167,6 +191,24 @@ export async function cancelPaymentAction(paymentId: string): Promise<void> {
   const a = await need(); if (!a.ok) return;
   const { data } = await createAdminClient().from("payments").select("id").eq("id", paymentId).eq("owner_id", a.user.id).maybeSingle();
   if (data) await failPayment(paymentId, "cancelled by traveler");
+}
+
+// ------------------------------------------------------------------ cancel / upgrade
+export async function cancelApplicationByTravelerAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await need(); if (!a.ok) return { ok: false, error: a.error };
+  if (fd.get("understand") !== "on") return { ok: false, error: "err_consent_required" };
+  const r = await cancelByTraveler(a.user.id, String(fd.get("appId") ?? ""));
+  if (!r.ok) return r;
+  revalidatePath("/trips"); revalidatePath(`/trips/${fd.get("appId")}`);
+  return { ok: true };
+}
+
+export async function upgradeAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await need(); if (!a.ok) return { ok: false, error: a.error };
+  if (!(await rateLimit(`checkout:${a.user.id}`, 12, 3600))) return { ok: false, error: "err_rate_limited" };
+  const r = await startUpgradeCheckout(a.user.id, a.user.email ?? null, String(fd.get("appId") ?? ""), await getLang());
+  if (!r.ok) return { ok: false, error: r.error };
+  redirect(r.url);
 }
 
 // ------------------------------------------------------------------ after submission

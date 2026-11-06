@@ -7,6 +7,7 @@ import { loadFees, requiredDocuments, documentKinds } from "@/lib/applications/s
 import { offersFor } from "@/lib/partners/service";
 import { flightLookupConfigured } from "@/lib/flights";
 import { decryptText } from "@/lib/crypto";
+import { loadDraft } from "@/lib/applications/drafts";
 import { applicationFees } from "@/lib/pricing";
 import { DEFAULT_REFUND_POLICY, parseRefundPolicy } from "@/lib/payments/refund-policy";
 import { getSetting } from "@/lib/settings";
@@ -80,11 +81,13 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
       if (app) values = { ...values, appId: app.id, isd_code: String(f.isd_code ?? ""), residency_id: f.residency_id as number, permanent_address: String(f.permanent_address ?? ""), state: String(f.state ?? ""), yearly_income_id: f.yearly_income_id as number, occupation_id: f.occupation_id as number, first_time_traveller: f.first_time_traveller as number,
         place_of_stay_id: f.stay?.place_of_stay_id as number, stay_name: String(f.stay?.name ?? ""), city_id: f.stay?.city_id as number, district_id: f.stay?.district_id as number, sub_district_id: f.stay?.sub_district_id as number, pin_code: String(f.stay?.pin_code ?? ""), street: String(f.stay?.street ?? ""), reference: String(f.stay?.reference ?? "") };
       else values = { email: v.user.email ?? "", ...values };
+      const typed = await loadDraft(v.user.id, trip!.id, app?.id ?? "new");      // what was typed but not saved yet comes back, on any device
+      if (typed) values = { ...values, ...(typed as TravelerValues) };
       const cityId = values.city_id, distId = values.district_id;
       const [districts, subs] = await Promise.all([cityId ? loadMaster("district", cityId) : [], distId ? loadMaster("subDistrict", distId) : []]);
       form = (
         <div className="space-y-4">
-          <TravelerForm key={selected + (values.travelerId ?? "")} tripId={trip!.id} v={values}
+          <TravelerForm key={selected + (values.travelerId ?? "")} tripId={trip!.id} slot={app?.id ?? "new"} v={values}
             lists={{ salutations: opts(m.salutation), genders: opts(m.gender), nationalities: m.nationality.map((r) => ({ id: r.id, label: r.label, code: String((r.extra as { CountryCode?: string }).CountryCode ?? "") })), countries: opts(m.nationality), incomes: opts(m.yearlyIncome), occupations: opts(m.occupation), stays: opts(m.placeOfStay), cities: opts(m.city), districts: opts(districts), subDistricts: opts(subs) }} />
           {app && (
             <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
@@ -172,9 +175,31 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
     const sum = a.visa_fee_thb + a.service_fee_thb + mine.reduce((s, x) => s + Number(x.price_thb), 0); total += sum;
     return { a, mine, sum, fe };
   });
+  // everything entered, in plain words, with a way back to change each part
+  const rm = await loadMasters(["arrivalAirport", "nationality", "purposeOfVisit"]);
+  const label = (list: { id: number; label: string }[], id: number | null | undefined) => list.find((x) => x.id === id)?.label ?? "—";
+  const { data: fullTravelers } = travelerIds.length ? await db.from("travelers").select("id, given_name, middle_name, surname, date_of_birth, nationality_id, passport_last4, passport_expiry_date, email, phone").in("id", travelerIds) : { data: [] };
   const missingDocs = draft.some((a) => required.some((k) => k !== "insurance" && !(kindsOf.get(a.id) ?? []).includes(k)));
   return (
     <div className="space-y-4">{head}<Stepper step={4} t={t} />
+      <section className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
+        <div className="flex items-center justify-between gap-2"><h2 className="font-display text-lg font-bold">{t.review_trip}</h2><AppLink href={`/apply?step=1&trip=${trip!.id}`} className={btnClass("ghost", "min-h-9 px-4")}>{t.edit}</AppLink></div>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+          {([[t.apply_arrival_date, `${trip!.arrival_date} ${trip!.arrival_time ?? ""}`], [t.apply_flight_no, trip!.arrival_flight_no], [t.apply_arrival_airport, label(rm.arrivalAirport, trip!.arrival_airport_id)], [t.apply_purpose, label(rm.purposeOfVisit, trip!.purpose_id)], [t.apply_departure_date, `${trip!.departure_date ?? "—"} ${trip!.departure_time ?? ""}`], [t.apply_package, trip!.package === "express" ? t.apply_pkg_express : t.apply_pkg_regular]] as [string, string][]).map(([k, val]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="font-semibold tabular">{val}</dd></div>)}
+        </dl>
+      </section>
+      {draft.map((a) => {
+        const x = fullTravelers?.find((r) => r.id === a.traveler_id); const f = (a.form ?? {}) as { permanent_address?: string; state?: string; stay?: { name?: string; street?: string } };
+        return (
+          <section key={`r-${a.id}`} className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
+            <div className="flex items-center justify-between gap-2"><h2 className="font-display text-lg font-bold">{x ? `${x.given_name} ${x.middle_name ?? ""} ${x.surname}`.replace(/\s+/g, " ") : ""}</h2><AppLink href={`/apply?step=2&trip=${trip!.id}&app=${a.id}`} className={btnClass("ghost", "min-h-9 px-4")}>{t.edit}</AppLink></div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+              {([[t.apply_dob, x?.date_of_birth], [t.apply_nationality, label(rm.nationality, x?.nationality_id)], [t.pass_passport_end, x ? `••••${x.passport_last4}` : "—"], [t.apply_passport_expiry, x?.passport_expiry_date], [t.apply_email, x?.email], [t.apply_phone, x?.phone], [t.apply_address, [f.permanent_address, f.state].filter(Boolean).join(", ")], [t.apply_stay_name, [f.stay?.name, f.stay?.street].filter(Boolean).join(", ")]] as [string, string | null | undefined][]).map(([k, val]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="break-words font-semibold">{val || "—"}</dd></div>)}
+            </dl>
+            <p className="text-xs text-muted">{t.apply_docs_title}: {[...required].map((k) => `${(kindsOf.get(a.id) ?? []).includes(k) ? "✓" : "•"} ${docLabel(t, k)}`).join(" · ")}</p>
+          </section>
+        );
+      })}
       {rows.map(({ a, mine, sum }) => (
         <section key={a.id} className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
           <h2 className="font-display text-lg font-bold">{nameOf(a.traveler_id)}</h2>

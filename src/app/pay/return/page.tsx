@@ -14,7 +14,7 @@ export default async function PayReturn({ searchParams }: { searchParams: Promis
   const v = await requireUser("/trips");
   const sp = await searchParams; const { t } = await getT();
   const pid = sp.payment && /^[0-9a-f-]{36}$/i.test(sp.payment) ? sp.payment : null;
-  const { data: pay } = pid ? await (await createClient()).from("payments").select("id, trip_id, status, amount_thb, receipt_no").eq("id", pid).eq("owner_id", v.user.id).maybeSingle() : { data: null };
+  const { data: pay } = pid ? await (await createClient()).from("payments").select("id, trip_id, status, amount_thb, receipt_no, kind").eq("id", pid).eq("owner_id", v.user.id).maybeSingle() : { data: null };
   if (!pay) return <div><PageHead title={t.pay_return_title} art="fees" tone="gold" /><p className="rounded-card bg-surface p-5 shadow-card">{t.err_not_found}</p></div>;
   const r = sp.cancelled ? null : await confirmPayment(pay.id, sp.session_id);
   const paid = r?.ok === true || ["paid", "partially_refunded", "refunded"].includes(pay.status);
@@ -37,7 +37,7 @@ export default async function PayReturn({ searchParams }: { searchParams: Promis
           <>
             <p className="font-semibold text-gold-deep">{sp.cancelled ? t.pay_cancelled : t.pay_not_completed}</p>
             <p className="text-sm text-muted">{t.pay_not_charged}</p>
-            {pay.trip_id && <div className="flex flex-wrap gap-2"><AppLink href={`/apply?step=4&trip=${pay.trip_id}`} className={btnClass("primary")}>{t.pay_try_again}</AppLink><EditOrderButton paymentId={pay.id} tripId={pay.trip_id} /></div>}
+            {pay.kind === "upgrade" ? <AppLink href="/trips" className={btnClass("primary")}>{t.pay_see_trips}</AppLink> : pay.trip_id && <div className="flex flex-wrap gap-2"><AppLink href={`/apply?step=4&trip=${pay.trip_id}`} className={btnClass("primary")}>{t.pay_try_again}</AppLink><EditOrderButton paymentId={pay.id} tripId={pay.trip_id} /></div>}
           </>
         )}
       </section>

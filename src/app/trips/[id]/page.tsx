@@ -8,7 +8,8 @@ import { decodeProblems } from "@/lib/applications/precheck";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
 import { StatusBadge, statusHint } from "@/components/StatusBadge";
-import { ResubmitForm } from "@/components/TripActions";
+import { CancelPanel, ResubmitForm, UpgradeForm } from "@/components/TripActions";
+import { upgradeQuote } from "@/lib/payments/service";
 import { DocSlot } from "@/components/apply/DocSlot";
 import { btnClass } from "@/components/buttonStyles";
 
@@ -32,6 +33,9 @@ export default async function TripDetail({ params }: { params: Promise<{ id: str
   const when = new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short" });
   const problems = a.status === "action_required" ? decodeProblems(a.status_reason) : [];
   const fixable = a.status === "action_required";
+  const canChange = a.status === "action_required" && !a.immigration_ref;
+  const canCancel = ["paid", "pre_check", "action_required", "submission_failed"].includes(a.status);
+  const upgrade = a.package === "regular" ? await upgradeQuote(a.id, v.user.id) : null;
   const { data: evoa } = a.status === "approved" || a.status === "used" ? await db.from("documents").select("id").eq("application_id", a.id).eq("kind", "evoa").is("deleted_at", null).limit(1).maybeSingle() : { data: null };
   return (
     <div className="space-y-4">
@@ -54,6 +58,15 @@ export default async function TripDetail({ params }: { params: Promise<{ id: str
           <p className="text-sm text-muted">{t.trip_fix_hint}</p>
           {[...new Set([...problems.filter((p) => p.code === "missing_doc").map((p) => String(p.kind)), ...required.filter((k) => !kinds.includes(k) && k !== "insurance"), "additional"])].map((k) => <DocSlot key={k} appId={a.id} kind={k} have={kinds.includes(k)} required={k !== "additional"} />)}
           <ResubmitForm appId={a.id} />
+        </section>
+      )}
+
+      {(canChange || upgrade?.ok || canCancel) && (
+        <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
+          <h2 className="font-display text-lg font-bold">{t.manage_title}</h2>
+          {upgrade?.ok && <UpgradeForm appId={a.id} diffLabel={`THB ${upgrade.diffThb.toLocaleString("en-US")}`} />}
+          {canChange && <AppLink href={`/trips/${a.id}/change`} className={btnClass("ghost", "w-full")}>{t.change_open}</AppLink>}
+          {canCancel && <CancelPanel appId={a.id} />}
         </section>
       )}
 

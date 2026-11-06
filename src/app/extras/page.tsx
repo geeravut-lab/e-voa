@@ -8,6 +8,7 @@ import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Travel extras", description: "Optional travel insurance, SIM/eSIM, VIP airport service and health services for your trip to Thailand." };
 
 export default async function ExtrasPage() {
   await requireFeaturePage("extras");

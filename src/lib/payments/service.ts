@@ -10,10 +10,10 @@ import { loadBrand } from "@/lib/brand/server";
 import { SITE_URL } from "@/lib/env";
 import { DICTS, fmt } from "@/lib/i18n/dict";
 import { isLang, type Lang } from "@/lib/i18n/langs";
-import { buildLineItems, toSatang, totalThb, type LineItem, type PackageKind } from "@/lib/pricing";
+import { arrivalInstant, buildLineItems, packageAvailability, toSatang, totalThb, type LineItem, type PackageKind } from "@/lib/pricing";
 import { ApplicationForm } from "@/lib/immigration/form";
 import { evaluatePreCheck } from "@/lib/applications/precheck";
-import { documentKinds, requiredDocuments, runPreCheck } from "@/lib/applications/service";
+import { documentKinds, loadFees, requiredDocuments, runPreCheck } from "@/lib/applications/service";
 import { DEFAULT_REFUND_POLICY, capRefund, parseRefundPolicy, refundableForAddon, type AddonState } from "./refund-policy";
 import { createCheckoutSession, createRefund, expireSession, paymentIntentId, retrieveSession, StripeError } from "./stripe";
 
@@ -128,8 +128,9 @@ export async function confirmPayment(paymentId: string, sessionId?: string): Pro
 /** Everything that follows a payment. Every step is safe to repeat, so a crash in the middle is repaired by running it again (see reconcilePaid). */
 export async function afterPayment(paymentId: string): Promise<void> {
   const db = admin();
-  const { data: pay } = await db.from("payments").select("id, owner_id, amount_thb, receipt_no").eq("id", paymentId).maybeSingle();
+  const { data: pay } = await db.from("payments").select("id, owner_id, amount_thb, receipt_no, kind").eq("id", paymentId).maybeSingle();
   if (!pay) return;
+  if (pay.kind === "upgrade") { await applyUpgrade(paymentId); await mailReceipt(paymentId).catch(() => undefined); return; }
   const { data: apps } = await db.from("applications").select("id, status").eq("payment_id", paymentId);
   for (const a of apps ?? []) {
     await transition(a.id, "paid", ["awaiting_payment"]);
@@ -155,6 +156,9 @@ export async function reconcilePaid(limit = 20): Promise<number> {
     if (p && ["paid", "partially_refunded"].includes(p.status)) { await afterPayment(pid); n++; }
     else if (p?.status === "pending") { const r = await confirmPayment(pid).catch(() => null); if (r?.ok) n++; }        // paid at Stripe but we never heard about it
   }
+  // paid upgrades whose application still shows Regular (a crash between "paid" and "applied")
+  const { data: ups } = await db.from("payments").select("id").eq("kind", "upgrade").in("status", ["paid", "partially_refunded"]).limit(limit);
+  for (const u of ups ?? []) { const { data: a } = await db.from("payments").select("upgrade_application_id").eq("id", u.id).maybeSingle(); const { data: ap } = a?.upgrade_application_id ? await db.from("applications").select("package").eq("id", a.upgrade_application_id).maybeSingle() : { data: null }; if (ap?.package === "regular") { await applyUpgrade(u.id); n++; } }
   return n;
 }
 
@@ -239,4 +243,59 @@ async function mailReceipt(paymentId: string): Promise<void> {
   const pdf = await buildReceiptPdf({ brand, receiptNo: p.receipt_no, paidAt: p.paid_at, lines: items.map((i) => ({ label: i.label, amountThb: Number(i.amountThb) })), totalThb: Number(p.amount_thb), refunds: [], note: DICTS.en.receipt_note });
   const { html, text } = renderMail({ brand, title: t.mail_receipt_title, lines: [fmt(t.mail_receipt_body, { amount: Number(p.amount_thb).toLocaleString("en-US"), receipt: p.receipt_no })], button: { text: t.mail_open, url: `${SITE_URL}/trips` }, footer: t.mail_footer });
   await sendMail({ to: prof.email, subject: `${brand}: ${t.mail_receipt_title} ${p.receipt_no}`, html, text, attachments: [{ filename: `${p.receipt_no}.pdf`, content: Buffer.from(pdf) }] });
+}
+
+// ------------------------------------------------------------------ upgrade Regular → Express (pay the difference)
+const UPGRADABLE = ["paid", "pre_check", "action_required", "submission_failed"];
+
+export async function upgradeQuote(applicationId: string, ownerId: string): Promise<{ ok: true; diffThb: number; appRef: string } | { ok: false; error: string }> {
+  const db = admin();
+  const { data: app } = await db.from("applications").select("id, ref_no, status, package, service_fee_thb, trip_id, immigration_ref").eq("id", applicationId).eq("owner_id", ownerId).maybeSingle();
+  if (!app) return { ok: false, error: "err_not_found" };
+  if (app.package !== "regular" || app.immigration_ref || !UPGRADABLE.includes(app.status)) return { ok: false, error: "err_upgrade_unavailable" };
+  const { data: trip } = await db.from("trips").select("arrival_date, arrival_time").eq("id", app.trip_id).maybeSingle();
+  if (!trip || !packageAvailability(new Date(), arrivalInstant(trip.arrival_date, trip.arrival_time)).express) return { ok: false, error: "err_package_unavailable" };
+  const { count } = await db.from("addon_orders").select("id", { count: "exact", head: true }).eq("application_id", app.id).in("category", ["sim", "vip"]).in("status", ["pending_payment", "paid", "issuing", "issued", "used"]);
+  if ((count ?? 0) > 0) return { ok: false, error: "err_upgrade_addons" };                      // SIM and VIP are not offered with Express
+  const diff = (await loadFees()).express_service_thb - app.service_fee_thb;
+  return diff > 0 ? { ok: true, diffThb: diff, appRef: app.ref_no } : { ok: false, error: "err_upgrade_unavailable" };
+}
+
+export async function startUpgradeCheckout(userId: string, email: string | null, applicationId: string, lang: Lang = "en"): Promise<CheckoutResult> {
+  const q = await upgradeQuote(applicationId, userId);
+  if (!q.ok) return q;
+  const db = admin();
+  const { data: app } = await db.from("applications").select("trip_id, traveler_id").eq("id", applicationId).maybeSingle();
+  const { data: tr } = app ? await db.from("travelers").select("given_name, surname").eq("id", app.traveler_id).maybeSingle() : { data: null };
+  const { data: open } = await db.from("payments").select("id").eq("upgrade_application_id", applicationId).eq("kind", "upgrade").eq("status", "pending");
+  for (const o of open ?? []) await failPayment(o.id, "replaced by a new upgrade checkout");
+  const items = [{ kind: "service_fee", applicationId, label: `Upgrade to Express · ${tr ? `${tr.given_name} ${tr.surname}` : q.appRef}`, amountThb: q.diffThb }];
+  const pay = await db.from("payments").insert({ owner_id: userId, amount_thb: q.diffThb, provider: "stripe", trip_id: app?.trip_id, kind: "upgrade", upgrade_application_id: applicationId, items, expires_at: new Date(Date.now() + 60 * 60_000).toISOString() }).select("id").single();
+  if (pay.error || !pay.data) return { ok: false, error: "err_generic" };
+  const paymentId = pay.data.id as string;
+  try {
+    const s = await createCheckoutSession({ paymentId, items: [{ label: items[0].label, amountSatang: toSatang(q.diffThb) }], email,
+      successUrl: `${SITE_URL}/pay/return?payment=${paymentId}&session_id={CHECKOUT_SESSION_ID}`, cancelUrl: `${SITE_URL}/pay/return?payment=${paymentId}&cancelled=1`, locale: lang === "zh-CN" ? "zh" : lang === "th" ? "th" : "en" });
+    const upd = await db.from("payments").update({ provider_ref: s.id }).eq("id", paymentId).select("id");
+    if (upd.data?.length !== 1 || !s.url) throw new Error("could not save the session");
+    await audit({ actorId: userId, action: "payment.start", entity: "payment", entityId: paymentId, detail: { total_thb: q.diffThb, kind: "upgrade" } });
+    return { ok: true, url: s.url, paymentId };
+  } catch (e) {
+    await failPayment(paymentId, `checkout failed: ${(e as Error).message}`);
+    return { ok: false, error: e instanceof StripeError && e.code === "not_configured" ? "err_not_configured" : "err_payment_provider" };
+  }
+}
+
+/** A paid upgrade changes the application to Express: the fee, the decision deadline (24 h from now) and the package that is sent to Immigration. Safe to repeat. */
+export async function applyUpgrade(paymentId: string): Promise<void> {
+  const db = admin();
+  const { data: pay } = await db.from("payments").select("id, owner_id, amount_thb, upgrade_application_id, status").eq("id", paymentId).maybeSingle();
+  if (!pay?.upgrade_application_id || !["paid", "partially_refunded"].includes(pay.status)) return;
+  const { data: app } = await db.from("applications").select("id, ref_no, owner_id, package, service_fee_thb").eq("id", pay.upgrade_application_id).maybeSingle();
+  if (!app || app.package === "express") return;
+  const upd = await db.from("applications").update({ package: "express", service_fee_thb: app.service_fee_thb + Math.round(Number(pay.amount_thb)), upgraded_at: new Date().toISOString(), sla_due_at: new Date(Date.now() + 24 * 3600_000).toISOString() }).eq("id", app.id).eq("package", "regular").select("id");
+  if (upd.data?.length !== 1) return;
+  await audit({ actorId: null, actorRole: "system", action: "application.upgrade", entity: "application", entityId: app.id });
+  const t = DICTS[await langOf(app.owner_id)];
+  await notifyUser({ userId: app.owner_id, title: t.notif_upgrade_title, body: fmt(t.notif_upgrade_body, { ref: app.ref_no }), link: `/trips/${app.id}`, kind: "application.upgrade", dedupeKey: `upgrade:${paymentId}` });
 }

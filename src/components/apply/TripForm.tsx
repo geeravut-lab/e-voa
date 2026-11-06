@@ -11,12 +11,12 @@ import { packageAvailability, arrivalInstant, applicationFees, type Fees } from 
 type Trip = { id?: string; package?: string; arrival_airport_id?: number | null; arrival_date?: string; arrival_time?: string | null; arrival_flight_no?: string | null; arrival_airline_id?: number | null; departure_date?: string | null; departure_time?: string | null; departure_flight_no?: string | null; departure_airline_id?: number | null; purpose_id?: number | null; boarded_country_id?: number | null; next_city?: string | null; type_of_flight_id?: number | null };
 
 /** Step 1: when and how you arrive, and which package. The flight number fills in airline, airport and time. */
-export function TripForm({ traveler, trip, airports, airlines, purposes, countries, fees, canLookup }: { traveler?: string; trip: Trip; airports: Opt[]; airlines: Opt[]; purposes: Opt[]; countries: Opt[]; fees: Fees; canLookup: boolean }) {
+export function TripForm({ lockedPackage, traveler, trip, airports, airlines, purposes, countries, fees, canLookup }: { lockedPackage?: "regular" | "express"; traveler?: string; trip: Trip; airports: Opt[]; airlines: Opt[]; purposes: Opt[]; countries: Opt[]; fees: Fees; canLookup: boolean }) {
   const t = useT();
   const [pending, start] = useTransition();
   const [arrDate, setArrDate] = useState(trip.arrival_date ?? ""), [arrTime, setArrTime] = useState(trip.arrival_time ?? "");
-  const [flight, setFlight] = useState(trip.arrival_flight_no ?? ""), [airport, setAirport] = useState<number | string>(trip.arrival_airport_id ?? ""), [airline, setAirline] = useState<number | string>(trip.arrival_airline_id ?? "");
-  const [pkg, setPkg] = useState<"regular" | "express">((trip.package as "regular" | "express") ?? "regular");
+  const [country, setCountry] = useState<number | string>(trip.boarded_country_id ?? ""), [flight, setFlight] = useState(trip.arrival_flight_no ?? ""), [airport, setAirport] = useState<number | string>(trip.arrival_airport_id ?? ""), [airline, setAirline] = useState<number | string>(trip.arrival_airline_id ?? "");
+  const [pkg, setPkg] = useState<"regular" | "express">(lockedPackage ?? (trip.package as "regular" | "express") ?? "regular");
   const [note, setNote] = useState<string | null>(null);
   const av = arrDate ? packageAvailability(new Date(), arrivalInstant(arrDate, arrTime)) : null;
   const price = (p: "regular" | "express") => applicationFees(fees, p);
@@ -25,7 +25,7 @@ export function TripForm({ traveler, trip, airports, airlines, purposes, countri
     setNote(null);
     const f = await lookupFlightAction(flight, arrDate);
     if (!f) return setNote(t.apply_flight_not_found);
-    setAirline(f.airlineId ?? ""); setAirport(f.arrivalAirportId ?? ""); setArrTime(f.arrivalTime);
+    if (f.airlineId) setAirline(f.airlineId); if (f.arrivalAirportId) setAirport(f.arrivalAirportId); if (f.originCountryId) setCountry(f.originCountryId); setArrTime(f.arrivalTime);
     setNote(t.apply_flight_found.replace("{airline}", f.airlineName).replace("{time}", f.arrivalTime));
   });
 
@@ -48,7 +48,7 @@ export function TripForm({ traveler, trip, airports, airlines, purposes, countri
         <Field label={t.apply_arrival_airport}>{(id) => <Select id={id} name="arrival_airport_id" options={airports} value={airport} onChange={(v) => setAirport(v ?? "")} placeholder={t.choose} />}</Field>
         <Field label={t.apply_arrival_time}>{(id) => <input id={id} name="arrival_time" type="time" value={arrTime} onChange={(e) => setArrTime(e.target.value)} className={inputCls} />}</Field>
         <Field label={t.apply_airline}>{(id) => <Select id={id} name="arrival_airline_id" options={airlines} value={airline} onChange={(v) => setAirline(v ?? "")} placeholder={t.choose} />}</Field>
-        <Field label={t.apply_from_country}>{(id) => <Select id={id} name="boarded_country_id" options={countries} defaultValue={trip.boarded_country_id} placeholder={t.choose} />}</Field>
+        <Field label={t.apply_from_country}>{(id) => <Select id={id} name="boarded_country_id" options={countries} value={country} onChange={(v) => setCountry(v ?? "")} placeholder={t.choose} />}</Field>
         <Field label={t.apply_purpose}>{(id) => <Select id={id} name="purpose_id" options={purposes} defaultValue={trip.purpose_id} placeholder={t.choose} />}</Field>
         <Field label={t.apply_next_city}>{(id) => <input id={id} name="next_city" required defaultValue={trip.next_city ?? ""} className={inputCls} />}</Field>
         <input type="hidden" name="type_of_flight_id" value={trip.type_of_flight_id ?? 2} />
@@ -62,9 +62,9 @@ export function TripForm({ traveler, trip, airports, airlines, purposes, countri
         <Field label={t.apply_airline}>{(id) => <Select id={id} name="departure_airline_id" options={airlines} defaultValue={trip.departure_airline_id} placeholder={t.choose} />}</Field>
       </section>
 
-      <fieldset className="space-y-3">
+      <input type="hidden" name="package" value={pkg} />
+      {!lockedPackage && <fieldset className="space-y-3">
         <legend className="mb-2 font-display text-lg font-bold">{t.apply_package}</legend>
-        <input type="hidden" name="package" value={pkg} />
         {(["regular", "express"] as const).map((p) => {
           const ok = !av || av[p]; const on = pkg === p && ok;
           return (
@@ -78,8 +78,9 @@ export function TripForm({ traveler, trip, airports, airlines, purposes, countri
           );
         })}
         {av && !av.regular && av.express && <p className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{t.apply_express_only}</p>}
-      </fieldset>
-      <SubmitButton className="w-full" disabled={!!av && !av[pkg]}>{t.apply_next}</SubmitButton>
+      </fieldset>}
+      {lockedPackage && av && !av[pkg] && <p role="alert" className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{t.apply_pkg_too_late}</p>}
+      <SubmitButton className="w-full" disabled={!!av && !av[pkg]}>{lockedPackage ? t.change_save : t.apply_next}</SubmitButton>
     </ActionForm>
   );
 }

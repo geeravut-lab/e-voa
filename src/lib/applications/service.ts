@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { encryptText, hashId, last4 } from "@/lib/crypto";
 import { saveDocument, type DocKind } from "@/lib/documents";
 import { normalizeUpload } from "@/lib/images";
+import { analyzePhoto } from "@/lib/photo-check";
 import { applicationFees, parseFees, type PackageKind } from "@/lib/pricing";
 import { DEFAULT_FEES } from "@/config/defaults";
 import { ApplicationForm } from "@/lib/immigration/form";
@@ -68,12 +69,13 @@ export async function createDraftApplication(ownerId: string, a: { tripId: strin
 }
 
 /** Stores an uploaded file for an application: shrunk to Immigration's limits, encrypted, replacing the previous file of the same kind. */
-export async function saveApplicationDocument(ownerId: string, applicationId: string, kind: string, bytes: Uint8Array): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+export async function saveApplicationDocument(ownerId: string, applicationId: string, kind: string, bytes: Uint8Array): Promise<{ ok: true; id: string; warnings?: string[] } | { ok: false; error: string }> {
   if (!(UPLOAD_KINDS as readonly string[]).includes(kind)) return { ok: false, error: "err_generic" };
   const db = createAdminClient();
   const { data: app } = await db.from("applications").select("id, status, owner_id").eq("id", applicationId).eq("owner_id", ownerId).maybeSingle();
   if (!app) return { ok: false, error: "err_not_found" };
   if (!travelerCanEdit(app.status as AppStatus)) return { ok: false, error: "err_locked" };
+  const check = kind === "photo" ? await analyzePhoto(bytes) : null;          // advice about light, sharpness, size: shown to the traveler, never blocks
   const norm = await normalizeUpload(bytes, kind);
   if (!norm.ok) return norm;
   const saved = await saveDocument({ ownerId, applicationId, kind: kind as DocKind, docListId: DOC_LIST_ID[kind], bytes: norm.bytes });
@@ -85,7 +87,7 @@ export async function saveApplicationDocument(ownerId: string, applicationId: st
       await db.from("documents").update({ deleted_at: new Date().toISOString() }).eq("id", o.id).select("id");
     }
   }
-  return saved;
+  return check && check.warnings.length ? { ...saved, warnings: check.warnings } : saved;
 }
 
 export async function documentKinds(applicationId: string): Promise<string[]> {
@@ -126,6 +128,22 @@ export async function resubmitAfterFix(ownerId: string, applicationId: string): 
   if (error) return { ok: false, error: "err_generic" };
   if ((row as { status: string }).status !== "pre_check") return { ok: false, error: "err_bad_transition" };
   return { ok: true, result: await runPreCheck(app.id) };
+}
+
+/**
+ * The traveler cancels an application that has not been decided. Per policy the visa fee and the service fee stay; add-ons that were not used are refunded.
+ * Allowed while nothing has been decided and nothing is waiting for payment (an unpaid order is edited from the payment page instead).
+ */
+export async function cancelByTraveler(ownerId: string, applicationId: string): Promise<{ ok: true; refundedThb: number } | { ok: false; error: string }> {
+  const db = createAdminClient();
+  const { data: app } = await db.from("applications").select("id, ref_no, status").eq("id", applicationId).eq("owner_id", ownerId).maybeSingle();
+  if (!app) return { ok: false, error: "err_not_found" };
+  const { data: row, error } = await db.rpc("transition_application", { p_id: app.id, p_to: "cancelled", p_reason: "cancelled by traveler", p_source: "user", p_actor: ownerId, p_only_from: ["paid", "pre_check", "action_required", "submission_failed"] });
+  if (error || (row as { status?: string } | null)?.status !== "cancelled") return { ok: false, error: "err_bad_transition" };
+  const { refundUnusedAddons } = await import("@/lib/payments/service");
+  const refunded = await refundUnusedAddons(app.id, "cancelled by traveler").catch(() => 0);
+  await audit({ actorId: ownerId, action: "application.cancel", entity: "application", entityId: app.id, detail: { refunded_thb: refunded } });
+  return { ok: true, refundedThb: refunded };
 }
 
 /** Applications that wait in pre_check without a queue entry (for example the insurance document has arrived since): look at them again. */

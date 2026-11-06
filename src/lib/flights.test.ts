@@ -28,3 +28,26 @@ describe("flight providers", () => {
     expect(adbToRaw([], "TG316")).toBeNull(); expect(adbToRaw({ message: "error" }, "TG316")).toBeNull(); expect(adbToRaw(null, "TG316")).toBeNull();
   });
 });
+
+import { matchAirline, matchCountry } from "@/lib/flights";
+describe("matching to Immigration's lists", () => {
+  const countries = [{ id: 1, label: "INDIA", extra: { CountryCode: "IND" } }, { id: 2, label: "SINGAPORE", extra: { CountryCode: "SGP" } }, { id: 3, label: "KOREA, SOUTH", extra: {} }, { id: 4, label: "UNITED STATES OF AMERICA", extra: {} }];
+  it("finds the country by three-letter code, by name, and by common alias", () => {
+    expect(matchCountry("SG", countries)).toBe(2);               // code
+    expect(matchCountry("IN", [{ id: 9, label: "India", extra: {} }])).toBe(9);   // name only
+    expect(matchCountry("KR", countries)).toBe(3);               // alias
+    expect(matchCountry("US", countries)).toBe(4);
+    expect(matchCountry("ZZ", countries)).toBeNull(); expect(matchCountry(undefined, countries)).toBeNull(); expect(matchCountry("SG", [])).toBeNull();
+  });
+  it("finds the airline by name, or falls back to Thai Airways / Others", () => {
+    const list = [{ id: 1, label: "Thai Airways" }, { id: 2, label: "Others" }, { id: 3, label: "Singapore Airlines" }];
+    expect(matchAirline("Thai Airways International", "TG", list)).toBe(1);
+    expect(matchAirline("Singapore Airlines", "SQ", list)).toBe(3);
+    expect(matchAirline("Qatar Airways", "QR", list)).toBe(2);
+    expect(matchAirline("Qatar Airways", "QR", [])).toBeNull();
+  });
+  it("fills the origin country id through mapFlight", () => {
+    const raw = adbToRaw(sample, "TG316")!;
+    expect(mapFlight(raw, airports, airlines, [{ id: 7, label: "INDIA", extra: { CountryCode: "IND" } }])).toMatchObject({ originCountryId: 7, airlineId: 1, arrivalAirportId: 1 });
+  });
+});

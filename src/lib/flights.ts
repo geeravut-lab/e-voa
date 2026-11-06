@@ -4,7 +4,7 @@ import { envValue } from "@/lib/env";
 
 // Flight lookup: type the flight number and date, get the airline, the Thai airport and the landing time. The provider is a plain HTTP endpoint
 // (FLIGHT_API_URL, optional FLIGHT_API_KEY); tools/mock-partners answers /flights/lookup the same way. No provider → the form asks for the details.
-export type FlightInfo = { flight: string; airlineId: number | null; airlineName: string; arrivalAirportId: number | null; arrivalAirportName: string | null; arrivalTime: string; originCountry: string | null };
+export type FlightInfo = { flight: string; airlineId: number | null; airlineName: string; arrivalAirportId: number | null; arrivalAirportName: string | null; arrivalTime: string; originCountry: string | null; originCountryId: number | null };
 
 const AIRPORT_WORDS: Record<string, string> = { BKK: "suvarnabhumi", DMK: "don mueang", HKT: "phuket", CNX: "chiang mai" };
 
@@ -15,15 +15,43 @@ export function parseFlightNumber(raw: string): string | null {
   return /^[A-Z0-9]{2}\d{1,4}$/.test(f) ? f : null;
 }
 
-/** Maps the provider's airport/airline codes to the ids Immigration uses (master data). Unknown airports stay null so the form asks the traveler. */
+// ISO 3166 two-letter → three-letter codes of the countries most flights to Thailand start in (the master list carries the three-letter code).
+const ISO3: Record<string, string> = { SG: "SGP", IN: "IND", CN: "CHN", RU: "RUS", MY: "MYS", JP: "JPN", KR: "KOR", TW: "TWN", HK: "HKG", MO: "MAC", AU: "AUS", NZ: "NZL", GB: "GBR", US: "USA", CA: "CAN", DE: "DEU", FR: "FRA", IT: "ITA", ES: "ESP", NL: "NLD", CH: "CHE", SE: "SWE", FI: "FIN", DK: "DNK", NO: "NOR", PL: "POL", CZ: "CZE", AT: "AUT", BE: "BEL", GR: "GRC", UA: "UKR", AE: "ARE", QA: "QAT", SA: "SAU", BH: "BHR", KW: "KWT", OM: "OMN", TR: "TUR", IL: "ISR", EG: "EGY", ET: "ETH", KE: "KEN", ZA: "ZAF", VN: "VNM", ID: "IDN", PH: "PHL", KH: "KHM", LA: "LAO", MM: "MMR", LK: "LKA", NP: "NPL", BD: "BGD", PK: "PAK", KZ: "KAZ", UZ: "UZB", BR: "BRA", MX: "MEX", BT: "BTN", MV: "MDV", MN: "MNG", BN: "BRN" };
+const NAME_ALIASES: Record<string, string[]> = { US: ["UNITED STATES", "USA", "AMERICA"], GB: ["UNITED KINGDOM", "GREAT BRITAIN", "BRITAIN"], KR: ["SOUTH KOREA", "KOREA, SOUTH", "KOREA (SOUTH)", "KOREA, REPUBLIC", "REPUBLIC OF KOREA"], RU: ["RUSSIA", "RUSSIAN FEDERATION"], VN: ["VIETNAM", "VIET NAM"], AE: ["UNITED ARAB EMIRATES", "UAE"], TW: ["TAIWAN"], LA: ["LAOS", "LAO PEOPLE"], CN: ["CHINA"], HK: ["HONG KONG"] };
+const norm = (x: string) => x.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9 ,()]/g, " ").replace(/\s+/g, " ").trim();
+
+/** The country the flight started in → the id in the nationality list: by three-letter code when the list has one, else by the country's name. */
+export function matchCountry(alpha2: string | undefined, countries: { id: number; label: string; extra?: unknown }[]): number | null {
+  const c = (alpha2 ?? "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c) || countries.length === 0) return null;
+  const a3 = ISO3[c];
+  const byCode = a3 ? countries.find((x) => String((x.extra as { CountryCode?: string } | undefined)?.CountryCode ?? "").toUpperCase() === a3) : undefined;
+  if (byCode) return byCode.id;
+  let en: string | undefined; try { en = new Intl.DisplayNames(["en"], { type: "region" }).of(c); } catch { en = undefined; }
+  const names = [en, ...(NAME_ALIASES[c] ?? [])].filter((n): n is string => !!n).map(norm);
+  const hit = countries.find((x) => names.includes(norm(x.label))) ?? countries.find((x) => names.some((n) => norm(x.label).startsWith(n)));
+  return hit?.id ?? null;
+}
+
+const STOP = new Set(["AIRWAYS", "AIRLINES", "AIRLINE", "AIR", "INTERNATIONAL", "THE", "CO", "LTD", "LIMITED", "PCL", "PUBLIC", "COMPANY"]);
+const core = (x: string) => norm(x).split(" ").filter((w) => w && !STOP.has(w)).join(" ");
+
+/** Immigration's list may name the airline, or may only separate Thai Airways from "Others": try the name first, then those two. */
+export function matchAirline(name: string | undefined, iata: string | undefined, airlines: { id: number; label: string }[]): number | null {
+  const n = core(name ?? "");
+  const named = n ? airlines.find((a) => core(a.label) === n) ?? airlines.find((a) => core(a.label) && (core(a.label).includes(n) || n.includes(core(a.label)))) : undefined;
+  const isThai = (iata ?? "").toUpperCase() === "TG";
+  const fallback = named ?? (isThai ? airlines.find((a) => /thai/i.test(a.label)) : airlines.find((a) => /other/i.test(a.label)));
+  return fallback?.id ?? null;
+}
+
+/** Maps the provider's airport/airline/country codes to the ids Immigration uses (master data). Anything that cannot be matched stays null so the form asks the traveler. */
 export function mapFlight(raw: { flight?: string; airline?: { iata?: string; name?: string }; origin?: { country?: string }; arrival?: { iata?: string; scheduledLocal?: string } },
-  airports: { id: number; label: string }[], airlines: { id: number; label: string }[]): FlightInfo | null {
+  airports: { id: number; label: string }[], airlines: { id: number; label: string }[], countries: { id: number; label: string; extra?: unknown }[] = []): FlightInfo | null {
   if (!raw.flight || !raw.arrival?.scheduledLocal || !/^\d{2}:\d{2}$/.test(raw.arrival.scheduledLocal)) return null;
   const word = AIRPORT_WORDS[(raw.arrival.iata ?? "").toUpperCase()];
   const airport = word ? airports.find((a) => a.label.toLowerCase().includes(word)) : undefined;
-  const isThai = (raw.airline?.iata ?? "").toUpperCase() === "TG";
-  const airline = isThai ? airlines.find((a) => /thai/i.test(a.label)) : airlines.find((a) => /other/i.test(a.label));      // Immigration's list only separates Thai Airways from the rest
-  return { flight: raw.flight, airlineId: airline?.id ?? null, airlineName: raw.airline?.name ?? "", arrivalAirportId: airport?.id ?? null, arrivalAirportName: airport?.label ?? null, arrivalTime: raw.arrival.scheduledLocal, originCountry: raw.origin?.country ?? null };
+  return { flight: raw.flight, airlineId: matchAirline(raw.airline?.name, raw.airline?.iata, airlines), airlineName: raw.airline?.name ?? "", arrivalAirportId: airport?.id ?? null, arrivalAirportName: airport?.label ?? null, arrivalTime: raw.arrival.scheduledLocal, originCountry: raw.origin?.country ?? null, originCountryId: matchCountry(raw.origin?.country, countries) };
 }
 
 // ---- providers --------------------------------------------------------------------------------------------------------------
@@ -63,7 +91,7 @@ export async function lookupFlight(flightRaw: string, date: string): Promise<Fli
     const raw = kind === "simulator" ? json : adbToRaw(json, flight);
     if (!raw) return null;
     const db = createAdminClient();
-    const [a, b] = await Promise.all([db.from("master_data").select("id, label").eq("name", "arrivalAirport"), db.from("master_data").select("id, label").eq("name", "airlines")]);
-    return mapFlight(raw, a.data ?? [], b.data ?? []);
+    const [a, b, c] = await Promise.all([db.from("master_data").select("id, label").eq("name", "arrivalAirport"), db.from("master_data").select("id, label").eq("name", "airlines"), db.from("master_data").select("id, label, extra").eq("name", "nationality")]);
+    return mapFlight(raw, a.data ?? [], b.data ?? [], c.data ?? []);
   } catch (e) { console.error("[flights] lookup failed", (e as Error).message); return null; }
 }
