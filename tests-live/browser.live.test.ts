@@ -171,6 +171,8 @@ describe("traveler journey in the browser", () => {
     await p.getByLabel("Type of stay", { exact: true }).selectOption({ index: 1 }); await p.getByLabel("Hotel / place name", { exact: true }).fill("Test Hotel");
     await p.getByLabel("Province", { exact: true }).selectOption({ index: 1 });
     await p.waitForFunction(() => (document.querySelector('select[name="district_id"]') as HTMLSelectElement | null)?.options.length! > 1, null, { timeout: 15_000 });
+    await p.waitForTimeout(2500);
+    console.log("GEO", JSON.stringify(await p.evaluate(() => ["city_id", "district_id", "sub_district_id"].map((n) => { const e = document.querySelector(`select[name=${n}]`) as HTMLSelectElement; return { n, disabled: e.disabled, value: e.value, options: e.options.length }; }))));
     await p.getByLabel("District", { exact: true }).selectOption({ index: 1 });
     await p.waitForFunction(() => (document.querySelector('select[name="sub_district_id"]') as HTMLSelectElement | null)?.options.length! > 1, null, { timeout: 15_000 });
     await p.getByLabel("Sub-district", { exact: true }).selectOption({ index: 1 });
