@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { envValue } from "@/lib/env";
 
 // Stripe over plain REST (no SDK): Checkout Sessions, refunds, webhook signatures. TEST keys (sk_test_…) for now; the code is identical for live keys.
 const BASE = "https://api.stripe.com/v1";
@@ -22,10 +23,10 @@ export function formEncode(obj: { [k: string]: Param }): string {
   return out.toString();
 }
 
-export const stripeConfigured = () => Boolean(process.env.STRIPE_SECRET_KEY);
+export const stripeConfigured = () => Boolean(envValue("STRIPE_SECRET_KEY"));
 
 async function call<T>(method: "GET" | "POST", path: string, body?: { [k: string]: Param }, idempotencyKey?: string): Promise<T> {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = envValue("STRIPE_SECRET_KEY");
   if (!key) throw new StripeError("STRIPE_SECRET_KEY is not set", 0, "not_configured");
   const url = method === "GET" && body ? `${BASE}${path}?${formEncode(body)}` : `${BASE}${path}`;
   const res = await fetch(url, {

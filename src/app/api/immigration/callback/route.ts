@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { hasServiceRole } from "@/lib/env";
+import { hasServiceRole, envValue } from "@/lib/env";
 import { StatusCallback } from "@/lib/immigration/schema";
 import { gatewayFromEnv } from "@/lib/immigration/gateway";
 import { handleStatusCallback } from "@/lib/immigration/pipeline";
@@ -16,7 +16,7 @@ const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(
  * Safe to receive twice: the same decision is applied once.
  */
 export async function POST(req: NextRequest) {
-  const secret = process.env.IMMIGRATION_CALLBACK_SECRET ?? "";
+  const secret = envValue("IMMIGRATION_CALLBACK_SECRET");
   const given = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!secret || !same(given, secret)) return NextResponse.json({ isSuccess: false, errorDesc: "Not authorized" }, { status: 401 });
   if (!hasServiceRole()) return NextResponse.json({ isSuccess: false, errorDesc: "Internal Server Error" }, { status: 500 });

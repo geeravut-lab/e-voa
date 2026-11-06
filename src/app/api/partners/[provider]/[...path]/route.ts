@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { hasServiceRole } from "@/lib/env";
+import { hasServiceRole, envValue } from "@/lib/env";
 import { handlePartnerCallback } from "@/lib/partners/service";
 import type { Provider } from "@/lib/partners/client";
 
@@ -14,7 +14,7 @@ const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ provider: string; path: string[] }> }) {
   const { provider, path } = await ctx.params;
-  const secret = process.env.PARTNER_CALLBACK_SECRET ?? "";
+  const secret = envValue("PARTNER_CALLBACK_SECRET");
   const given = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!secret || !same(given, secret)) return NextResponse.json({ status: 401, message: "Not authorized" }, { status: 401 });
   if (!PROVIDERS.includes(provider) || !hasServiceRole()) return NextResponse.json({ status: 404, message: "Incorrect Request" }, { status: 404 });

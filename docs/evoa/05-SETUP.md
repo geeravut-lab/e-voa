@@ -109,3 +109,10 @@ Register the app at the Aivora hub: slug `e-voa`, callback `https://e-voa.vercel
 | `FLIGHT_API_URL`, `FLIGHT_API_KEY` | A flight-data provider. The reply format must match what the code reads (see `src/lib/flights.ts`); a different provider needs a small adapter | No. Empty = the traveler types airline, airport and time |
 
 Never put the simulator's values in Vercel, never reuse keys found in the legacy documents, and never put any of these in a file or a commit.
+
+## Notes from setting up the real site
+
+- **"Not set" means empty or deleted.** A value typed as `null`, `none` or `-` is treated as NOT set (so it can never be used as an address or a secret), but the clean way is to delete the variable or leave it blank.
+- **`DATA_ENCRYPTION_KEY`** must decode to exactly 32 bytes. Create it with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`: the output is 44 characters ending in `=`. Do not use a password, a hex string, or a shortened text. `/api/health` shows `DATA_ENCRYPTION_KEY_decoded_bytes` (it must be 32). Change it only before real data exists: afterwards it can never be changed without losing the stored passport numbers and files.
+- **Flight lookup with AeroDataBox:** `FLIGHT_API_URL` = `https://aerodatabox.p.rapidapi.com` (RapidAPI; `FLIGHT_API_KEY` = your X-RapidAPI-Key) or `https://prod.api.market/api/v1/aedbx/aerodatabox` (API.Market; `FLIGHT_API_KEY` = your x-api-market-key). The adapter is covered by unit tests with a sample answer, **not yet tried against the real service**: try a flight that lands in Thailand 10–30 days from now.
+- **Testing without partners:** the simulator (`npm run mock`) is for local development and the automated tests; the live site never talks to it. To click through the add-ons yourself, run the app locally (`npm run dev`) with the `PARTNER_*` values from `06-MOCK-PARTNERS.md`.

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { hasServiceRole } from "@/lib/env";
+import { hasServiceRole, envValue } from "@/lib/env";
 import { verifyWebhook, StripeError } from "@/lib/payments/stripe";
 import { confirmPayment, failPayment } from "@/lib/payments/service";
 import { audit } from "@/lib/audit";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * so a forged or replayed message cannot approve anything. Each event id is handled once.
  */
 export async function POST(req: NextRequest) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+  const secret = envValue("STRIPE_WEBHOOK_SECRET");
   if (!secret || !hasServiceRole()) return NextResponse.json({ error: "not configured" }, { status: 500 });
   const raw = await req.text();                                           // the exact bytes: the signature covers them
   let event;

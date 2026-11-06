@@ -1,9 +1,10 @@
 import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
+import { envValue } from "@/lib/env";
 
 // The QR on an E-VOA pass points to /v/<token>. The token is the application id plus a signature, so nobody can invent a valid one,
 // and the page behind it shows only the minimum (status, first name, dates).
 const key = () => {
-  const raw = Buffer.from(process.env.DATA_ENCRYPTION_KEY ?? "", "base64");
+  const raw = Buffer.from(envValue("DATA_ENCRYPTION_KEY"), "base64");
   if (raw.length !== 32) throw new Error("DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded");
   return Buffer.from(hkdfSync("sha256", raw, Buffer.alloc(0), "thaipass:pass-token", 32));
 };

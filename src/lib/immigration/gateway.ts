@@ -1,4 +1,5 @@
 import { Docket, DocketResult, MasterItem, type MasterName } from "./schema";
+import { envValue } from "@/lib/env";
 
 /** What can go wrong when talking to Immigration, in terms the caller can act on. */
 export type ImmigrationErrorKind = "auth" | "bad_request" | "unavailable" | "unexpected";
@@ -87,8 +88,8 @@ export class HttpImmigrationGateway implements ImmigrationGateway {
 
 /** Reads IMMIGRATION_API_URL / IMMIGRATION_API_TOKEN / IMMIGRATION_API_FROM. Returns null when not configured. */
 export function gatewayFromEnv(): ImmigrationGateway | null {
-  const baseUrl = process.env.IMMIGRATION_API_URL, token = process.env.IMMIGRATION_API_TOKEN, from = process.env.IMMIGRATION_API_FROM;
+  const baseUrl = envValue("IMMIGRATION_API_URL"), token = envValue("IMMIGRATION_API_TOKEN"), from = envValue("IMMIGRATION_API_FROM");
   if (!baseUrl || !token || !from) return null;
   return new HttpImmigrationGateway({ baseUrl, token, from });
 }
-export const immigrationHost = () => { try { return new URL(process.env.IMMIGRATION_API_URL ?? "").host; } catch { return ""; } };
+export const immigrationHost = () => { try { return new URL(envValue("IMMIGRATION_API_URL")).host; } catch { return ""; } };

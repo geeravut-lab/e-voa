@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { envValue } from "@/lib/env";
 
 // Calls to the partners. Same endpoints and field names as in "Flow & API Docs" (see tools/mock-partners). Responses are {status:0,message,result} (SIM, VIP, health) or {status:"success"|"error",data} (insurance).
 export type Provider = "insurance" | "sim" | "vip" | "bhs";
@@ -9,17 +10,17 @@ export class PartnerError extends Error {
 }
 
 const URL_ENV: Record<Provider, string> = { insurance: "PARTNER_INSURANCE_URL", sim: "PARTNER_SIM_URL", vip: "PARTNER_VIP_URL", bhs: "PARTNER_BHS_URL" };
-export const partnerBase = (p: Provider) => (process.env[URL_ENV[p]] ?? "").replace(/\/$/, "");
-export const partnerConfigured = (p: Provider) => !!partnerBase(p) && (p === "insurance" ? !!process.env.INSURANCE_G_API_KEY && !!process.env.INSURANCE_TOKEN : !!process.env.PARTNER_SECRET && !!process.env.PARTNER_PUBLIC_KEY);
+export const partnerBase = (p: Provider) => envValue(URL_ENV[p]).replace(/\/$/, "");
+export const partnerConfigured = (p: Provider) => !!partnerBase(p) && (p === "insurance" ? !!envValue("INSURANCE_G_API_KEY") && !!envValue("INSURANCE_TOKEN") : !!envValue("PARTNER_SECRET") && !!envValue("PARTNER_PUBLIC_KEY"));
 
 /** X-API-KEY = HMAC-SHA256(secret, timestamp). The original documents show this only as a picture: confirm the real algorithm with each partner. */
 export const signPartner = (secret: string, timestamp: string) => createHmac("sha256", secret).update(timestamp).digest("hex");
 
 function headers(p: Provider): Record<string, string> {
   const base = { "Content-Type": "application/json", Accept: "application/json" };
-  if (p === "insurance") return { ...base, "g-api-key": process.env.INSURANCE_G_API_KEY ?? "", Authorization: `Bearer ${process.env.INSURANCE_TOKEN ?? ""}` };
+  if (p === "insurance") return { ...base, "g-api-key": envValue("INSURANCE_G_API_KEY"), Authorization: `Bearer ${envValue("INSURANCE_TOKEN")}` };
   const ts = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  return { ...base, "X-API-KEY": signPartner(process.env.PARTNER_SECRET ?? "", ts), timestamp: ts, key: process.env.PARTNER_PUBLIC_KEY ?? "" };
+  return { ...base, "X-API-KEY": signPartner(envValue("PARTNER_SECRET"), ts), timestamp: ts, key: envValue("PARTNER_PUBLIC_KEY") };
 }
 
 export async function partnerCall<T = unknown>(p: Provider, method: "GET" | "POST", path: string, body?: Record<string, unknown>, query?: Record<string, string>): Promise<T> {

@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, hkdfSync, randomBytes } from "node:crypto";
+import { envValue } from "@/lib/env";
 
 /**
  * Application-level encryption for passport numbers and document files (on top of the storage provider's own encryption at rest).
@@ -12,7 +13,7 @@ export const ENC_VERSION = 1;
 export class CryptoConfigError extends Error {}
 
 function masterKey(): Buffer {
-  const raw = process.env.DATA_ENCRYPTION_KEY ?? "";
+  const raw = envValue("DATA_ENCRYPTION_KEY");
   const key = Buffer.from(raw, "base64");
   if (key.length !== 32) throw new CryptoConfigError("DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded");
   return key;
