@@ -96,3 +96,16 @@ Register the app at the Aivora hub: slug `e-voa`, callback `https://e-voa.vercel
 | 7 | Switch Realtime off (`NEXT_PUBLIC_LIVE_REALTIME=0`, redeploy) and repeat 6 | still updates, a few seconds later (polling) |
 | 8 | `/admin/features`: turn "Sign in with LINE" off | button disappears; `/api/sso/exchange` answers 403 |
 | 9 | Open the site JS in DevTools → Sources and search for `service_role` | no match (the build was checked for this) |
+
+## Where each partner / Immigration variable comes from (leave empty until you have it)
+
+| Variable | From | Needed now? |
+| --- | --- | --- |
+| `IMMIGRATION_API_URL`, `IMMIGRATION_API_TOKEN`, `IMMIGRATION_API_FROM` | Thai Immigration (same API as the former intermediary: base address, access token, and the `From` value they register for you) | No. Empty = paid applications wait in "checking documents"; nothing is sent |
+| `IMMIGRATION_CALLBACK_SECRET` | You create it (`node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`) and give it to Immigration with the callback address `https://e-voa.vercel.app/api/immigration/callback` | When Immigration is connected |
+| `INSURANCE_G_API_KEY`, `INSURANCE_TOKEN`, `PARTNER_INSURANCE_URL` | The insurance partner (new keys issued for ThaiPass) | No. Empty = insurance is not offered |
+| `PARTNER_SECRET`, `PARTNER_PUBLIC_KEY`, `PARTNER_SIM_URL`, `PARTNER_VIP_URL`, `PARTNER_BHS_URL` | The SIM/eSIM, VIP and Beauty & Health partners. The code uses one key pair for all three; if they give different pairs, say so and the code is adjusted | No. Empty = that add-on is not offered |
+| `PARTNER_CALLBACK_SECRET` | You create it (same command) and give it to the partners with `https://e-voa.vercel.app/api/partners/<insurance|sim|vip|bhs>/<their original path>` | When a partner is connected |
+| `FLIGHT_API_URL`, `FLIGHT_API_KEY` | A flight-data provider. The reply format must match what the code reads (see `src/lib/flights.ts`); a different provider needs a small adapter | No. Empty = the traveler types airline, airport and time |
+
+Never put the simulator's values in Vercel, never reuse keys found in the legacy documents, and never put any of these in a file or a commit.

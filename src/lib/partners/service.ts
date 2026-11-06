@@ -30,9 +30,12 @@ export async function syncPartnerPackages(): Promise<{ rows: number; failed: Pro
     await db.from("partner_packages").update({ active: false }).eq("provider", provider).eq("category", category).not("package_code", "in", `(${keep.map((k) => `"${k}"`).join(",")})`);
   };
   const ins = { ...INSURANCE_DEFAULT, ...(await getSetting<Record<string, unknown>>("insurance", INSURANCE_DEFAULT)) } as typeof INSURANCE_DEFAULT;
-  await upsert("insurance", "insurance", [{ code: ins.plan_code, name: ins.name, thb: Number(ins.price_thb), usd: Number(ins.price_usd), cny: Number(ins.price_cny) }]);   // CIS has no package list API: the plan lives in the settings
+  // A partner that is not connected must not be offered: the traveler would pay for something we cannot issue.
+  const hide = (provider: Provider) => db.from("partner_packages").update({ active: false }).eq("provider", provider);
+  if (partnerConfigured("insurance")) await upsert("insurance", "insurance", [{ code: ins.plan_code, name: ins.name, thb: Number(ins.price_thb), usd: Number(ins.price_usd), cny: Number(ins.price_cny) }]);   // CIS has no package list API: the plan lives in the settings
+  else { await hide("insurance"); failed.push("insurance"); }
   for (const [provider, category] of [["sim", "sim"], ["sim", "esim"], ["vip", "vip"], ["bhs", "health"]] as const) {
-    if (!partnerConfigured(provider)) { if (!failed.includes(provider)) failed.push(provider); continue; }
+    if (!partnerConfigured(provider)) { await hide(provider); if (!failed.includes(provider)) failed.push(provider); continue; }
     try {
       const pk = await listPackages(provider, category);
       await upsert(provider, category, pk.map((x) => ({ code: x.package_code, name: x.package_name, detail: x.package_detail, thb: Number(x.package_price_thb), usd: x.package_price_usd ? Number(x.package_price_usd) : null, cny: x.package_price_cny ? Number(x.package_price_cny) : null, terms: x.terms_of_use, link: x.ref_link, image: x.package_image })));
