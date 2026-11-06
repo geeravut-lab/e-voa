@@ -319,4 +319,22 @@ describe("public pages, status check, help and content", () => {
     await sctx.close(); await ctx.close();
   });
 });
+describe("mobile menu", () => {
+  it("Apply is dark unless open; More turns blue when the open page is in it; the back-office title sits above its pages and lights up only on the back-office home", async () => {
+    const staff = await makeUser("nav", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
+    const bar = p.locator("nav[aria-label=Main]").last(); const label = bar.locator("a[href='/apply'] span").last(), more = bar.locator("button[aria-haspopup=dialog]");
+    const col = (l: ReturnType<typeof p.locator>) => l.evaluate((e: Element) => getComputedStyle(e).color);
+    await p.goto(`${APP}/`); await p.waitForTimeout(800); const dark = await col(label), grey = await col(more);
+    await p.goto(`${APP}/apply`); await p.waitForTimeout(800); expect(await col(label), "Apply is blue on its own page").not.toBe(dark);
+    await p.goto(`${APP}/fees`); await p.waitForTimeout(800); expect(await col(label)).toBe(dark); expect(await col(more), "More is blue on a page of the sheet").not.toBe(grey);
+    await p.goto(`${APP}/admin/queue`); await p.waitForTimeout(800); await more.click();
+    const sheet = p.locator("[role=dialog]"); const rows = await sheet.locator("button").evaluateAll((els: Element[]) => els.map((e) => ({ t: (e as HTMLElement).innerText.trim(), cur: e.getAttribute("aria-current") })));
+    const head = rows.findIndex((r: { t: string }) => r.t === "Back office"); expect(head).toBeGreaterThan(0);
+    expect(rows[head].cur).toBeNull(); expect(rows[head + 1].cur, "the open page is the one highlighted").toBe("page");
+    const box = await sheet.locator("button[aria-current=page]").boundingBox(); expect(box!.y).toBeGreaterThan(0); expect(box!.y + box!.height).toBeLessThan(844);
+    await p.keyboard.press("Escape"); await p.goto(`${APP}/admin`); await p.waitForTimeout(800); await more.click();
+    const home = await sheet.locator("button[aria-current=page]").allInnerTexts(); expect(home).toEqual(["Back office"]);
+    await ctx.close();
+  });
+});
 function traveler_client() { return createClient(SB_URL, SB_ANON, noAuth); }

@@ -56,7 +56,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const right = ["help"].map(by).filter((n): n is NavItem => !!n).map(entry);
   const inBar = new Set(["home", "trips", "help", "apply"]);
   const more = visible.filter((n) => !inBar.has(n.key) && (n.home || n.side)).map(entry);
-  if (viewer.isAdmin) more.unshift({ key: "admin-home", label: t.nav_admin, href: "/admin", icon: "shield", locked: false, match: ["/admin"], section: "admin" });
+  if (viewer.isAdmin) {                                   // the back-office title sits right above its own pages, and lights up only on the back-office home page
+    const head: NavEntry = { key: "admin-home", label: t.nav_admin, href: "/admin", icon: "shield", locked: false, match: ["/admin"], section: "admin", exact: true, groupHead: true };
+    const at = more.findIndex((e) => e.section === "admin");
+    if (at >= 0) more.splice(at, 0, head); else more.push(head);
+  }
 
   const name = displayNameOf(viewer);
   const bell = signedIn && flags.notifications && (

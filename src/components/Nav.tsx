@@ -11,9 +11,11 @@ import { LangSwitcher } from "./LangSwitcher";
 import { SubmitButton } from "./Buttons";
 import { useT } from "./I18n";
 
-export type NavEntry = { key: string; label: string; short?: string; href: string; icon: IconName; locked: boolean; match: string[]; section?: "admin" };
+// `exact`: the entry is active only on its own page (the back-office home must not light up on every page below it).
+// `groupHead`: the entry is the title of a group in the More sheet (the back-office group), drawn differently from ordinary rows.
+export type NavEntry = { key: string; label: string; short?: string; href: string; icon: IconName; locked: boolean; match: string[]; section?: "admin"; exact?: boolean; groupHead?: boolean };
 
-const isActive = (path: string, e: NavEntry) => e.match.some((m) => (m === "/" ? path === "/" : path === m || path.startsWith(m + "/")));
+const isActive = (path: string, e: NavEntry) => e.match.some((m) => (m === "/" || e.exact ? path === m : path === m || path.startsWith(m + "/")));
 
 function Row({ e, active, onNavigate }: { e: NavEntry; active: boolean; onNavigate?: () => void }) {
   return (
@@ -96,21 +98,22 @@ export function BottomBar({ left, right, apply, more, unread, children }: { left
     );
   };
   const applyActive = isActive(path, apply);
+  const moreActive = more.some((e) => isActive(path, e)) || path === "/admin" || path.startsWith("/admin/");   // the current page is one of the sheet's pages
   return (
     <>
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-5 items-end px-1">
           {left.map(tab)}
           <NavRowLink href={apply.href} aria-label={apply.label} aria-current={applyActive ? "page" : undefined}
-            className="relative -mt-6 flex flex-col items-center gap-0.5 pb-1 text-[12px] font-bold text-primary">
+            className={`relative -mt-6 flex flex-col items-center gap-0.5 pb-1 text-[12px] font-bold ${applyActive ? "text-primary" : "text-ink"}`}>
             <span className="pressable grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-teal to-primary text-white shadow-[0_10px_20px_-6px_rgb(21_87_224/0.6)] ring-4 ring-surface">
               <Plane size={28} aria-hidden="true" />
             </span>
             <span>{t.nav_apply}</span>
           </NavRowLink>
           {right.map(tab)}
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}
-            className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold text-muted">
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-current={moreActive ? "page" : undefined}
+            className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${moreActive ? "text-primary" : "text-muted"}`}>
             <MoreHorizontal size={22} aria-hidden="true" />
             <span>{t.nav_more}</span>
             {unread > 0 && <span className="absolute right-[22%] top-1.5 h-2.5 w-2.5 rounded-full bg-lotus ring-2 ring-surface" />}
@@ -162,7 +165,9 @@ function MoreSheet({ entries, onClose, onGo, navTo, children }: { entries: NavEn
               const loading = navTo === e.href;
               return (
                 <button key={e.key} type="button" disabled={!!navTo} aria-current={active ? "page" : undefined} aria-busy={loading} onClick={() => onGo(e.href)}
-                  className={`flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-[15px] font-semibold transition ${active ? "bg-sky text-primary" : "text-ink hover:bg-sky/70"}`}>
+                  className={e.groupHead
+                    ? `mt-3 flex min-h-11 w-full items-center gap-3 rounded-control border px-3 text-left text-[13px] font-extrabold uppercase tracking-wider transition ${active ? "border-primary bg-sky text-primary" : "border-gold bg-gold-soft text-gold-deep"}`
+                    : `flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-[15px] font-semibold transition ${e.section === "admin" ? "ml-3 w-[calc(100%-0.75rem)] rounded-l-none border-l-2 border-gold" : ""} ${active ? "bg-sky text-primary" : "text-ink hover:bg-sky/70"}`}>
                   <NavIcon name={e.icon} size={20} />
                   <span className="truncate">{e.label}</span>
                   {loading ? <Spinner size={16} className="ml-auto text-primary" /> : e.locked ? <Lock size={14} className="ml-auto text-muted" aria-hidden="true" /> : null}
