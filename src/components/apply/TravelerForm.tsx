@@ -35,7 +35,7 @@ export function TravelerForm({ tripId, slot, v, lists }: { tripId: string; slot:
     return () => clearTimeout(timer);
   }, [f, tripId, slot]);
   const [districts, setDistricts] = useState<Opt[]>(lists.districts), [subs, setSubs] = useState<Opt[]>(lists.subDistricts);
-  const [busyGeo, startGeo] = useTransition();
+  const [busyGeo, setBusyGeo] = useState(false);
 
   const fill = (r: MrzResult) => {
     const nat = lists.nationalities.find((n) => n.code === r.nationality);
@@ -52,14 +52,22 @@ export function TravelerForm({ tripId, slot, v, lists }: { tripId: string; slot:
     setNote(r.valid ? { ok: true, text: t.apply_mrz_ok } : { ok: false, text: t.apply_mrz_check_failed });
   });
 
-  const city = (id: number | null) => startGeo(async () => {
+  // Plain state updates (not a transition): the chosen province must show at once, then its districts arrive. `geoRun` drops answers that arrive late.
+  const geoRun = useRef(0);
+  const city = async (id: number | null) => {
+    const run = ++geoRun.current;
     set({ city_id: id ?? undefined, district_id: undefined, sub_district_id: undefined }); setDistricts([]); setSubs([]);
-    if (id) setDistricts(await loadChildrenAction("district", id));
-  });
-  const district = (id: number | null) => startGeo(async () => {
+    if (!id) return;
+    setBusyGeo(true);
+    try { const list = await loadChildrenAction("district", id); if (run === geoRun.current) setDistricts(list); } finally { if (run === geoRun.current) setBusyGeo(false); }
+  };
+  const district = async (id: number | null) => {
+    const run = ++geoRun.current;
     set({ district_id: id ?? undefined, sub_district_id: undefined }); setSubs([]);
-    if (id) setSubs(await loadChildrenAction("subDistrict", id));
-  });
+    if (!id) return;
+    setBusyGeo(true);
+    try { const list = await loadChildrenAction("subDistrict", id); if (run === geoRun.current) setSubs(list); } finally { if (run === geoRun.current) setBusyGeo(false); }
+  };
 
   return (
     <ActionForm action={saveTravelerAction} className="space-y-5">
