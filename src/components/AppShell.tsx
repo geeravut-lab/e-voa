@@ -7,6 +7,7 @@ import { getT } from "@/lib/i18n/server";
 import { loadFlags } from "@/lib/flags";
 import { createClient } from "@/lib/supabase/server";
 import { trackEvent } from "@/lib/analytics";
+import { attentionTotal } from "@/lib/admin-attention";
 import { hasSupabase } from "@/lib/env";
 import { LANGS } from "@/lib/i18n/langs";
 import { I18nProvider } from "./I18n";
@@ -32,13 +33,16 @@ async function unreadCount(): Promise<number> {
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const [viewer, { lang, t, brandName, brand }, flags] = await Promise.all([getViewer(), getT(), loadFlags()]);
   const signedIn = !!viewer.user;
-  const unread = signedIn && flags.notifications ? await unreadCount() : 0;
+  const isAdmin = viewer.isAdmin;
+  // Staff see only the back-office menu; their bell counts what waits for them (not the traveler notices).
+  const attention = isAdmin ? await attentionTotal() : 0;
+  const unread = !isAdmin && signedIn && flags.notifications ? await unreadCount() : 0;
   if (viewer.user) {
     const id = viewer.user.id;
     after(() => trackEvent(id, "active")); // once a day per person; never blocks the page
   }
 
-  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && (n.area === "traveler" || viewer.isAdmin));
+  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && n.area === (isAdmin ? "admin" : "traveler"));
   const entry = (n: NavItem): NavEntry => ({
     key: n.key,
     label: t[n.label],
@@ -47,26 +51,24 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     icon: n.icon,
     locked: n.auth && !signedIn,
     match: n.key === "home" ? ["/"] : [n.href, `/soon/${n.key}`],
-    section: n.area === "admin" ? "admin" : undefined,
+    exact: n.key === "admin_home",                          // the back-office home lights up only on its own page
+    badge: n.key === "admin_notifs" ? attention : undefined,
   });
   const by = (k: string) => visible.find((n) => n.key === k);
   const side = visible.filter((n) => n.side).map(entry);
-  const apply = by("apply") ?? NAV.find((n) => n.key === "apply")!;
-  const left = ["home", "trips"].map(by).filter((n): n is NavItem => !!n).map(entry);
-  const right = ["help"].map(by).filter((n): n is NavItem => !!n).map(entry);
-  const inBar = new Set(["home", "trips", "help", "apply"]);
+  const centreKey = isAdmin ? "ops" : "apply";
+  const apply = by(centreKey) ?? NAV.find((n) => n.key === centreKey)!;
+  const barKeys = isAdmin ? { left: ["admin_home", "admin_notifs"], right: ["errors"] } : { left: ["home", "trips"], right: ["help"] };
+  const left = barKeys.left.map(by).filter((n): n is NavItem => !!n).map(entry);
+  const right = barKeys.right.map(by).filter((n): n is NavItem => !!n).map(entry);
+  const inBar = new Set([...barKeys.left, ...barKeys.right, centreKey]);
   const more = visible.filter((n) => !inBar.has(n.key) && (n.home || n.side)).map(entry);
-  if (viewer.isAdmin) {                                   // the back-office title sits right above its own pages, and lights up only on the back-office home page
-    const head: NavEntry = { key: "admin-home", label: t.nav_admin, href: "/admin", icon: "shield", locked: false, match: ["/admin"], section: "admin", exact: true, groupHead: true };
-    const at = more.findIndex((e) => e.section === "admin");
-    if (at >= 0) more.splice(at, 0, head); else more.push(head);
-  }
 
   const name = displayNameOf(viewer);
-  const bell = signedIn && flags.notifications && (
-    <AppLink href="/notifications" aria-label={t.nav_notifications} className="relative grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-sky">
+  const bell = signedIn && (isAdmin || flags.notifications) && (
+    <AppLink href={isAdmin ? "/admin/notifications" : "/notifications"} aria-label={t.nav_notifications} className="relative grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-sky">
       <Bell size={22} aria-hidden="true" />
-      {unread > 0 && <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-lotus px-1 text-[11px] font-bold leading-5 text-white">{unread > 9 ? "9+" : unread}</span>}
+      {(isAdmin ? attention : unread) > 0 && <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-lotus px-1 text-[11px] font-bold leading-5 text-white">{(isAdmin ? attention : unread) > 9 ? "9+" : isAdmin ? attention : unread}</span>}
     </AppLink>
   );
   const signIn = (
@@ -78,7 +80,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const brandRow = (
-    <NavRowLink href="/" className="flex items-center gap-3">
+    <NavRowLink href={isAdmin ? "/admin" : "/"} className="flex items-center gap-3">
       <LogoMark size={40} version={brand.logo?.version} />
       <span className="font-display text-lg font-extrabold tracking-tight">{brandName}</span>
     </NavRowLink>
@@ -94,7 +96,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           header={brandRow}
           footer={
             <>
-              <LangSwitcher />
+              <LangSwitcher up />
               <div className="flex items-center justify-between gap-2">
                 {signedIn ? (
                   <>
@@ -109,7 +111,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-line bg-bg/90 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] backdrop-blur md:hidden">
-            <NavRowLink href="/" className="flex min-w-0 items-center gap-2">
+            <NavRowLink href={isAdmin ? "/admin" : "/"} className="flex min-w-0 items-center gap-2">
               <LogoMark size={32} version={brand.logo?.version} />
               <span className="truncate font-display text-base font-extrabold">{brandName}</span>
             </NavRowLink>
@@ -131,7 +133,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-      <BottomBar left={left} right={right} apply={entry(apply)} more={more} unread={unread}>
+      <BottomBar left={left} right={right} apply={entry(apply)} more={more} unread={isAdmin ? 0 : unread} centerIcon={isAdmin ? apply.icon : undefined}>
         {signedIn ? <SignOutButton /> : <NavRowLink href="/login" className={btnClass("primary", "w-full")}><LogIn size={18} aria-hidden="true" />{t.nav_signin}</NavRowLink>}
       </BottomBar>
       {viewer.user && flags.live_sync && <LiveSync userId={viewer.user.id} isAdmin={viewer.isAdmin} />}

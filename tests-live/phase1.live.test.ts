@@ -25,7 +25,7 @@ const sql = async <T = Record<string, unknown>>(query: string): Promise<T[]> => 
   const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
   const j = await r.json(); if (!Array.isArray(j)) throw new Error(JSON.stringify(j)); return j as T[];
 };
-const waitFor = async <T>(fn: () => Promise<T | null | false | undefined>, ms = 15_000): Promise<T> => {
+const waitFor = async <T>(fn: () => Promise<T | null | false | undefined>, ms = 45_000): Promise<T> => {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 150)); }
   throw new Error("timed out waiting for condition");

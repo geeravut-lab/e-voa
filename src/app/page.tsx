@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { alternatesOf } from "@/lib/seo";
 import { getLang } from "@/lib/i18n/server";
 import { NAV, resolveHref } from "@/config/nav";
@@ -6,12 +7,14 @@ import { getT } from "@/lib/i18n/server";
 import { loadFlags } from "@/lib/flags";
 import { fmt } from "@/lib/i18n/dict";
 import { HomeCard } from "@/components/HomeCard";
+import { HeroThailand } from "@/components/Art";
 import { LogoMark } from "@/components/Logo";
 import { NavRowLink } from "@/components/AppLink";
 import { btnClass } from "@/components/buttonStyles";
 
 export default async function HomePage() {
   const [viewer, { t, brand }, flags] = await Promise.all([getViewer(), getT(), loadFlags()]);
+  if (viewer.isAdmin) redirect("/admin");                // staff work in the back office only
   const signedIn = !!viewer.user;
   const name = displayNameOf(viewer);
   const cards = NAV.filter((n) => n.home && (!n.feature || flags[n.feature]) && (n.area === "traveler" || viewer.isAdmin));
@@ -34,13 +37,19 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-4">
-      <section className="flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-card">
-        <LogoMark size={64} version={brand.logo?.version} />
-        <div className="min-w-0">
-          <p className="text-sm text-muted">{t.app_name}</p>
-          <h1 className="truncate font-display text-2xl font-extrabold md:text-3xl">{signedIn && name ? fmt(t.home_hello_name, { name }) : t.home_hello}</h1>
-          <p className="mt-0.5 text-sm text-muted">{t.home_ask}</p>
+      <section className="relative isolate overflow-hidden rounded-card border border-line bg-surface shadow-card">
+        <div className="absolute inset-0 -z-10"><HeroThailand /></div>
+        {/* a white veil over the top keeps the greeting readable on top of the colourful picture */}
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-b from-white/95 via-white/75 via-50% to-white/0 to-80%" />
+        <div className="flex items-center gap-4 p-4 sm:p-5">
+          <LogoMark size={64} version={brand.logo?.version} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-muted">{t.app_name}</p>
+            <h1 className="font-display text-2xl font-extrabold text-ink md:text-3xl">{signedIn && name ? fmt(t.home_hello_name, { name }) : t.home_hello}</h1>
+            <p className="mt-0.5 max-w-[16rem] text-sm font-medium text-ink/80 sm:max-w-sm">{t.home_ask}</p>
+          </div>
         </div>
+        <div aria-hidden="true" className="h-20 sm:h-28" />
       </section>
 
       {!signedIn && (

@@ -26,3 +26,17 @@ export async function markAllRead(): Promise<ActionResult> {
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Opening one notice marks it as read (only the caller's own row can change: RLS). Returns where to go. */
+export async function openNotification(id: string): Promise<{ link: string | null }> {
+  const v = await getViewer();
+  if (!v.user || !/^[0-9a-f-]{36}$/i.test(id)) return { link: null };
+  const db = await createClient();
+  const { data } = await db.from("app_notifications").select("link, read_at").eq("id", id).maybeSingle();
+  if (data && !data.read_at) {
+    const { error } = await db.from("app_notifications").update({ read_at: new Date().toISOString() }).eq("id", id).is("read_at", null);
+    if (error) console.error("[notif] mark read failed", error.message);
+    revalidatePath("/", "layout");                         // the bell and the "More" dot lose their count
+  }
+  return { link: data?.link && data.link.startsWith("/") && !data.link.startsWith("//") ? data.link : null };
+}

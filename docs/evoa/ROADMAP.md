@@ -86,6 +86,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Item | Status |
 | --- | --- |
 | Photo face + background check (in the browser), **selfie with the device camera**, **view any uploaded file** | ✅ tested with a fake camera |
+| Language **drop-down**, Thai-themed home banner, **staff see only the back-office menu** (no customer entries), **staff Notifications** `/admin/notifications` (live list of what needs attention, count on the bell), opening a notice **marks it read**, **one-tap "Install as an app"** (Chrome/Edge/Android; iPhone keeps written steps) | ✅ tested in the browser with a simulated install offer · ⬜ try the real install on a phone |
 | hreflang (`?lang=`) + SEO articles, tax invoice (PDF, Thai), airport details editable at `/admin/airports` | ✅ · ⬜ legal review of the Thai/Chinese texts and the invoice treatment |
 | AI help assistant `/help/chat` (tool use over the user's own application, daily budget, admin switch at `/admin/ai`) | ✅ against the simulator · ⬜ real Claude key (`ANTHROPIC_API_KEY`) |
 | LINE / WhatsApp notices (link code, signed webhook, quota, blocked accounts) | ✅ against the simulator · ⬜ real LINE / WhatsApp credentials and approved templates |

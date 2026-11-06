@@ -330,21 +330,99 @@ describe("public pages, status check, help and content", () => {
     await sctx.close(); await ctx.close();
   });
 });
-describe("mobile menu", () => {
-  it("Apply is dark unless open; More turns blue when the open page is in it; the back-office title sits above its pages and lights up only on the back-office home", async () => {
-    const staff = await makeUser("nav", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
+describe("menus, language, notifications", () => {
+  it("a traveler: Apply is dark unless open; More turns blue when the open page is in its sheet", async () => {
+    const u = await makeUser("nav-t"); const ctx = await ctxFor(u); const p = await ctx.newPage();
     const bar = p.locator("nav[aria-label=Main]").last(); const label = bar.locator("a[href='/apply'] span").last(), more = bar.locator("button[aria-haspopup=dialog]");
     const col = (l: ReturnType<typeof p.locator>) => l.evaluate((e: Element) => getComputedStyle(e).color);
     await p.goto(`${APP}/`); await p.waitForTimeout(800); const dark = await col(label), grey = await col(more);
     await p.goto(`${APP}/apply`); await p.waitForTimeout(800); expect(await col(label), "Apply is blue on its own page").not.toBe(dark);
     await p.goto(`${APP}/fees`); await p.waitForTimeout(800); expect(await col(label)).toBe(dark); expect(await col(more), "More is blue on a page of the sheet").not.toBe(grey);
-    await p.goto(`${APP}/admin/queue`); await p.waitForTimeout(800); await more.click();
-    const sheet = p.locator("[role=dialog]"); const rows = await sheet.locator("button").evaluateAll((els: Element[]) => els.map((e) => ({ t: (e as HTMLElement).innerText.trim(), cur: e.getAttribute("aria-current") })));
-    const head = rows.findIndex((r: { t: string }) => r.t.toLowerCase() === "back office"); expect(head, JSON.stringify(rows)).toBeGreaterThan(0);
-    expect(rows[head].cur).toBeNull(); expect(rows[head + 1].cur, "the open page is the one highlighted").toBe("page");
-    const box = await sheet.locator("button[aria-current=page]").boundingBox(); expect(box!.y).toBeGreaterThan(0); expect(box!.y + box!.height).toBeLessThan(844);
-    await p.keyboard.press("Escape"); await p.goto(`${APP}/admin`); await p.waitForTimeout(800); await more.click();
-    const home = await sheet.locator("button[aria-current=page]").allInnerTexts(); expect(home.map((x: string) => x.toLowerCase())).toEqual(["back office"]);
+    await more.click(); const rows = await p.locator("[role=dialog] button").allInnerTexts();
+    expect(rows.some((r: string) => /back office/i.test(r)), "a traveler sees no back-office entries").toBe(false);
+    await ctx.close();
+  });
+
+  it("staff see only the back office: no customer entries anywhere, an Alerts tab with a count, and the home page leads to the back office", async () => {
+    const staff = await makeUser("nav-s", true); const traveler = await makeUser("nav-s-t");
+    // something that needs attention: an agency waiting for approval
+    const ag = await applyForAgency(traveler.id, { name: "Nav Test Agency", contact_name: "Nav Owner", contact_email: "n@example.com", contact_phone: "+66 2 000 0000", country: "Thailand", license_no: "" });
+    if (!ag.ok) throw new Error(ag.error);
+    try {
+      const ctx = await ctxFor(staff); const p = await ctx.newPage();
+      await p.goto(`${APP}/`); await p.waitForURL(/\/admin$/, { timeout: 20_000 });          // the customer home is not for staff
+      const bar = p.locator("nav[aria-label=Main]").last();
+      const tabs = await bar.locator("a, button").allInnerTexts(); const text = tabs.join(" | ");
+      expect(text).toMatch(/Back office/); expect(text).toMatch(/Alerts/); expect(text).toMatch(/Queue/);
+      expect(text).not.toMatch(/Apply|My trips|Help/);
+      expect(await bar.locator("a[href='/admin/notifications'] span").filter({ hasText: /^\d/ }).count(), "the count shows on the Alerts tab").toBeGreaterThan(0);
+      await bar.locator("button[aria-haspopup=dialog]").click();
+      const sheet = (await p.locator("[role=dialog] button").allInnerTexts()).join(" | ");
+      for (const customer of ["Check eligibility", "Travel extras", "Traveler book", "Airport guide", "For agencies", "For partners", "Fees & refunds"]) expect(sheet, customer).not.toContain(customer);
+      expect(sheet).toContain("Agencies"); expect(sheet).toContain("Partners");
+      await p.keyboard.press("Escape");
+      // the Back office tab lights up only on the back-office home; More lights up on a page of its sheet
+      const col = (l: ReturnType<typeof p.locator>) => l.evaluate((e: Element) => getComputedStyle(e).color);
+      const homeTab = bar.locator("a[href='/admin']"), more = bar.locator("button[aria-haspopup=dialog]");
+      await p.goto(`${APP}/admin`); await p.waitForTimeout(800); const homeOn = await col(homeTab), moreOff = await col(more);
+      await p.goto(`${APP}/admin/company`); await p.waitForTimeout(800); expect(await col(homeTab)).not.toBe(homeOn); expect(await col(more)).not.toBe(moreOff);
+      // the alerts page lists it, and the desktop sidebar has no customer entries either
+      const d = await ctxFor(staff, 1280, 800); const pd = await d.newPage();
+      await pd.goto(`${APP}/admin/notifications`); await pd.getByText(/agency registration\(s\) waiting for approval/).waitFor({ timeout: 20_000 }); await shot(pd, "admin-alerts");
+      const side = (await pd.locator("aside nav a").allInnerTexts()).join(" | ");
+      expect(side).toContain("Notifications"); expect(side).toContain("Application queue"); expect(side).not.toMatch(/Apply for e-VOA|My applications|Travel extras|Airport guide/);
+      await d.close(); await ctx.close();
+    } finally { await admin.from("agencies").delete().eq("id", ag.id); }
+  });
+
+  it("the language is a drop-down; choosing one changes the page language", async () => {
+    const u = await makeUser("lang"); const ctx = await ctxFor(u); const p = await ctx.newPage();
+    await p.goto(`${APP}/`); await p.waitForTimeout(800);
+    const btn = p.locator("header button[aria-haspopup=listbox]"); expect(await btn.innerText()).toBe("EN");
+    await btn.click(); expect(await p.getByRole("option").allInnerTexts()).toEqual(["English", "ไทย", "简体中文"]);
+    await p.getByRole("option", { name: "ไทย" }).click(); await p.waitForFunction(() => document.documentElement.lang === "th" || document.querySelector("header button[aria-haspopup=listbox]")?.textContent?.trim() === "TH", null, { timeout: 15_000 });
+    expect((await btn.innerText()).trim()).toBe("TH");
+    await btn.click(); await p.keyboard.press("Escape"); expect(await p.getByRole("option").count()).toBe(0);          // Escape closes it
+    await ctx.close();
+  });
+
+  it("Install as an app: the browser's offer is kept from page load, the button installs with one tap, and iPhone gets written steps instead", async () => {
+    const u = await makeUser("install"); const ctx = await ctxFor(u); const p = await ctx.newPage();
+    await p.addInitScript(() => {          // a browser that offers installation right after the page is parsed, long before the account page is opened
+      window.addEventListener("DOMContentLoaded", () => {
+        const e = new Event("beforeinstallprompt", { cancelable: true }) as Event & { prompt?: () => Promise<void>; userChoice?: Promise<{ outcome: string }> };
+        e.prompt = () => { (window as unknown as { __prompted: boolean }).__prompted = true; return Promise.resolve(); }; e.userChoice = Promise.resolve({ outcome: "accepted" });
+        window.dispatchEvent(e);
+      });
+    });
+    await p.goto(`${APP}/fees`); await p.waitForTimeout(800); await p.goto(`${APP}/account`);
+    const btn = p.getByRole("button", { name: "Install", exact: true }); await btn.waitFor({ timeout: 15_000 });
+    await shot(p, "install-button"); await btn.click();
+    await p.getByText("The app is installed on this device").waitFor({ timeout: 10_000 });
+    expect(await p.evaluate(() => (window as unknown as { __prompted?: boolean }).__prompted)).toBe(true);
+    expect(await btn.count()).toBe(0);
+    await ctx.close();
+    const ios = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" });
+    await ios.addCookies(cookiesFor(u.session)); const pi = await ios.newPage(); await pi.goto(`${APP}/account`);
+    await pi.getByText(/Add to Home Screen/).waitFor({ timeout: 15_000 }); expect(await pi.getByRole("button", { name: "Install", exact: true }).count()).toBe(0);
+    await ios.close();
+  });
+
+  it("opening a notice marks it as read and goes to its page; the count drops", async () => {
+    const u = await makeUser("notif");
+    const ins = await admin.from("app_notifications").insert([{ user_id: u.id, title: "Needs your action", body: "Please fix your ticket", link: "/fees", kind: "app.action_required" }, { user_id: u.id, title: "Second notice", body: "Hello", link: null, kind: "info" }]).select("id");
+    expect(ins.data).toHaveLength(2);
+    const ctx = await ctxFor(u); const p = await ctx.newPage();
+    await p.goto(`${APP}/notifications`); await p.getByText("Needs your action").waitFor({ timeout: 20_000 });
+    const bell = p.locator("header a[href='/notifications']"); expect(await bell.innerText()).toContain("2");
+    await p.getByText("Needs your action").click(); await p.waitForURL(/\/fees/, { timeout: 20_000 });
+    const rows = (await admin.from("app_notifications").select("title, read_at").eq("user_id", u.id)).data!;
+    expect(rows.find((r) => r.title === "Needs your action")!.read_at, "the opened notice is marked read").not.toBeNull();
+    expect(rows.find((r) => r.title === "Second notice")!.read_at, "the other one stays unread").toBeNull();
+    await p.goto(`${APP}/notifications`); await p.getByText("Second notice").waitFor(); expect(await p.locator("header a[href='/notifications']").innerText()).toContain("1");
+    await p.getByText("Second notice").click();          // a notice without a page is marked read where it is
+    await p.waitForFunction(() => !document.querySelector("header a[href='/notifications'] span"), null, { timeout: 15_000 });
+    expect((await admin.from("app_notifications").select("read_at").eq("user_id", u.id).is("read_at", null)).data).toHaveLength(0);
     await ctx.close();
   });
 });

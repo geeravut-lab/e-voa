@@ -13,7 +13,7 @@ import { useT } from "./I18n";
 
 // `exact`: the entry is active only on its own page (the back-office home must not light up on every page below it).
 // `groupHead`: the entry is the title of a group in the More sheet (the back-office group), drawn differently from ordinary rows.
-export type NavEntry = { key: string; label: string; short?: string; href: string; icon: IconName; locked: boolean; match: string[]; section?: "admin"; exact?: boolean; groupHead?: boolean };
+export type NavEntry = { key: string; label: string; short?: string; href: string; icon: IconName; locked: boolean; match: string[]; section?: "admin"; exact?: boolean; groupHead?: boolean; badge?: number };
 
 const isActive = (path: string, e: NavEntry) => e.match.some((m) => (m === "/" || e.exact ? path === m : path === m || path.startsWith(m + "/")));
 
@@ -29,6 +29,7 @@ function Row({ e, active, onNavigate }: { e: NavEntry; active: boolean; onNaviga
     >
       <NavIcon name={e.icon} size={20} />
       <span className="truncate">{e.label}</span>
+      {!!e.badge && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-lotus px-1.5 text-[11px] font-bold leading-5 text-white">{e.badge > 99 ? "99+" : e.badge}</span>}
       {e.locked && <Lock size={14} className="ml-auto text-muted" aria-hidden="true" />}
     </NavRowLink>
   );
@@ -53,7 +54,7 @@ export function Sidebar({ entries, header, footer, adminLabel }: { entries: NavE
 }
 
 /** Mobile bottom bar: 4 fixed entries + a raised centre "Apply" button + "More". */
-export function BottomBar({ left, right, apply, more, unread, children }: { left: NavEntry[]; right: NavEntry[]; apply: NavEntry; more: NavEntry[]; unread: number; children?: React.ReactNode }) {
+export function BottomBar({ left, right, apply, more, unread, centerIcon, children }: { left: NavEntry[]; right: NavEntry[]; apply: NavEntry; more: NavEntry[]; unread: number; centerIcon?: IconName; children?: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const t = useT();
@@ -92,13 +93,13 @@ export function BottomBar({ left, right, apply, more, unread, children }: { left
     return (
       <NavRowLink key={e.key} href={e.href} aria-current={active ? "page" : undefined}
         className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${active ? "text-primary" : "text-muted"}`}>
-        <NavIcon name={e.icon} size={22} />
+        <span className="relative"><NavIcon name={e.icon} size={22} />{!!e.badge && <span className="absolute -right-2.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-lotus px-1 text-[10px] font-bold leading-4 text-white">{e.badge > 9 ? "9+" : e.badge}</span>}</span>
         <span className="max-w-full truncate px-1">{e.short ?? e.label}</span>
       </NavRowLink>
     );
   };
   const applyActive = isActive(path, apply);
-  const moreActive = more.some((e) => isActive(path, e)) || path === "/admin" || path.startsWith("/admin/");   // the current page is one of the sheet's pages
+  const moreActive = more.some((e) => isActive(path, e));   // the current page is one of the sheet's pages
   return (
     <>
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur md:hidden">
@@ -107,9 +108,9 @@ export function BottomBar({ left, right, apply, more, unread, children }: { left
           <NavRowLink href={apply.href} aria-label={apply.label} aria-current={applyActive ? "page" : undefined}
             className={`relative -mt-6 flex flex-col items-center gap-0.5 pb-1 text-[12px] font-bold ${applyActive ? "text-primary" : "text-ink"}`}>
             <span className="pressable grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-teal to-primary text-white shadow-[0_10px_20px_-6px_rgb(21_87_224/0.6)] ring-4 ring-surface">
-              <Plane size={28} aria-hidden="true" />
+              {centerIcon ? <NavIcon name={centerIcon} size={28} /> : <Plane size={28} aria-hidden="true" />}
             </span>
-            <span>{t.nav_apply}</span>
+            <span>{centerIcon ? (apply.short ?? apply.label) : t.nav_apply}</span>
           </NavRowLink>
           {right.map(tab)}
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-current={moreActive ? "page" : undefined}
@@ -175,7 +176,7 @@ function MoreSheet({ entries, onClose, onGo, navTo, children }: { entries: NavEn
               );
             })}
             <div className="space-y-3 border-t border-line pt-3">
-              <div className="flex items-center justify-between gap-2 px-1"><span className="text-sm font-semibold text-muted">{t.nav_language}</span><LangSwitcher compact /></div>
+              <div className="flex items-center justify-between gap-2 px-1"><span className="text-sm font-semibold text-muted">{t.nav_language}</span><LangSwitcher compact up /></div>
               {children}
             </div>
           </div>

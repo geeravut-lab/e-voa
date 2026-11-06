@@ -336,3 +336,91 @@ export const ART = {
 } satisfies Record<string, ReactNode>;
 
 export type ArtName = keyof typeof ART;
+
+/**
+ * Banner for the home greeting card: a warm Thai sunrise with Wat Arun, a golden chedi with a Thai roof, palms, a long-tail boat with ribbons,
+ * lotus flowers and the brand's paper plane. The left side is kept calm (soft sky and sea) because the card puts a white veil there for the text.
+ */
+export function HeroThailand() {
+  const tier = (cx: number, y: number, w: number, h: number, c: string, c2: string) => (
+    <g key={`${cx}-${y}`}>
+      <path d={`M${cx - w / 2} ${y + h}L${cx - w / 2 + 3} ${y}H${cx + w / 2 - 3}L${cx + w / 2} ${y + h}Z`} fill={c} />
+      <rect x={cx - w / 2 + 4} y={y + 2} width={w - 8} height="2.4" fill={c2} />
+    </g>
+  );
+  const prang = (cx: number, base: number, s: number, c: string, c2: string, c3: string) => (
+    <g transform={`translate(${cx} ${base}) scale(${s})`}>
+      {tier(0, -14, 34, 14, c, c3)}
+      {tier(0, -28, 26, 14, c2, G)}
+      {tier(0, -42, 19, 14, c, c3)}
+      <path d="M-7 -42C-7 -58 -3 -68 0 -80 3 -68 7 -58 7 -42Z" fill={c2} />
+      <path d="M-4 -46C-4 -58 -2 -66 0 -74 2 -66 4 -58 4 -46Z" fill={c} />
+      <circle cx="0" cy="-34" r="2.2" fill={L} /><circle cx="-9" cy="-20" r="2" fill={T} /><circle cx="9" cy="-20" r="2" fill={T} />
+      <rect x="-0.8" y="-92" width="1.6" height="12" fill={G} /><circle cx="0" cy="-93" r="2.2" fill={G} />
+    </g>
+  );
+  const palm = (x: number, y: number, s: number) => (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M0 0C2-14 1-28-3-42" stroke={TD} strokeWidth="3" strokeLinecap="round" fill="none" />
+      {[[-30, -34], [-22, -52], [-3, -58], [18, -50], [28, -34]].map(([dx, dy], i) => <path key={i} d={`M-3 -42Q${dx / 2 - 3} ${dy - 8} ${dx - 3} ${dy + 6}Q${dx / 2 - 2} ${dy + 2} -3 -42Z`} fill={i % 2 ? T : TD} />)}
+      <circle cx="-3" cy="-41" r="2.6" fill={G} />
+    </g>
+  );
+  const lotus = (x: number, y: number, s: number) => (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M0 0C-12 -2-14 -14 -8 -20-2 -14 0 -8 0 0Z" fill={L} /><path d="M0 0C12 -2 14 -14 8 -20 2 -14 0 -8 0 0Z" fill={L} />
+      <path d="M0 0C-7 -4-6 -18 0 -26 6 -18 7 -4 0 0Z" fill="#FF86AE" /><circle cx="0" cy="-8" r="2.2" fill={G} />
+      <ellipse cx="0" cy="3" rx="16" ry="3.5" fill={TD} opacity=".55" />
+    </g>
+  );
+  return (
+    <svg viewBox="0 0 400 170" preserveAspectRatio="xMaxYMax slice" className="h-full w-full" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="hs-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FFF1B0" /><stop offset=".45" stopColor="#FFC970" /><stop offset=".8" stopColor="#FF9DB0" /><stop offset="1" stopColor="#FFB7C9" /></linearGradient>
+        <linearGradient id="hs-sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#19C3B9" /><stop offset="1" stopColor="#1557E0" /></linearGradient>
+        <radialGradient id="hs-sun" cx=".5" cy=".5" r=".5"><stop offset="0" stopColor="#FFF6C9" /><stop offset=".55" stopColor="#FFC93C" stopOpacity=".95" /><stop offset="1" stopColor="#FFB627" stopOpacity="0" /></radialGradient>
+      </defs>
+      <rect width="400" height="170" fill="url(#hs-sky)" />
+      <circle cx="292" cy="104" r="78" fill="url(#hs-sun)" />
+      <circle cx="292" cy="104" r="30" fill={G} />
+      {/* clouds */}
+      <g fill={W} opacity=".75"><ellipse cx="150" cy="30" rx="26" ry="7" /><ellipse cx="168" cy="26" rx="16" ry="7" /><ellipse cx="368" cy="26" rx="22" ry="6" /><ellipse cx="382" cy="22" rx="12" ry="6" /></g>
+      {/* far hills */}
+      <path d="M0 126C40 112 80 120 120 114 170 106 200 122 250 116 310 108 360 120 400 112V150H0Z" fill="#7FD6C7" opacity=".7" />
+      {/* golden chedi with a Thai roof, far right */}
+      <g transform="translate(366 128)">
+        <path d="M-14 0Q-14-16 0-18 14-16 14 0Z" fill={G} /><rect x="-16" y="-3" width="32" height="4" fill="#E08A00" />
+        <path d="M-6 -17H6L3 -32H-3Z" fill={GL} /><path d="M-1.5 -32H1.5L0 -48Z" fill={G} />
+        <path d="M-22 -2L-8 -12 8 -12 22 -2Z" fill="#E5233B" opacity=".0" />
+      </g>
+      <g transform="translate(340 130)">
+        <path d="M-26 0L-20 -14H20L26 0Z" fill="#E5233B" /><path d="M-18 -14L-12 -26H12L18 -14Z" fill={G} /><path d="M-10 -26L-5 -36H5L10 -26Z" fill={T} />
+        <path d="M-27 1L-26 -2H26L27 1Z" fill="#8A5A00" /><rect x="-16" y="0" width="32" height="12" fill={W} /><rect x="-3" y="3" width="6" height="9" fill="#1B3D8F" />
+      </g>
+      {/* Wat Arun */}
+      {prang(240, 132, 0.52, "#E9805B", "#FFD36B", W)}
+      {prang(334, 138, 0.4, "#E9805B", "#FFD36B", W)}
+      {prang(292, 134, 1, "#FFFFFF", "#7C6CF0", "#FFB627")}
+      <rect x="262" y="124" width="60" height="12" fill="#FFF3D6" /><rect x="262" y="124" width="60" height="2.6" fill={G} />
+      {/* palms */}
+      {palm(212, 138, 0.9)}{palm(396, 140, 1.05)}
+      {/* sea */}
+      <path d="M0 136C30 130 60 142 100 136 150 128 190 142 240 136 290 130 340 142 400 134V170H0Z" fill="url(#hs-sea)" />
+      <path d="M0 148C40 142 80 154 130 148 180 142 230 154 290 148 340 143 370 150 400 146V170H0Z" fill="#0F46B8" opacity=".55" />
+      <g fill="none" stroke={W} strokeWidth="1.6" strokeLinecap="round" opacity=".7"><path d="M26 142q6-4 12 0M60 150q6-4 12 0M118 144q6-4 12 0M170 152q6-4 12 0M250 146q6-4 12 0M330 152q6-4 12 0" /></g>
+      {/* long-tail boat with ribbons */}
+      <g transform="translate(168 142)">
+        <path d="M-34 -2Q-30 8 -14 9H26Q40 8 46 -12 36 -2 22 -2Z" fill="#1B3D8F" /><path d="M-34 -2Q-38 -12 -46 -18 -32 -14 -22 -2Z" fill={L} />
+        <path d="M-34 -2H22" stroke={G} strokeWidth="2.4" />
+        <path d="M-6 -2V-18" stroke={N} strokeWidth="1.6" /><path d="M-12 -18Q-6 -26 0 -18Z" fill={T} />
+        <path d="M46 -12L74 -4" stroke={N} strokeWidth="2.2" strokeLinecap="round" /><circle cx="76" cy="-3" r="2.6" fill={N} />
+        <path d="M-46 -18Q-52 -12 -49 -4M-46 -18Q-56 -16 -57 -8M-46 -18Q-50 -22 -56 -20" stroke={G} strokeWidth="1.4" fill="none" strokeLinecap="round" /><circle cx="-49" cy="-3" r="1.6" fill={L} /><circle cx="-57" cy="-7" r="1.6" fill={T} /><circle cx="-56" cy="-19" r="1.6" fill={G} />
+      </g>
+      {/* lotus in the corner and paper plane */}
+      {lotus(350, 160, 0.9)}{lotus(380, 164, 0.7)}{lotus(120, 164, 0.6)}
+      <g transform="translate(112 44) rotate(-12)"><path d="M-22 4 22-12c3-1 4 2 1 4L8 8 4 22c-1 3-4 3-4 0L-2 10-16 8c-3-1-3-3 0-4Z" fill={B} /><path d="M8 8 22-12-2 10Z" fill="#0F46B8" /></g>
+      <path d="M44 66C64 70 84 60 98 54" stroke={B} strokeWidth="1.6" strokeDasharray="4 4" fill="none" strokeLinecap="round" opacity=".7" />
+      <Spark x={196} y={52} s={0.8} /><Spark x={60} y={34} s={0.6} c={L} /><Spark x={252} y={34} s={0.7} />
+    </svg>
+  );
+}

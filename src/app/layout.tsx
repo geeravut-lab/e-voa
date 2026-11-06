@@ -37,6 +37,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { lang } = await getT();
   return (
     <html lang={LANGS[lang].htmlLang} dir={LANGS[lang].dir}>
+      <head>
+        {/* The browser offers "install" once, early, before the page is interactive: keep that offer so the Install button works later on any page. */}
+        <script dangerouslySetInnerHTML={{ __html: 'window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__evoaInstall=e;window.dispatchEvent(new Event("evoa-install"))});window.addEventListener("appinstalled",function(){window.__evoaInstall=null;window.__evoaInstalled=true;window.dispatchEvent(new Event("evoa-installed"))});' }} />
+      </head>
       <body>
         <AppShell>{children}</AppShell>
         <PwaRegister />

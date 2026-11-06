@@ -6,7 +6,7 @@ import { markAllRead } from "@/app/actions/account";
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
-import { NavRowLink } from "@/components/AppLink";
+import { NotificationRow } from "@/components/NotificationRow";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export default async function NotificationsPage() {
             );
             return (
               <li key={n.id} className={`rounded-card border border-line p-4 shadow-card ${n.read_at ? "bg-surface" : "bg-sky"}`}>
-                {n.link?.startsWith("/") ? <NavRowLink href={n.link} className="flex items-center">{body}</NavRowLink> : body}
+                <NotificationRow id={n.id} link={n.link?.startsWith("/") && !n.link.startsWith("//") ? n.link : null} unread={!n.read_at}>{body}</NotificationRow>
               </li>
             );
           })}
