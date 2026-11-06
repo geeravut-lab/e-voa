@@ -30,9 +30,10 @@ export function mapFlight(raw: { flight?: string; airline?: { iata?: string; nam
 // FLIGHT_API_URL decides which one is used:
 //   https://aerodatabox.p.rapidapi.com                          AeroDataBox through RapidAPI   (FLIGHT_API_KEY = your X-RapidAPI-Key)
 //   https://prod.api.market/api/v1/aedbx/aerodatabox            AeroDataBox through API.Market (FLIGHT_API_KEY = your x-api-market-key)
-//   anything else (e.g. the simulator http://localhost:4010)    the simulator's own format      (FLIGHT_API_KEY sent as x-api-key)
-export type FlightProvider = "rapidapi" | "apimarket" | "simulator";
-export const flightProviderOf = (base: string): FlightProvider => { try { const h = new URL(base).host; return /rapidapi\.com$/.test(h) ? "rapidapi" : /api\.market$/.test(h) ? "apimarket" : "simulator"; } catch { return "simulator"; } };
+//   any other address (AeroDataBox direct)                       AeroDataBox format; the key goes in the header named by FLIGHT_API_KEY_HEADER (default x-api-key)
+//   http://localhost:4010                                       the simulator (own format; key sent as x-api-key)
+export type FlightProvider = "rapidapi" | "apimarket" | "direct" | "simulator";
+export const flightProviderOf = (base: string): FlightProvider => { try { const h = new URL(base).host; return /rapidapi\.com$/.test(h) ? "rapidapi" : /api\.market$/.test(h) ? "apimarket" : /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h) ? "simulator" : "direct"; } catch { return "simulator"; } };
 
 type AdbAirport = { iata?: string; countryCode?: string; name?: string };
 type AdbFlight = { number?: string; airline?: { iata?: string; name?: string }; departure?: { airport?: AdbAirport }; arrival?: { airport?: AdbAirport; scheduledTime?: { local?: string } } };
@@ -55,7 +56,7 @@ export async function lookupFlight(flightRaw: string, date: string): Promise<Fli
     const kind = flightProviderOf(base);
     const url = kind === "simulator" ? `${base}/flights/lookup?${new URLSearchParams({ flight, date })}`
       : `${base}/flights/number/${flight}/${date}?${new URLSearchParams({ dateLocalRole: "Arrival", withAircraftImage: "false", withLocation: "false" })}`;
-    const headers: Record<string, string> = kind === "rapidapi" ? { "X-RapidAPI-Key": key, "X-RapidAPI-Host": new URL(base).host } : kind === "apimarket" ? { "x-api-market-key": key } : key ? { "x-api-key": key } : {};
+    const headers: Record<string, string> = kind === "rapidapi" ? { "X-RapidAPI-Key": key, "X-RapidAPI-Host": new URL(base).host } : kind === "apimarket" ? { "x-api-market-key": key } : kind === "direct" ? { [envValue("FLIGHT_API_KEY_HEADER") || "x-api-key"]: key } : key ? { "x-api-key": key } : {};
     const res = await fetch(url, { headers: { Accept: "application/json", ...headers }, signal: AbortSignal.timeout(8000), cache: "no-store" });
     if (!res.ok) { if (res.status !== 404) console.error("[flights] provider answered", res.status); return null; }
     const json = await res.json();

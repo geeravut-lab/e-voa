@@ -15,6 +15,7 @@ describe("flight providers", () => {
     expect(flightProviderOf("https://aerodatabox.p.rapidapi.com")).toBe("rapidapi");
     expect(flightProviderOf("https://prod.api.market/api/v1/aedbx/aerodatabox")).toBe("apimarket");
     expect(flightProviderOf("http://localhost:4010")).toBe("simulator");
+    expect(flightProviderOf("https://aerodatabox.com/api")).toBe("direct");
     expect(flightProviderOf("not a url")).toBe("simulator");
   });
   it("reads the Thai landing leg of an AeroDataBox answer and maps it to Immigration's ids", () => {

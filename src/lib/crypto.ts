@@ -5,7 +5,7 @@ import { envValue } from "@/lib/env";
  * Application-level encryption for passport numbers and document files (on top of the storage provider's own encryption at rest).
  * AES-256-GCM, random 12-byte nonce per item, versioned header so keys can be rotated later.
  *   layout: [1 byte version][12 bytes nonce][ciphertext][16 bytes auth tag]
- * One master key in DATA_ENCRYPTION_KEY (base64, 32 bytes); the keyed hash uses a separate key derived from it.
+ * One master key in DATA_ENCRYPTION_KEY (base64, 32 bytes or more); the keyed hash uses a separate key derived from it.
  * Generate one with:  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
  */
 export const ENC_VERSION = 1;
@@ -15,7 +15,7 @@ export class CryptoConfigError extends Error {}
 function masterKey(): Buffer {
   const raw = envValue("DATA_ENCRYPTION_KEY");
   const key = Buffer.from(raw, "base64");
-  if (key.length !== 32) throw new CryptoConfigError("DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded");
+  if (key.length < 32) throw new CryptoConfigError("DATA_ENCRYPTION_KEY must be at least 32 random bytes, base64-encoded");   // longer is fine: the real keys are derived from it with HKDF
   return key;
 }
 const derive = (label: string) => Buffer.from(hkdfSync("sha256", masterKey(), Buffer.alloc(0), `thaipass:${label}`, 32));
