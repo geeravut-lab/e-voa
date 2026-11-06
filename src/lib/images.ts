@@ -25,7 +25,7 @@ export async function normalizeUpload(input: Uint8Array, kind: DocKind | string)
   if ((meta.width ?? 0) < 200 || (meta.height ?? 0) < 200) return { ok: false, error: "err_image_small" };
   const maxSide = kind === "photo" ? 800 : 2400;
   for (const [side, quality] of [[maxSide, 85], [maxSide, 70], [Math.round(maxSide * 0.75), 60], [Math.round(maxSide * 0.55), 50], [Math.round(maxSide * 0.4), 40], [Math.round(maxSide * 0.3), 32]] as const) {
-    const out = await sharp(buf).rotate().flatten({ background: "#ffffff" }).resize({ width: side, height: side, fit: "inside", withoutEnlargement: true }).jpeg({ quality, mozjpeg: true }).toBuffer({ resolveWithObject: true });
+    const out = await sharp(buf).rotate().flatten({ background: { r: 255, g: 255, b: 255 } }).resize({ width: side, height: side, fit: "inside", withoutEnlargement: true }).jpeg({ quality, mozjpeg: true }).toBuffer({ resolveWithObject: true });
     if (out.data.length <= limit) return { ok: true, bytes: out.data, mime: "image/jpeg", width: out.info.width, height: out.info.height };
   }
   return { ok: false, error: "err_file_big" };

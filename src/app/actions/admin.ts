@@ -97,3 +97,15 @@ export async function saveSettingsAction(_p: ActionResult, fd: FormData): Promis
   await audit({ actorId: uid, actorRole: "admin", action: "settings.update", entity: "settings", detail: { visa_thb: visa, regular_thb: regular, express_thb: express, document_days: days, prev_regular_thb: oldFees.regular_service_thb ?? null } });
   return done("/admin/settings");
 }
+
+const codes = (s: string) => [...new Set(s.toUpperCase().split(/[^A-Z]+/).filter((c) => /^[A-Z]{3}$/.test(c)))];
+/** Who may apply for Visa on Arrival / who needs no visa: 3-letter nationality codes copied from the official announcement. */
+export async function saveEligibilityAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const voa = codes(String(fd.get("voa") ?? "")), visa_free = codes(String(fd.get("visa_free") ?? ""));
+  if (voa.some((c) => visa_free.includes(c))) return { ok: false, error: "err_elig_overlap" };
+  if (!(await putSetting("eligibility", { voa, visa_free }, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.eligibility", entity: "settings", detail: { voa: voa.length, visa_free: visa_free.length } });
+  return done("/admin/eligibility");
+}

@@ -145,6 +145,11 @@ export async function applyDecision(app: AppRow, target: AppStatus, reason: stri
   try {
     const row = await transition(app.id, target, reason, "immigration");
     if (row.status === target) await notifyStatus(app, target, reason);
+    // Rejected: the visa and service fees stay (policy), but add-ons that were never used go back to the traveler. A failure here must not undo the decision.
+    if (target === "rejected" && row.status === target) {
+      const { refundUnusedAddons } = await import("@/lib/payments/service");
+      await refundUnusedAddons(app.id, "application rejected").catch((e) => console.error("[pipeline] add-on refund failed", (e as Error).message));
+    }
   } catch (e) {
     const msg = (e as Error).message;
     if (/err_bad_transition/.test(msg)) {
