@@ -1,0 +1,577 @@
+<title>Thailand Global E-VOA Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+SC:wght@500&family=Noto+Sans+Arabic:wght@500&family=Noto+Sans+Devanagari:wght@500&display=swap">
+<style>
+/* Layout: a style-guide page — brand → tokens → 7 phone screens in journey order → back-office → components. Page tokens follow the viewer theme; product tokens (--p-*) stay fixed because they ARE the product's light UI. */
+:root{
+  /* page */
+  --bg:#FBFAF6; --fg:#0B2545; --muted:#4A5B73; --card:#FFFFFF; --line:#E6E2D8; --chip:#F3F0E8; --accent:#1557E0; --wm-ink:#0B2545; --wm-sub:#0A7C78;
+  /* product (fixed) */
+  --p-ink:#0B2545; --p-muted:#4A5B73; --p-primary:#1557E0; --p-primary-hover:#0F46B8; --p-sky:#E8F1FF; --p-teal:#0FB5AE; --p-teal-deep:#0A7C78; --p-mint:#DDF7F5;
+  --p-gold:#FFB627; --p-gold-deep:#8A5A00; --p-sand:#FFF8EC; --p-bg:#FBFAF6; --p-surface:#FFFFFF; --p-line:#E6E2D8; --p-field:#7A8699;
+  --p-success:#0E7A4F; --p-success-bg:#DDF6EA; --p-warn-bg:#FFF1CC; --p-danger:#C2261C; --p-danger-bg:#FDE7E5; --p-lotus:#FF4F8B;
+  --f-display:"Plus Jakarta Sans","Prompt",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Plus Jakarta Sans","Noto Sans Thai",ui-sans-serif,system-ui,sans-serif;
+  --f-thai-head:"Prompt","Plus Jakarta Sans",ui-sans-serif,sans-serif;
+  --r-card:20px; --r-ctl:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0A1628; --fg:#EAF0FA; --muted:#A5B3C8; --card:#11223B; --line:#22385A; --chip:#18304F; --accent:#7FB0FF; --wm-ink:#FFFFFF; --wm-sub:#9FE7E3; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0A1628; --fg:#EAF0FA; --muted:#A5B3C8; --card:#11223B; --line:#22385A; --chip:#18304F; --accent:#7FB0FF; --wm-ink:#FFFFFF; --wm-sub:#9FE7E3; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 80px}
+h1,h2,h3{font-family:var(--f-thai-head);text-wrap:balance;margin:0;line-height:1.25;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4.4vw,44px);font-weight:700}
+h2{font-size:clamp(22px,2.8vw,30px);font-weight:600}
+h3{font-size:17px;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--f-display);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--wm-sub)}
+.lead{color:var(--muted);max-width:68ch;font-size:16px}
+section{display:grid;gap:22px;padding-block:44px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+.head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-block:8px 22px}
+.head .wm{width:220px;height:auto}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 12px;border-radius:999px;background:var(--chip);color:var(--muted)}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:36px;align-items:center}
+.hero > *{min-width:0}
+.kw{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.kw span{font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.sunny{position:relative;aspect-ratio:4/3;max-width:100%;border-radius:28px;overflow:hidden;background:linear-gradient(180deg,#FFF3D6 0%,#FFE7B8 38%,#BFEDE9 62%,#4FC6C0 82%,#1E8FD4 100%)}
+.sunny .sun{position:absolute;width:34%;aspect-ratio:1;border-radius:50%;left:52%;top:14%;background:radial-gradient(circle,#FFD36B 0 55%,#FFB62700 72%)}
+.sunny svg.sky{position:absolute;inset:auto 0 0 0;width:100%;height:auto}
+.sunny .bigmark{position:absolute;left:8%;top:10%;width:30%;filter:drop-shadow(0 18px 30px rgba(11,37,69,.25))}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:20px;min-width:0}
+.card > *{min-width:0}
+.card p{color:var(--muted);font-size:14px}
+.card h3{margin-bottom:6px}
+.logo-tile{display:grid;place-items:center;min-height:150px;border-radius:16px;padding:18px}
+.logo-tile.light{background:#FFFFFF;border:1px solid #E6E2D8}
+.logo-tile.dark{background:#0B2545}
+.logo-tile.sand{background:#FFF8EC;border:1px solid #F0E3C8}
+.cap{font-size:12.5px;color:var(--muted);margin-top:8px}
+.browser{background:#DCE3EE;border-radius:14px 14px 0 0;padding:10px 10px 0;display:flex;gap:6px;overflow:hidden}
+.tab svg{flex:none}
+.tab{display:flex;align-items:center;gap:8px;background:#FFFFFF;color:#0B2545;border-radius:10px 10px 0 0;padding:8px 12px;font-size:12.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab.dim{background:transparent;color:#4A5B73}
+.addr{background:#FFFFFF;border-top:1px solid #E6E2D8;padding:8px 12px;font-size:12.5px;color:#4A5B73;border-radius:0 0 14px 14px;border:1px solid #DCE3EE}
+.icons{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.icons figure{margin:0;display:grid;gap:6px;justify-items:center;font-size:12px;color:var(--muted)}
+/* swatches */
+.sw{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.sw .chip{height:84px;display:flex;align-items:flex-end;padding:10px 12px;font-family:var(--f-display);font-weight:700;font-size:13px}
+.sw .meta{padding:10px 12px;font-size:12.5px;color:var(--muted);display:grid;gap:2px}
+.sw .meta b{color:var(--fg);font-weight:600;font-size:13.5px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.ratio{display:flex;height:16px;border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+/* type */
+.spec{display:grid;gap:14px}
+.spec .row{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:baseline;border-bottom:1px dashed var(--line);padding-bottom:12px}
+.spec .row > *{min-width:0}
+.spec .lbl{font-size:12.5px;color:var(--muted)}
+.langs{display:flex;flex-wrap:wrap;gap:10px}
+.langs span{padding:8px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:16px}
+/* phones */
+.phones{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:28px 22px;justify-items:center}
+.phone-wrap{display:grid;gap:10px;justify-items:center;max-width:100%}
+.phone-wrap .cap{max-width:300px;text-align:left;margin:0}
+.phone-wrap .cap b{color:var(--fg)}
+.phone{width:300px;max-width:100%;height:628px;border-radius:40px;background:#0B1220;padding:9px;box-shadow:0 24px 50px -18px rgba(11,37,69,.45)}
+.screen{position:relative;height:100%;border-radius:32px;overflow:hidden;background:var(--p-bg);color:var(--p-ink);font-family:var(--f-body);font-size:12.5px;line-height:1.45;display:flex;flex-direction:column}
+.sb{display:flex;justify-content:space-between;padding:10px 20px 4px;font-size:11px;font-weight:600;color:var(--p-ink)}
+.scr{flex:1;overflow:hidden;padding:6px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.lang{font-size:11px;font-weight:600;border:1px solid var(--p-line);background:var(--p-surface);padding:4px 9px;border-radius:999px;color:var(--p-ink)}
+.ph-h{font-family:var(--f-display);font-weight:800;font-size:21px;line-height:1.18;letter-spacing:-.02em;color:var(--p-ink)}
+.ph-s{color:var(--p-muted);font-size:12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:var(--r-ctl);font-weight:700;font-family:var(--f-display);font-size:13.5px;border:0}
+.btn.pri{background:var(--p-primary);color:#FFFFFF;box-shadow:0 8px 16px -8px rgba(21,87,224,.6)}
+.btn.gold{background:var(--p-gold);color:var(--p-ink)}
+.btn.ghost{background:var(--p-surface);color:var(--p-primary);border:1.5px solid #C9D8F7}
+.pcard{background:var(--p-surface);border:1px solid var(--p-line);border-radius:16px;padding:12px}
+.stepper{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.stepper i{height:5px;border-radius:9px;background:var(--p-line)}
+.stepper i.on{background:var(--p-primary)}
+.stepper i.done{background:var(--p-teal)}
+.steplbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--p-muted);font-weight:600}
+.steplbl b{color:var(--p-primary)}
+.field{border:1.5px solid var(--p-field);border-radius:12px;padding:7px 10px;background:var(--p-surface)}
+.field small{display:block;font-size:10px;color:var(--p-muted);font-weight:600}
+.field div{font-weight:600}
+.ok{color:var(--p-success);font-weight:700}
+.nw{white-space:nowrap}
+.tag{white-space:nowrap;display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px}
+.tag.gold{background:var(--p-warn-bg);color:var(--p-gold-deep)}
+.tag.mint{background:var(--p-mint);color:var(--p-teal-deep)}
+.tag.ok{background:var(--p-success-bg);color:var(--p-success)}
+.tag.err{background:var(--p-danger-bg);color:var(--p-danger)}
+.tag.sky{background:var(--p-sky);color:var(--p-primary)}
+.pkg{border:1.5px solid var(--p-line);border-radius:16px;padding:12px;background:var(--p-surface);display:grid;gap:4px}
+.pkg.sel{border:2px solid var(--p-primary);background:linear-gradient(180deg,#F5F9FF,#FFFFFF)}
+.pkg .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pkg .price{font-family:var(--f-display);font-weight:800;font-size:16px}
+.radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--p-field);flex:none}
+.radio.on{border:5px solid var(--p-primary)}
+.cam{position:relative;height:178px;border-radius:18px;background:linear-gradient(135deg,#1C2B44,#0B1220);overflow:hidden;display:grid;place-items:center}
+.pp{width:82%;height:120px;border-radius:10px;background:linear-gradient(180deg,#E9D9C1,#D9C5A6);position:relative;box-shadow:0 0 0 999px rgba(0,0,0,.25)}
+.pp .face{position:absolute;left:8%;top:14%;width:24%;height:58%;border-radius:6px;background:linear-gradient(180deg,#B8A48A,#9E8B73)}
+.pp .ln{position:absolute;left:38%;height:6px;border-radius:3px;background:#B7A27F}
+.pp .mrz{position:absolute;left:6%;right:6%;bottom:9%;height:22px;border:2px solid var(--p-gold);border-radius:4px;background:repeating-linear-gradient(90deg,#7C6A50 0 3px,transparent 3px 6px);opacity:.9}
+.corner{position:absolute;width:22px;height:22px;border:3px solid #FFFFFF}
+.checks{display:grid;gap:5px}
+.checks div{display:flex;gap:7px;align-items:center;font-size:11.5px;font-weight:600}
+.dot{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:10px;color:#FFFFFF;flex:none}
+.dot.g{background:var(--p-success)} .dot.o{background:var(--p-gold);color:var(--p-ink)} .dot.r{background:var(--p-danger)} .dot.b{background:var(--p-primary)} .dot.n{background:var(--p-line);color:var(--p-muted)}
+.doc{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:12px;background:var(--p-surface);border:1px solid var(--p-line)}
+.doc.need{border-color:#F2C96B;background:#FFFBEF}
+.addon{display:grid;grid-template-columns:34px 1fr auto;gap:9px;align-items:center;padding:8px 10px;border-radius:14px;border:1px solid var(--p-line);background:var(--p-surface)}
+.addon.on{border:2px solid var(--p-teal);background:#F4FDFC}
+.ico{width:34px;height:34px;border-radius:12px;display:grid;place-items:center}
+.ico svg{width:20px;height:20px}
+.tg{width:36px;height:22px;border-radius:999px;background:var(--p-line);position:relative;flex:none}
+.tg::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#FFFFFF;top:2px;left:2px;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg.on{background:var(--p-teal)} .tg.on::after{left:16px}
+.sticky{margin-top:auto;display:grid;gap:8px;padding-top:8px;border-top:1px solid var(--p-line)}
+.tot{display:flex;justify-content:space-between;align-items:baseline}
+.tot b{font-family:var(--f-display);font-size:17px;font-weight:800}
+.pm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pm span{border:1.5px solid var(--p-line);border-radius:10px;padding:8px 4px;text-align:center;font-size:10.5px;font-weight:700;background:var(--p-surface)}
+.pm span.on{border:2px solid var(--p-primary);color:var(--p-primary);background:#F5F9FF}
+.li{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;color:var(--p-muted)}
+.li b{color:var(--p-ink);font-weight:600}
+.tl{display:grid;gap:0}
+.tl .st{display:grid;grid-template-columns:18px 1fr;gap:10px;position:relative;padding-bottom:12px}
+.tl .st::before{content:"";position:absolute;left:8px;top:18px;bottom:0;width:2px;background:var(--p-line)}
+.tl .st.done::before{background:var(--p-teal)}
+.tl .st:last-child::before{display:none}
+.tl .st .dot{width:18px;height:18px}
+.tl .st small{display:block;color:var(--p-muted);font-size:10.5px}
+.tl .st.now b{color:var(--p-primary)}
+.pulse{box-shadow:0 0 0 4px rgba(21,87,224,.18)}
+.trv{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.pass{border-radius:22px;overflow:hidden;background:var(--p-surface);box-shadow:0 16px 30px -16px rgba(11,37,69,.35);border:1px solid var(--p-line)}
+.pass .top{background:linear-gradient(135deg,var(--p-teal),var(--p-primary));color:#FFFFFF;padding:14px;display:grid;gap:8px;position:relative}
+.pass .top .row{display:flex;justify-content:space-between;align-items:center}
+.pass .big{font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.02em}
+.pass .perf{height:14px;background:radial-gradient(circle at 0 50%,var(--p-bg) 7px,transparent 7.5px),radial-gradient(circle at 100% 50%,var(--p-bg) 7px,transparent 7.5px),var(--p-surface);border-bottom:2px dashed var(--p-line);margin:0 0 0}
+.pass .body{padding:10px 14px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.pass .body small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--p-muted);text-transform:uppercase}
+.pass .body div{font-weight:700;font-size:12px}
+.qr{grid-column:1/-1;display:flex;gap:12px;align-items:center;padding-top:6px;border-top:1px solid var(--p-line)}
+.qr svg{width:92px;height:92px;flex:none;background:#FFFFFF;padding:4px;border-radius:8px;border:1px solid var(--p-line)}
+.navbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--p-line);background:var(--p-surface);padding:7px 6px 12px}
+.navbar span{display:grid;justify-items:center;gap:2px;font-size:9.5px;font-weight:600;color:var(--p-muted)}
+.navbar span.on{color:var(--p-primary)}
+.navbar svg{width:19px;height:19px}
+.hero-m{border-radius:20px;overflow:hidden;position:relative;height:178px;background:linear-gradient(180deg,#FFF3D6 0%,#FFE4AE 40%,#A9E6E1 66%,#3DBEB8 84%,#1D86CF 100%)}
+.hero-m .sun{position:absolute;width:90px;height:90px;border-radius:50%;right:28px;top:18px;background:radial-gradient(circle,#FFD36B 0 52%,#FFB62700 72%)}
+.hero-m svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:auto}
+.hero-m .plane{position:absolute;left:22px;top:26px;width:46px;height:auto}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mini div{display:grid;justify-items:center;text-align:center;gap:4px;font-size:9.5px;font-weight:600;color:var(--p-muted)}
+.mini .n{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;color:var(--p-primary);background:var(--p-sky)}
+.trust{display:flex;gap:8px;align-items:center;font-size:10.5px;color:var(--p-teal-deep);font-weight:600;background:var(--p-mint);border-radius:12px;padding:7px 10px}
+/* desktop */
+.desk{border-radius:18px;overflow:hidden;border:1px solid #D5DCE6;background:#F6F8FB;color:#0B2545;font-size:12.5px;display:grid;grid-template-columns:200px 1fr;min-height:420px}
+.desk aside{background:#0B2545;color:#C9D5E8;padding:16px 12px;display:grid;align-content:start;gap:4px}
+.desk aside .it{padding:8px 10px;border-radius:10px;font-weight:600}
+.desk aside .it.on{background:#18345C;color:#FFFFFF}
+.desk main{padding:18px;display:grid;gap:14px;align-content:start;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi{background:#FFFFFF;border:1px solid #E1E6EE;border-radius:14px;padding:12px}
+.kpi small{color:#4A5B73;font-weight:600;font-size:11px}
+.kpi b{display:block;font-family:var(--f-display);font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto;background:#FFFFFF;border:1px solid #E1E6EE;border-radius:14px}
+.tbl table{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+.tbl th{text-align:left;font-size:11px;color:#4A5B73;font-weight:700;padding:9px 9px;background:#F3F6FA;border-bottom:1px solid #E1E6EE}
+.tbl td{padding:9px 9px;font-size:12px;border-bottom:1px solid #EEF1F5;white-space:nowrap}
+.sla{display:inline-block;width:64px;height:6px;border-radius:9px;background:#E6EAF0;position:relative;overflow:hidden;vertical-align:middle;margin-right:6px}
+.sla i{position:absolute;inset:0 auto 0 0;border-radius:9px}
+/* components */
+.comp{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.comp .btn{padding:0 18px;min-width:120px}
+ul.rules{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--muted);font-size:14px}
+ul.rules b{color:var(--fg)}
+.note{font-size:13px;color:var(--muted);background:var(--chip);border-radius:14px;padding:12px 14px}
+@media (max-width:920px){.hero{grid-template-columns:1fr}.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.desk{grid-template-columns:1fr}.desk aside{display:none}.kpis{grid-template-columns:1fr 1fr}}
+@media (max-width:620px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.spec .row{grid-template-columns:1fr;gap:4px}}
+@media (prefers-reduced-motion:no-preference){.pulse{animation:pl 2s ease-in-out infinite}@keyframes pl{50%{box-shadow:0 0 0 7px rgba(21,87,224,.08)}}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="mg" x1="6" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0FB5AE"/><stop offset="1" stop-color="#1557E0"/></linearGradient>
+    <radialGradient id="ms" cx="14" cy="8" r="40" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <symbol id="mark" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="16" fill="url(#mg)"/><rect width="64" height="64" rx="16" fill="url(#ms)"/>
+      <path d="M18 51V31.5C18 24 24.6 18.6 32 12.4 39.4 18.6 46 24 46 31.5V51" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M24.6 35.6 30.1 41 40.4 29.8" fill="none" stroke="#FFB627" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="32" cy="6.6" r="2.4" fill="#FFB627"/>
+    </symbol>
+    <symbol id="fav" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="url(#mg)"/>
+      <path d="M16 54V31C16 22.5 23.5 16.5 32 9.5 40.5 16.5 48 22.5 48 31V54" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M23 35.5 29.5 42 41.5 29" fill="none" stroke="#FFB627" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="skyline" viewBox="0 0 400 120" preserveAspectRatio="xMidYMax slice">
+      <path d="M0 92 C60 80 120 96 200 88 C280 80 340 94 400 86 V120 H0Z" fill="#0FB5AE" opacity=".55"/>
+      <g fill="#0B2545" opacity=".82">
+        <path d="M58 96 l6-34 l3-18 l3 18 l6 34z"/><rect x="54" y="94" width="26" height="8"/>
+        <path d="M92 98 l4-22 l2-12 l2 12 l4 22z"/>
+        <path d="M250 96 l5-26 h22 l5 26z"/><path d="M247 72 l19-16 l19 16z"/><path d="M252 60 l14-12 l14 12z"/><rect x="264" y="38" width="4" height="12"/>
+        <path d="M318 98 l5-40 l4-26 l4 26 l5 40z"/><rect x="314" y="96" width="26" height="8"/>
+        <path d="M350 100 l3-18 l2-10 l2 10 l3 18z"/>
+      </g>
+      <path d="M0 104 C70 96 140 110 210 102 C290 94 340 108 400 100 V120 H0Z" fill="#1557E0" opacity=".9"/>
+      <path d="M0 112 C80 106 150 118 230 112 C300 106 350 116 400 110 V120 H0Z" fill="#0B2545" opacity=".55"/>
+    </symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="M2.5 13.5 21 6.5c.8-.3 1.4.6.8 1.2L12 17l-1.5 4.2c-.2.6-1 .6-1.2 0L7.8 16 3 14.7c-.6-.2-.7-1-.1-1.2z" fill="currentColor"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm7 0v5h5M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8l-5 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-sim" viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="9" y="11" width="6" height="6" rx="1" fill="currentColor"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V12l1.8-4.5A2 2 0 0 1 8.7 6h6.6a2 2 0 0 1 1.9 1.5L19 12v4M4 12h16v5H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7.5" cy="17.5" r="1.6" fill="currentColor"/><circle cx="16.5" cy="17.5" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="head">
+    <svg class="wm" viewBox="0 0 219 64" role="img" aria-label="Thailand Global E-VOA"><use href="#mark" width="64" height="64"/><path d="M80.346 22.0V14.8125H78.1265V13.432500000000001H84.1065V14.8125H81.9215V22.0Z M87.161 22.0V13.432500000000001H88.725V17.17H92.37049999999999V13.432500000000001H93.946V22.0H92.37049999999999V18.55H88.725V22.0Z M96.98899999999999 22.0 99.94449999999999 13.432500000000001H101.96849999999999L104.92399999999999 22.0H103.222L102.6125 20.16H99.3005L98.67949999999999 22.0ZM99.749 18.78H102.164L100.738 14.5135H101.175Z M107.9785 22.0V13.432500000000001H109.54249999999999V22.0Z M113.28699999999999 22.0V13.432500000000001H114.85099999999998V20.62H118.5195V22.0Z M120.92999999999998 22.0 123.88549999999998 13.432500000000001H125.90949999999998L128.86499999999998 22.0H127.16299999999998L126.55349999999999 20.16H123.24149999999999L122.62049999999998 22.0ZM123.68999999999998 18.78H126.10499999999999L124.67899999999999 14.5135H125.11599999999999Z M131.9195 22.0V13.432500000000001H133.1385L137.8535 19.7805L137.221 19.907V13.432500000000001H138.785V22.0H137.5545L132.9085 15.606L133.4835 15.4795V22.0Z M142.541 22.0V13.432500000000001H145.3355Q146.6925 13.432500000000001 147.69875 13.978750000000002Q148.70499999999998 14.525 149.257 15.48525Q149.809 16.4455 149.809 17.7105Q149.809 18.964 149.257 19.93575Q148.70499999999998 20.9075 147.69875 21.45375Q146.6925 22.0 145.3355 22.0ZM144.105 20.62H145.37Q146.244 20.62 146.88225 20.25775Q147.5205 19.8955 147.877 19.24575Q148.2335 18.596 148.2335 17.7105Q148.2335 16.8135 147.877 16.1695Q147.5205 15.525500000000001 146.88225 15.169Q146.244 14.8125 145.37 14.8125H144.105Z  M161.35749999999996 22.138Q160.43749999999997 22.138 159.65549999999996 21.8045Q158.87349999999998 21.471 158.28699999999998 20.872999999999998Q157.70049999999998 20.275 157.37274999999997 19.47Q157.04499999999996 18.665 157.04499999999996 17.7105Q157.04499999999996 16.756 157.36124999999998 15.94525Q157.67749999999998 15.1345 158.25824999999998 14.54225Q158.83899999999997 13.95 159.62099999999998 13.62225Q160.40299999999996 13.2945 161.32299999999998 13.2945Q162.24299999999997 13.2945 162.97324999999995 13.605Q163.70349999999996 13.9155 164.20949999999996 14.42725Q164.71549999999996 14.939 164.93399999999997 15.5485L163.54249999999996 16.2155Q163.30099999999996 15.5485 162.72599999999997 15.134500000000001Q162.15099999999998 14.720500000000001 161.32299999999998 14.720500000000001Q160.51799999999997 14.720500000000001 159.90274999999997 15.100000000000001Q159.28749999999997 15.4795 158.94824999999997 16.1465Q158.60899999999998 16.8135 158.60899999999998 17.7105Q158.60899999999998 18.6075 158.95974999999999 19.280250000000002Q159.31049999999996 19.953 159.93149999999997 20.3325Q160.55249999999998 20.712 161.35749999999996 20.712Q162.01299999999998 20.712 162.56499999999997 20.45325Q163.11699999999996 20.1945 163.45049999999998 19.71725Q163.78399999999996 19.240000000000002 163.78399999999996 18.5845V17.929000000000002L164.49699999999996 18.55H161.32299999999998V17.2275H165.34799999999996V18.09Q165.34799999999996 19.079 165.01449999999997 19.838Q164.68099999999998 20.597 164.11174999999997 21.10875Q163.54249999999996 21.6205 162.82949999999997 21.87925Q162.11649999999997 22.138 161.35749999999996 22.138Z M168.68999999999997 22.0V13.432500000000001H170.25399999999996V20.62H173.92249999999996V22.0Z M181.02499999999998 22.138Q180.082 22.138 179.26549999999997 21.8045Q178.44899999999998 21.471 177.8395 20.872999999999998Q177.23 20.275 176.89074999999997 19.46425Q176.55149999999998 18.6535 176.55149999999998 17.7105Q176.55149999999998 16.756 176.885 15.951Q177.21849999999998 15.146 177.82799999999997 14.548Q178.4375 13.95 179.254 13.62225Q180.07049999999998 13.2945 181.02499999999998 13.2945Q181.97949999999997 13.2945 182.796 13.628Q183.61249999999998 13.961500000000001 184.22199999999998 14.55375Q184.83149999999998 15.146 185.17075 15.951Q185.51 16.756 185.51 17.7105Q185.51 18.6535 185.165 19.46425Q184.82 20.275 184.2105 20.872999999999998Q183.601 21.471 182.79025 21.8045Q181.97949999999997 22.138 181.02499999999998 22.138ZM181.02499999999998 20.712Q181.6575 20.712 182.1865 20.48775Q182.7155 20.2635 183.11225 19.861Q183.509 19.4585 183.72175 18.9065Q183.93449999999999 18.3545 183.93449999999999 17.7105Q183.93449999999999 17.0665 183.72175 16.52025Q183.509 15.974 183.11225 15.56575Q182.7155 15.157499999999999 182.1865 14.939Q181.6575 14.720500000000001 181.02499999999998 14.720500000000001Q180.404 14.720500000000001 179.875 14.939Q179.34599999999998 15.157499999999999 178.94924999999998 15.56575Q178.55249999999998 15.974 178.334 16.52025Q178.1155 17.0665 178.1155 17.7105Q178.1155 18.3545 178.334 18.9065Q178.55249999999998 19.4585 178.94924999999998 19.861Q179.34599999999998 20.2635 179.875 20.48775Q180.404 20.712 181.02499999999998 20.712Z M189.0015 22.0V13.432500000000001H192.61249999999998Q193.46349999999998 13.432500000000001 194.06725 13.725750000000001Q194.671 14.019 194.99874999999997 14.55375Q195.32649999999998 15.0885 195.32649999999998 15.8475Q195.32649999999998 16.434 195.01024999999998 16.94575Q194.694 17.4575 194.004 17.791V17.0665Q194.63649999999998 17.308 195.0045 17.6645Q195.3725 18.021 195.522 18.458Q195.67149999999998 18.895 195.67149999999998 19.378Q195.67149999999998 20.6085 194.86075 21.30425Q194.04999999999998 22.0 192.61249999999998 22.0ZM190.5655 20.62H192.77349999999998Q193.38299999999998 20.62 193.74525 20.28075Q194.1075 19.9415 194.1075 19.378Q194.1075 18.8145 193.74525 18.4695Q193.38299999999998 18.1245 192.77349999999998 18.1245H190.5655ZM190.5655 16.756H192.69299999999998Q193.176 16.756 193.46349999999998 16.474249999999998Q193.75099999999998 16.1925 193.75099999999998 15.744Q193.75099999999998 15.2955 193.46349999999998 15.031Q193.176 14.7665 192.69299999999998 14.7665H190.5655Z M198.3465 22.0 201.302 13.432500000000001H203.326L206.2815 22.0H204.5795L203.97 20.16H200.658L200.037 22.0ZM201.1065 18.78H203.5215L202.0955 14.5135H202.5325Z M209.336 22.0V13.432500000000001H210.9V20.62H214.5685V22.0Z" style="fill:var(--wm-sub)"/><path d="M79.178 55.0V30.415H95.711V34.87H84.293V40.447H95.051V44.902H84.293V50.545H95.711V55.0Z M127.137 55.0 118.722 30.415H124.332L130.668 50.149H129.546L135.882 30.415H141.492L133.077 55.0Z M155.682 55.396Q152.91 55.396 150.534 54.439Q148.158 53.482 146.39249999999998 51.7495Q144.62699999999998 50.016999999999996 143.637 47.706999999999994Q142.647 45.397 142.647 42.691Q142.647 39.985 143.6205 37.675Q144.594 35.364999999999995 146.3595 33.649Q148.125 31.933 150.50099999999998 30.976Q152.87699999999998 30.019 155.682 30.019Q158.487 30.019 160.863 30.976Q163.239 31.933 165.0045 33.649Q166.76999999999998 35.364999999999995 167.74349999999998 37.675Q168.71699999999998 39.985 168.71699999999998 42.691Q168.71699999999998 45.397 167.72699999999998 47.706999999999994Q166.737 50.016999999999996 164.9715 51.7495Q163.206 53.482 160.82999999999998 54.439Q158.454 55.396 155.682 55.396ZM155.682 50.775999999999996Q157.365 50.775999999999996 158.8005 50.182Q160.236 49.588 161.325 48.5155Q162.414 47.443 163.00799999999998 45.958Q163.602 44.473 163.602 42.691Q163.602 40.909 163.00799999999998 39.4405Q162.414 37.971999999999994 161.325 36.882999999999996Q160.236 35.794 158.8005 35.216499999999996Q157.365 34.638999999999996 155.682 34.638999999999996Q153.999 34.638999999999996 152.56349999999998 35.216499999999996Q151.128 35.794 150.039 36.882999999999996Q148.95 37.971999999999994 148.356 39.4405Q147.762 40.909 147.762 42.691Q147.762 44.473 148.356 45.958Q148.95 47.443 150.039 48.5155Q151.128 49.588 152.56349999999998 50.182Q153.999 50.775999999999996 155.682 50.775999999999996Z M169.54199999999997 55.0 177.85799999999998 30.415H184.65599999999998L192.97199999999998 55.0H187.39499999999998L185.74499999999998 49.984H176.73599999999996L175.08599999999998 55.0ZM178.15499999999997 45.528999999999996H184.32599999999996L180.56399999999996 33.913H181.95Z" style="fill:var(--wm-ink)"/><path d="M99.973 48.135999999999996V43.846000000000004H114.823V48.135999999999996Z" fill="#FFB627"/></svg>
+    <span class="pill">ข้อเสนอ UX/UI · ฉบับที่ 1 · พ.ย. 2026</span>
+  </header>
+
+  <section>
+    <div class="hero">
+      <div style="display:grid;gap:14px">
+        <div class="eyebrow">Design concept · “Sunny Gateway”</div>
+        <h1>ประตูสู่เมืองไทยที่สดใส <span class="nw">อุ่นใจ</span> และผ่านได้ในไม่กี่นาที</h1>
+        <p class="lead">นักท่องเที่ยวต้องรู้สึกสองอย่างพร้อมกัน: <b>“ปลอดภัย เชื่อถือได้”</b> เพราะกำลังส่งข้อมูลพาสปอร์ตให้ด่านตรวจคนเข้าเมือง และ <b>“ตื่นเต้น อยากมาเที่ยว”</b> เพราะทริปกำลังจะเริ่ม
+          ชุดสีจึงจับคู่ <b>น้ำเงินเข้มที่หนักแน่น</b> (ความน่าเชื่อถือ) กับ <b>ฟ้าทะเลอันดามัน + เหลืองทองแดดเมืองไทย</b> (ความสดใส) บนพื้นสีทรายอุ่น ๆ</p>
+        <div class="kw"><span>Trustworthy</span><span>Sunny &amp; joyful</span><span>Effortless</span><span>Global, ไม่ใช่แค่ไทยจ๋า</span><span>Mobile-first</span></div>
+      </div>
+      <div class="sunny" role="img" aria-label="ภาพแนวคิด: พระอาทิตย์ ทะเล และเส้นขอบฟ้าวัดไทย">
+        <div class="sun"></div>
+        <svg class="sky" viewBox="0 0 400 120" aria-hidden="true"><use href="#skyline"/></svg>
+        <svg class="bigmark" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">1 · โลโก้ &amp; Favicon</div>
+    <h2>“ซุ้มประตู + <span class="nw">เครื่องหมายถูก</span>” = <span class="nw">ผ่านด่านได้แล้ว</span></h2>
+    <p class="lead">สัญลักษณ์คือ <b>ซุ้มประตูทรงยอดแหลม</b> (ได้กลิ่นอายซุ้มประตูวัดไทยและแนวคิด “Seamless Gateway” ใน proposal) มี <b>เครื่องหมายถูกสีทอง</b> อยู่ข้างใน = อนุมัติแล้ว และ <b>จุดทองที่ยอด</b> แทนพระอาทิตย์/ยอดฉัตร
+      พื้นไล่สีจากฟ้าทะเล (teal) ไปน้ำเงิน ตัวอักษร “E-VOA” ใช้ขีดกลางสีทองเชื่อมคำ ไม่ใช้ตราครุฑหรือตรา สตม. เพื่อไม่ให้ดูเป็นเว็บของรัฐบาลเอง</p>
+    <div class="grid3">
+      <div><div class="logo-tile light"><svg viewBox="0 0 219 64" width="230" role="img" aria-label="โลโก้แนวนอนบนพื้นขาว" style="--wm-ink:#0B2545;--wm-sub:#0A7C78"><use href="#mark" width="64" height="64"/><path d="M80.346 22.0V14.8125H78.1265V13.432500000000001H84.1065V14.8125H81.9215V22.0Z M87.161 22.0V13.432500000000001H88.725V17.17H92.37049999999999V13.432500000000001H93.946V22.0H92.37049999999999V18.55H88.725V22.0Z M96.98899999999999 22.0 99.94449999999999 13.432500000000001H101.96849999999999L104.92399999999999 22.0H103.222L102.6125 20.16H99.3005L98.67949999999999 22.0ZM99.749 18.78H102.164L100.738 14.5135H101.175Z M107.9785 22.0V13.432500000000001H109.54249999999999V22.0Z M113.28699999999999 22.0V13.432500000000001H114.85099999999998V20.62H118.5195V22.0Z M120.92999999999998 22.0 123.88549999999998 13.432500000000001H125.90949999999998L128.86499999999998 22.0H127.16299999999998L126.55349999999999 20.16H123.24149999999999L122.62049999999998 22.0ZM123.68999999999998 18.78H126.10499999999999L124.67899999999999 14.5135H125.11599999999999Z M131.9195 22.0V13.432500000000001H133.1385L137.8535 19.7805L137.221 19.907V13.432500000000001H138.785V22.0H137.5545L132.9085 15.606L133.4835 15.4795V22.0Z M142.541 22.0V13.432500000000001H145.3355Q146.6925 13.432500000000001 147.69875 13.978750000000002Q148.70499999999998 14.525 149.257 15.48525Q149.809 16.4455 149.809 17.7105Q149.809 18.964 149.257 19.93575Q148.70499999999998 20.9075 147.69875 21.45375Q146.6925 22.0 145.3355 22.0ZM144.105 20.62H145.37Q146.244 20.62 146.88225 20.25775Q147.5205 19.8955 147.877 19.24575Q148.2335 18.596 148.2335 17.7105Q148.2335 16.8135 147.877 16.1695Q147.5205 15.525500000000001 146.88225 15.169Q146.244 14.8125 145.37 14.8125H144.105Z  M161.35749999999996 22.138Q160.43749999999997 22.138 159.65549999999996 21.8045Q158.87349999999998 21.471 158.28699999999998 20.872999999999998Q157.70049999999998 20.275 157.37274999999997 19.47Q157.04499999999996 18.665 157.04499999999996 17.7105Q157.04499999999996 16.756 157.36124999999998 15.94525Q157.67749999999998 15.1345 158.25824999999998 14.54225Q158.83899999999997 13.95 159.62099999999998 13.62225Q160.40299999999996 13.2945 161.32299999999998 13.2945Q162.24299999999997 13.2945 162.97324999999995 13.605Q163.70349999999996 13.9155 164.20949999999996 14.42725Q164.71549999999996 14.939 164.93399999999997 15.5485L163.54249999999996 16.2155Q163.30099999999996 15.5485 162.72599999999997 15.134500000000001Q162.15099999999998 14.720500000000001 161.32299999999998 14.720500000000001Q160.51799999999997 14.720500000000001 159.90274999999997 15.100000000000001Q159.28749999999997 15.4795 158.94824999999997 16.1465Q158.60899999999998 16.8135 158.60899999999998 17.7105Q158.60899999999998 18.6075 158.95974999999999 19.280250000000002Q159.31049999999996 19.953 159.93149999999997 20.3325Q160.55249999999998 20.712 161.35749999999996 20.712Q162.01299999999998 20.712 162.56499999999997 20.45325Q163.11699999999996 20.1945 163.45049999999998 19.71725Q163.78399999999996 19.240000000000002 163.78399999999996 18.5845V17.929000000000002L164.49699999999996 18.55H161.32299999999998V17.2275H165.34799999999996V18.09Q165.34799999999996 19.079 165.01449999999997 19.838Q164.68099999999998 20.597 164.11174999999997 21.10875Q163.54249999999996 21.6205 162.82949999999997 21.87925Q162.11649999999997 22.138 161.35749999999996 22.138Z M168.68999999999997 22.0V13.432500000000001H170.25399999999996V20.62H173.92249999999996V22.0Z M181.02499999999998 22.138Q180.082 22.138 179.26549999999997 21.8045Q178.44899999999998 21.471 177.8395 20.872999999999998Q177.23 20.275 176.89074999999997 19.46425Q176.55149999999998 18.6535 176.55149999999998 17.7105Q176.55149999999998 16.756 176.885 15.951Q177.21849999999998 15.146 177.82799999999997 14.548Q178.4375 13.95 179.254 13.62225Q180.07049999999998 13.2945 181.02499999999998 13.2945Q181.97949999999997 13.2945 182.796 13.628Q183.61249999999998 13.961500000000001 184.22199999999998 14.55375Q184.83149999999998 15.146 185.17075 15.951Q185.51 16.756 185.51 17.7105Q185.51 18.6535 185.165 19.46425Q184.82 20.275 184.2105 20.872999999999998Q183.601 21.471 182.79025 21.8045Q181.97949999999997 22.138 181.02499999999998 22.138ZM181.02499999999998 20.712Q181.6575 20.712 182.1865 20.48775Q182.7155 20.2635 183.11225 19.861Q183.509 19.4585 183.72175 18.9065Q183.93449999999999 18.3545 183.93449999999999 17.7105Q183.93449999999999 17.0665 183.72175 16.52025Q183.509 15.974 183.11225 15.56575Q182.7155 15.157499999999999 182.1865 14.939Q181.6575 14.720500000000001 181.02499999999998 14.720500000000001Q180.404 14.720500000000001 179.875 14.939Q179.34599999999998 15.157499999999999 178.94924999999998 15.56575Q178.55249999999998 15.974 178.334 16.52025Q178.1155 17.0665 178.1155 17.7105Q178.1155 18.3545 178.334 18.9065Q178.55249999999998 19.4585 178.94924999999998 19.861Q179.34599999999998 20.2635 179.875 20.48775Q180.404 20.712 181.02499999999998 20.712Z M189.0015 22.0V13.432500000000001H192.61249999999998Q193.46349999999998 13.432500000000001 194.06725 13.725750000000001Q194.671 14.019 194.99874999999997 14.55375Q195.32649999999998 15.0885 195.32649999999998 15.8475Q195.32649999999998 16.434 195.01024999999998 16.94575Q194.694 17.4575 194.004 17.791V17.0665Q194.63649999999998 17.308 195.0045 17.6645Q195.3725 18.021 195.522 18.458Q195.67149999999998 18.895 195.67149999999998 19.378Q195.67149999999998 20.6085 194.86075 21.30425Q194.04999999999998 22.0 192.61249999999998 22.0ZM190.5655 20.62H192.77349999999998Q193.38299999999998 20.62 193.74525 20.28075Q194.1075 19.9415 194.1075 19.378Q194.1075 18.8145 193.74525 18.4695Q193.38299999999998 18.1245 192.77349999999998 18.1245H190.5655ZM190.5655 16.756H192.69299999999998Q193.176 16.756 193.46349999999998 16.474249999999998Q193.75099999999998 16.1925 193.75099999999998 15.744Q193.75099999999998 15.2955 193.46349999999998 15.031Q193.176 14.7665 192.69299999999998 14.7665H190.5655Z M198.3465 22.0 201.302 13.432500000000001H203.326L206.2815 22.0H204.5795L203.97 20.16H200.658L200.037 22.0ZM201.1065 18.78H203.5215L202.0955 14.5135H202.5325Z M209.336 22.0V13.432500000000001H210.9V20.62H214.5685V22.0Z" style="fill:var(--wm-sub)"/><path d="M79.178 55.0V30.415H95.711V34.87H84.293V40.447H95.051V44.902H84.293V50.545H95.711V55.0Z M127.137 55.0 118.722 30.415H124.332L130.668 50.149H129.546L135.882 30.415H141.492L133.077 55.0Z M155.682 55.396Q152.91 55.396 150.534 54.439Q148.158 53.482 146.39249999999998 51.7495Q144.62699999999998 50.016999999999996 143.637 47.706999999999994Q142.647 45.397 142.647 42.691Q142.647 39.985 143.6205 37.675Q144.594 35.364999999999995 146.3595 33.649Q148.125 31.933 150.50099999999998 30.976Q152.87699999999998 30.019 155.682 30.019Q158.487 30.019 160.863 30.976Q163.239 31.933 165.0045 33.649Q166.76999999999998 35.364999999999995 167.74349999999998 37.675Q168.71699999999998 39.985 168.71699999999998 42.691Q168.71699999999998 45.397 167.72699999999998 47.706999999999994Q166.737 50.016999999999996 164.9715 51.7495Q163.206 53.482 160.82999999999998 54.439Q158.454 55.396 155.682 55.396ZM155.682 50.775999999999996Q157.365 50.775999999999996 158.8005 50.182Q160.236 49.588 161.325 48.5155Q162.414 47.443 163.00799999999998 45.958Q163.602 44.473 163.602 42.691Q163.602 40.909 163.00799999999998 39.4405Q162.414 37.971999999999994 161.325 36.882999999999996Q160.236 35.794 158.8005 35.216499999999996Q157.365 34.638999999999996 155.682 34.638999999999996Q153.999 34.638999999999996 152.56349999999998 35.216499999999996Q151.128 35.794 150.039 36.882999999999996Q148.95 37.971999999999994 148.356 39.4405Q147.762 40.909 147.762 42.691Q147.762 44.473 148.356 45.958Q148.95 47.443 150.039 48.5155Q151.128 49.588 152.56349999999998 50.182Q153.999 50.775999999999996 155.682 50.775999999999996Z M169.54199999999997 55.0 177.85799999999998 30.415H184.65599999999998L192.97199999999998 55.0H187.39499999999998L185.74499999999998 49.984H176.73599999999996L175.08599999999998 55.0ZM178.15499999999997 45.528999999999996H184.32599999999996L180.56399999999996 33.913H181.95Z" style="fill:var(--wm-ink)"/><path d="M99.973 48.135999999999996V43.846000000000004H114.823V48.135999999999996Z" fill="#FFB627"/></svg></div><p class="cap">แนวนอน (หลัก) · <span class="mono">brand/logo-horizontal.svg</span></p></div>
+      <div><div class="logo-tile dark"><svg viewBox="0 0 219 64" width="230" role="img" aria-label="โลโก้แนวนอนบนพื้นเข้ม" style="--wm-ink:#FFFFFF;--wm-sub:#9FE7E3"><use href="#mark" width="64" height="64"/><path d="M80.346 22.0V14.8125H78.1265V13.432500000000001H84.1065V14.8125H81.9215V22.0Z M87.161 22.0V13.432500000000001H88.725V17.17H92.37049999999999V13.432500000000001H93.946V22.0H92.37049999999999V18.55H88.725V22.0Z M96.98899999999999 22.0 99.94449999999999 13.432500000000001H101.96849999999999L104.92399999999999 22.0H103.222L102.6125 20.16H99.3005L98.67949999999999 22.0ZM99.749 18.78H102.164L100.738 14.5135H101.175Z M107.9785 22.0V13.432500000000001H109.54249999999999V22.0Z M113.28699999999999 22.0V13.432500000000001H114.85099999999998V20.62H118.5195V22.0Z M120.92999999999998 22.0 123.88549999999998 13.432500000000001H125.90949999999998L128.86499999999998 22.0H127.16299999999998L126.55349999999999 20.16H123.24149999999999L122.62049999999998 22.0ZM123.68999999999998 18.78H126.10499999999999L124.67899999999999 14.5135H125.11599999999999Z M131.9195 22.0V13.432500000000001H133.1385L137.8535 19.7805L137.221 19.907V13.432500000000001H138.785V22.0H137.5545L132.9085 15.606L133.4835 15.4795V22.0Z M142.541 22.0V13.432500000000001H145.3355Q146.6925 13.432500000000001 147.69875 13.978750000000002Q148.70499999999998 14.525 149.257 15.48525Q149.809 16.4455 149.809 17.7105Q149.809 18.964 149.257 19.93575Q148.70499999999998 20.9075 147.69875 21.45375Q146.6925 22.0 145.3355 22.0ZM144.105 20.62H145.37Q146.244 20.62 146.88225 20.25775Q147.5205 19.8955 147.877 19.24575Q148.2335 18.596 148.2335 17.7105Q148.2335 16.8135 147.877 16.1695Q147.5205 15.525500000000001 146.88225 15.169Q146.244 14.8125 145.37 14.8125H144.105Z  M161.35749999999996 22.138Q160.43749999999997 22.138 159.65549999999996 21.8045Q158.87349999999998 21.471 158.28699999999998 20.872999999999998Q157.70049999999998 20.275 157.37274999999997 19.47Q157.04499999999996 18.665 157.04499999999996 17.7105Q157.04499999999996 16.756 157.36124999999998 15.94525Q157.67749999999998 15.1345 158.25824999999998 14.54225Q158.83899999999997 13.95 159.62099999999998 13.62225Q160.40299999999996 13.2945 161.32299999999998 13.2945Q162.24299999999997 13.2945 162.97324999999995 13.605Q163.70349999999996 13.9155 164.20949999999996 14.42725Q164.71549999999996 14.939 164.93399999999997 15.5485L163.54249999999996 16.2155Q163.30099999999996 15.5485 162.72599999999997 15.134500000000001Q162.15099999999998 14.720500000000001 161.32299999999998 14.720500000000001Q160.51799999999997 14.720500000000001 159.90274999999997 15.100000000000001Q159.28749999999997 15.4795 158.94824999999997 16.1465Q158.60899999999998 16.8135 158.60899999999998 17.7105Q158.60899999999998 18.6075 158.95974999999999 19.280250000000002Q159.31049999999996 19.953 159.93149999999997 20.3325Q160.55249999999998 20.712 161.35749999999996 20.712Q162.01299999999998 20.712 162.56499999999997 20.45325Q163.11699999999996 20.1945 163.45049999999998 19.71725Q163.78399999999996 19.240000000000002 163.78399999999996 18.5845V17.929000000000002L164.49699999999996 18.55H161.32299999999998V17.2275H165.34799999999996V18.09Q165.34799999999996 19.079 165.01449999999997 19.838Q164.68099999999998 20.597 164.11174999999997 21.10875Q163.54249999999996 21.6205 162.82949999999997 21.87925Q162.11649999999997 22.138 161.35749999999996 22.138Z M168.68999999999997 22.0V13.432500000000001H170.25399999999996V20.62H173.92249999999996V22.0Z M181.02499999999998 22.138Q180.082 22.138 179.26549999999997 21.8045Q178.44899999999998 21.471 177.8395 20.872999999999998Q177.23 20.275 176.89074999999997 19.46425Q176.55149999999998 18.6535 176.55149999999998 17.7105Q176.55149999999998 16.756 176.885 15.951Q177.21849999999998 15.146 177.82799999999997 14.548Q178.4375 13.95 179.254 13.62225Q180.07049999999998 13.2945 181.02499999999998 13.2945Q181.97949999999997 13.2945 182.796 13.628Q183.61249999999998 13.961500000000001 184.22199999999998 14.55375Q184.83149999999998 15.146 185.17075 15.951Q185.51 16.756 185.51 17.7105Q185.51 18.6535 185.165 19.46425Q184.82 20.275 184.2105 20.872999999999998Q183.601 21.471 182.79025 21.8045Q181.97949999999997 22.138 181.02499999999998 22.138ZM181.02499999999998 20.712Q181.6575 20.712 182.1865 20.48775Q182.7155 20.2635 183.11225 19.861Q183.509 19.4585 183.72175 18.9065Q183.93449999999999 18.3545 183.93449999999999 17.7105Q183.93449999999999 17.0665 183.72175 16.52025Q183.509 15.974 183.11225 15.56575Q182.7155 15.157499999999999 182.1865 14.939Q181.6575 14.720500000000001 181.02499999999998 14.720500000000001Q180.404 14.720500000000001 179.875 14.939Q179.34599999999998 15.157499999999999 178.94924999999998 15.56575Q178.55249999999998 15.974 178.334 16.52025Q178.1155 17.0665 178.1155 17.7105Q178.1155 18.3545 178.334 18.9065Q178.55249999999998 19.4585 178.94924999999998 19.861Q179.34599999999998 20.2635 179.875 20.48775Q180.404 20.712 181.02499999999998 20.712Z M189.0015 22.0V13.432500000000001H192.61249999999998Q193.46349999999998 13.432500000000001 194.06725 13.725750000000001Q194.671 14.019 194.99874999999997 14.55375Q195.32649999999998 15.0885 195.32649999999998 15.8475Q195.32649999999998 16.434 195.01024999999998 16.94575Q194.694 17.4575 194.004 17.791V17.0665Q194.63649999999998 17.308 195.0045 17.6645Q195.3725 18.021 195.522 18.458Q195.67149999999998 18.895 195.67149999999998 19.378Q195.67149999999998 20.6085 194.86075 21.30425Q194.04999999999998 22.0 192.61249999999998 22.0ZM190.5655 20.62H192.77349999999998Q193.38299999999998 20.62 193.74525 20.28075Q194.1075 19.9415 194.1075 19.378Q194.1075 18.8145 193.74525 18.4695Q193.38299999999998 18.1245 192.77349999999998 18.1245H190.5655ZM190.5655 16.756H192.69299999999998Q193.176 16.756 193.46349999999998 16.474249999999998Q193.75099999999998 16.1925 193.75099999999998 15.744Q193.75099999999998 15.2955 193.46349999999998 15.031Q193.176 14.7665 192.69299999999998 14.7665H190.5655Z M198.3465 22.0 201.302 13.432500000000001H203.326L206.2815 22.0H204.5795L203.97 20.16H200.658L200.037 22.0ZM201.1065 18.78H203.5215L202.0955 14.5135H202.5325Z M209.336 22.0V13.432500000000001H210.9V20.62H214.5685V22.0Z" style="fill:var(--wm-sub)"/><path d="M79.178 55.0V30.415H95.711V34.87H84.293V40.447H95.051V44.902H84.293V50.545H95.711V55.0Z M127.137 55.0 118.722 30.415H124.332L130.668 50.149H129.546L135.882 30.415H141.492L133.077 55.0Z M155.682 55.396Q152.91 55.396 150.534 54.439Q148.158 53.482 146.39249999999998 51.7495Q144.62699999999998 50.016999999999996 143.637 47.706999999999994Q142.647 45.397 142.647 42.691Q142.647 39.985 143.6205 37.675Q144.594 35.364999999999995 146.3595 33.649Q148.125 31.933 150.50099999999998 30.976Q152.87699999999998 30.019 155.682 30.019Q158.487 30.019 160.863 30.976Q163.239 31.933 165.0045 33.649Q166.76999999999998 35.364999999999995 167.74349999999998 37.675Q168.71699999999998 39.985 168.71699999999998 42.691Q168.71699999999998 45.397 167.72699999999998 47.706999999999994Q166.737 50.016999999999996 164.9715 51.7495Q163.206 53.482 160.82999999999998 54.439Q158.454 55.396 155.682 55.396ZM155.682 50.775999999999996Q157.365 50.775999999999996 158.8005 50.182Q160.236 49.588 161.325 48.5155Q162.414 47.443 163.00799999999998 45.958Q163.602 44.473 163.602 42.691Q163.602 40.909 163.00799999999998 39.4405Q162.414 37.971999999999994 161.325 36.882999999999996Q160.236 35.794 158.8005 35.216499999999996Q157.365 34.638999999999996 155.682 34.638999999999996Q153.999 34.638999999999996 152.56349999999998 35.216499999999996Q151.128 35.794 150.039 36.882999999999996Q148.95 37.971999999999994 148.356 39.4405Q147.762 40.909 147.762 42.691Q147.762 44.473 148.356 45.958Q148.95 47.443 150.039 48.5155Q151.128 49.588 152.56349999999998 50.182Q153.999 50.775999999999996 155.682 50.775999999999996Z M169.54199999999997 55.0 177.85799999999998 30.415H184.65599999999998L192.97199999999998 55.0H187.39499999999998L185.74499999999998 49.984H176.73599999999996L175.08599999999998 55.0ZM178.15499999999997 45.528999999999996H184.32599999999996L180.56399999999996 33.913H181.95Z" style="fill:var(--wm-ink)"/><path d="M99.973 48.135999999999996V43.846000000000004H114.823V48.135999999999996Z" fill="#FFB627"/></svg></div><p class="cap">บนพื้นเข้ม · <span class="mono">brand/logo-horizontal-on-dark.svg</span></p></div>
+      <div><div class="logo-tile sand"><svg viewBox="0 0 64 64" width="112" height="112" role="img" aria-label="สัญลักษณ์"><use href="#mark"/></svg></div><p class="cap">สัญลักษณ์เดี่ยว / ไอคอนแอป · <span class="mono">brand/logo-mark.svg</span>, <span class="mono">icon-192/512.png</span></p></div>
+    </div>
+    <div class="grid2">
+      <div class="card" style="display:grid;gap:12px">
+        <h3>Favicon ในแท็บเบราว์เซอร์</h3>
+        <div>
+          <div class="browser">
+            <div class="tab"><svg viewBox="0 0 64 64" width="16" height="16" aria-hidden="true"><use href="#fav"/></svg>Thailand Global E-VOA</div>
+            <div class="tab dim">Flight TG 316 – Booking</div>
+          </div>
+          <div class="addr">e-voa.vercel.app</div>
+        </div>
+        <p>favicon เป็นเวอร์ชัน <b>เส้นหนาขึ้น ตัดจุดทองออก</b> เพื่อให้ยังอ่านออกที่ 16 px · ไฟล์ <span class="mono">favicon.svg</span>, <span class="mono">favicon.ico</span> (16/32/48)</p>
+      </div>
+      <div class="card" style="display:grid;gap:12px">
+        <h3>ทุกขนาดที่ต้องใช้</h3>
+        <div class="icons">
+          <figure><svg viewBox="0 0 64 64" width="16" height="16" aria-hidden="true"><use href="#fav"/></svg>16</figure>
+          <figure><svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><use href="#fav"/></svg>32</figure>
+          <figure><svg viewBox="0 0 64 64" width="48" height="48" aria-hidden="true"><use href="#fav"/></svg>48</figure>
+          <figure><svg viewBox="0 0 64 64" width="72" height="72" aria-hidden="true"><use href="#mark"/></svg>180 iOS</figure>
+          <figure><svg viewBox="0 0 64 64" width="96" height="96" aria-hidden="true"><use href="#mark"/></svg>512 PWA</figure>
+        </div>
+        <p>มี <span class="mono">icon-maskable-512.png</span> (Android ตัดขอบอัตโนมัติ) และ <span class="mono">og-image.png</span> 1200×630 สำหรับแชร์ลิงก์</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">2 · สี</div>
+    <h2>Andaman Blue · Sunshine Gold · Navy Trust</h2>
+    <p class="lead">ค่าสีทั้งหมดผ่านเกณฑ์ WCAG AA สำหรับตัวอักษร (≥ 4.5:1) ตามที่ระบุ · <b>ทองใช้เป็น “พื้น” หรือไอคอนเท่านั้น</b> ข้อความบนทองต้องเป็นสีน้ำเงินเข้ม (ขาวบนทองได้แค่ 1.75:1)</p>
+    <div class="grid4">
+      <div class="sw"><div class="chip" style="background:#1557E0;color:#FFFFFF">Primary</div><div class="meta"><b>Andaman Blue</b><span class="mono">#1557E0</span><span>ปุ่มหลัก ลิงก์ โฟกัส · ขาวบนสี 6.05</span></div></div>
+      <div class="sw"><div class="chip" style="background:#0B2545;color:#FFFFFF">Ink</div><div class="meta"><b>Navy Trust</b><span class="mono">#0B2545</span><span>หัวข้อ ตัวหนังสือหลัก · บนพื้น 14.7</span></div></div>
+      <div class="sw"><div class="chip" style="background:#0FB5AE;color:#0B2545">Teal</div><div class="meta"><b>Lagoon Teal</b><span class="mono">#0FB5AE</span><span>ไล่สี ตกแต่ง ขั้นที่เสร็จ · ตัวอักษรใช้ #0A7C78</span></div></div>
+      <div class="sw"><div class="chip" style="background:#FFB627;color:#0B2545">Gold</div><div class="meta"><b>Sunshine Gold</b><span class="mono">#FFB627</span><span>เครื่องหมายถูก ป้าย “แนะนำ” ปุ่มรอง · ink บนสี 8.77</span></div></div>
+      <div class="sw"><div class="chip" style="background:#FFF8EC;color:#0B2545;border-bottom:1px solid #F0E3C8">Sand</div><div class="meta"><b>Warm Sand</b><span class="mono">#FFF8EC / #FBFAF6</span><span>พื้นหลังหน้า อุ่นกว่าขาวล้วน</span></div></div>
+      <div class="sw"><div class="chip" style="background:#E8F1FF;color:#1557E0">Sky</div><div class="meta"><b>Morning Sky</b><span class="mono">#E8F1FF</span><span>พื้นการ์ดที่เลือก แถบข้อมูล · primary บนสี 5.32</span></div></div>
+      <div class="sw"><div class="chip" style="background:#FF4F8B;color:#0B2545">Lotus</div><div class="meta"><b>Lotus Pink</b><span class="mono">#FF4F8B</span><span>โปรโมชัน/ความสนุก ใช้น้อยมาก ≤ 2%</span></div></div>
+      <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#0E7A4F 0 33%,#8A5A00 33% 66%,#C2261C 66%);color:#FFFFFF">Status</div><div class="meta"><b>สถานะ</b><span class="mono">#0E7A4F · #8A5A00 · #C2261C</span><span>สำเร็จ · ต้องทำเพิ่ม · ผิดพลาด (มีไอคอนเสมอ)</span></div></div>
+    </div>
+    <div class="card" style="display:grid;gap:10px">
+      <h3>สัดส่วนการใช้สี</h3>
+      <div class="ratio" aria-label="สัดส่วนสี">
+        <span style="width:58%;background:#FBFAF6"></span><span style="width:14%;background:#FFFFFF"></span><span style="width:12%;background:#0B2545"></span><span style="width:9%;background:#1557E0"></span><span style="width:4%;background:#0FB5AE"></span><span style="width:3%;background:#FFB627"></span>
+      </div>
+      <p>พื้นทราย/ขาว ~72% · น้ำเงินเข้ม (ตัวอักษร) ~12% · น้ำเงินหลัก ~9% · teal ~4% · ทอง ~3% — ความสดใสมาจากภาพประกอบและจุดเน้นเล็ก ๆ ไม่ใช่ทาสีทั้งหน้า</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">3 · ตัวอักษร</div>
+    <h2>อ่านง่ายทุกภาษา ทุกอักษร</h2>
+    <div class="grid2">
+      <div class="card spec">
+        <div class="row"><span class="lbl">Display / หัวข้อ<br>Plus Jakarta Sans 800</span><span style="font-family:var(--f-display);font-weight:800;font-size:28px;letter-spacing:-.02em;line-height:1.15">Arrive pre-approved.</span></div>
+        <div class="row"><span class="lbl">หัวข้อภาษาไทย<br>Prompt 600</span><span style="font-family:var(--f-thai-head);font-weight:600;font-size:24px;line-height:1.3">ยื่นก่อนบิน ไม่ต้องต่อคิว</span></div>
+        <div class="row"><span class="lbl">เนื้อหา / ฟอร์ม 16px<br>Plus Jakarta + Noto Sans Thai</span><span style="font-size:16px">Passport number · เลขหนังสือเดินทาง · กรุณาตรวจสอบชื่อให้ตรงกับพาสปอร์ต</span></div>
+        <div class="row"><span class="lbl">ตัวเลข (tabular)</span><span style="font-family:var(--f-display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums">THB 2,600.00 · 14 Dec 2026 05:40</span></div>
+      </div>
+      <div class="card" style="display:grid;gap:12px;align-content:start">
+        <h3>ฟอนต์สำรองตามอักษร (Noto)</h3>
+        <div class="langs">
+          <span>English</span><span style="font-family:'Noto Sans Thai',sans-serif">ภาษาไทย</span><span style="font-family:'Noto Sans SC',sans-serif">简体中文</span><span style="font-family:'Noto Sans Devanagari',sans-serif">हिन्दी</span><span style="font-family:'Noto Sans Arabic',sans-serif" dir="rtl">العربية</span><span>Русский</span>
+        </div>
+        <p>สเกล: 12 · 14 · <b>16 (เนื้อหา/ช่องกรอก — กัน iPhone ซูม)</b> · 18 · 20 · 24 · 32 · 40 · ระยะบรรทัด 1.6 (ภาษาไทยต้องการ) · ภาษาอาหรับสลับเป็น RTL ทั้งหน้า</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">4 · หน้าจอหลัก (มือถือก่อน)</div>
+    <h2>เส้นทางลูกค้า 4 ขั้นตอน + หลังจ่ายเงิน</h2>
+    <p class="lead">ตัวอย่างหน้าจอเป็นภาษาอังกฤษเพราะผู้ใช้หลักเป็นชาวต่างชาติ — ข้อความ ชื่อ และตัวเลขทั้งหมดเป็นข้อมูลตัวอย่าง</p>
+    <div class="phones">
+
+      <!-- 1 Landing -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="topbar"><svg viewBox="0 0 219 64" width="118" aria-hidden="true" style="--wm-ink:#0B2545;--wm-sub:#0A7C78"><use href="#mark" width="64" height="64"/><path d="M80.346 22.0V14.8125H78.1265V13.432500000000001H84.1065V14.8125H81.9215V22.0Z M87.161 22.0V13.432500000000001H88.725V17.17H92.37049999999999V13.432500000000001H93.946V22.0H92.37049999999999V18.55H88.725V22.0Z M96.98899999999999 22.0 99.94449999999999 13.432500000000001H101.96849999999999L104.92399999999999 22.0H103.222L102.6125 20.16H99.3005L98.67949999999999 22.0ZM99.749 18.78H102.164L100.738 14.5135H101.175Z M107.9785 22.0V13.432500000000001H109.54249999999999V22.0Z M113.28699999999999 22.0V13.432500000000001H114.85099999999998V20.62H118.5195V22.0Z M120.92999999999998 22.0 123.88549999999998 13.432500000000001H125.90949999999998L128.86499999999998 22.0H127.16299999999998L126.55349999999999 20.16H123.24149999999999L122.62049999999998 22.0ZM123.68999999999998 18.78H126.10499999999999L124.67899999999999 14.5135H125.11599999999999Z M131.9195 22.0V13.432500000000001H133.1385L137.8535 19.7805L137.221 19.907V13.432500000000001H138.785V22.0H137.5545L132.9085 15.606L133.4835 15.4795V22.0Z M142.541 22.0V13.432500000000001H145.3355Q146.6925 13.432500000000001 147.69875 13.978750000000002Q148.70499999999998 14.525 149.257 15.48525Q149.809 16.4455 149.809 17.7105Q149.809 18.964 149.257 19.93575Q148.70499999999998 20.9075 147.69875 21.45375Q146.6925 22.0 145.3355 22.0ZM144.105 20.62H145.37Q146.244 20.62 146.88225 20.25775Q147.5205 19.8955 147.877 19.24575Q148.2335 18.596 148.2335 17.7105Q148.2335 16.8135 147.877 16.1695Q147.5205 15.525500000000001 146.88225 15.169Q146.244 14.8125 145.37 14.8125H144.105Z  M161.35749999999996 22.138Q160.43749999999997 22.138 159.65549999999996 21.8045Q158.87349999999998 21.471 158.28699999999998 20.872999999999998Q157.70049999999998 20.275 157.37274999999997 19.47Q157.04499999999996 18.665 157.04499999999996 17.7105Q157.04499999999996 16.756 157.36124999999998 15.94525Q157.67749999999998 15.1345 158.25824999999998 14.54225Q158.83899999999997 13.95 159.62099999999998 13.62225Q160.40299999999996 13.2945 161.32299999999998 13.2945Q162.24299999999997 13.2945 162.97324999999995 13.605Q163.70349999999996 13.9155 164.20949999999996 14.42725Q164.71549999999996 14.939 164.93399999999997 15.5485L163.54249999999996 16.2155Q163.30099999999996 15.5485 162.72599999999997 15.134500000000001Q162.15099999999998 14.720500000000001 161.32299999999998 14.720500000000001Q160.51799999999997 14.720500000000001 159.90274999999997 15.100000000000001Q159.28749999999997 15.4795 158.94824999999997 16.1465Q158.60899999999998 16.8135 158.60899999999998 17.7105Q158.60899999999998 18.6075 158.95974999999999 19.280250000000002Q159.31049999999996 19.953 159.93149999999997 20.3325Q160.55249999999998 20.712 161.35749999999996 20.712Q162.01299999999998 20.712 162.56499999999997 20.45325Q163.11699999999996 20.1945 163.45049999999998 19.71725Q163.78399999999996 19.240000000000002 163.78399999999996 18.5845V17.929000000000002L164.49699999999996 18.55H161.32299999999998V17.2275H165.34799999999996V18.09Q165.34799999999996 19.079 165.01449999999997 19.838Q164.68099999999998 20.597 164.11174999999997 21.10875Q163.54249999999996 21.6205 162.82949999999997 21.87925Q162.11649999999997 22.138 161.35749999999996 22.138Z M168.68999999999997 22.0V13.432500000000001H170.25399999999996V20.62H173.92249999999996V22.0Z M181.02499999999998 22.138Q180.082 22.138 179.26549999999997 21.8045Q178.44899999999998 21.471 177.8395 20.872999999999998Q177.23 20.275 176.89074999999997 19.46425Q176.55149999999998 18.6535 176.55149999999998 17.7105Q176.55149999999998 16.756 176.885 15.951Q177.21849999999998 15.146 177.82799999999997 14.548Q178.4375 13.95 179.254 13.62225Q180.07049999999998 13.2945 181.02499999999998 13.2945Q181.97949999999997 13.2945 182.796 13.628Q183.61249999999998 13.961500000000001 184.22199999999998 14.55375Q184.83149999999998 15.146 185.17075 15.951Q185.51 16.756 185.51 17.7105Q185.51 18.6535 185.165 19.46425Q184.82 20.275 184.2105 20.872999999999998Q183.601 21.471 182.79025 21.8045Q181.97949999999997 22.138 181.02499999999998 22.138ZM181.02499999999998 20.712Q181.6575 20.712 182.1865 20.48775Q182.7155 20.2635 183.11225 19.861Q183.509 19.4585 183.72175 18.9065Q183.93449999999999 18.3545 183.93449999999999 17.7105Q183.93449999999999 17.0665 183.72175 16.52025Q183.509 15.974 183.11225 15.56575Q182.7155 15.157499999999999 182.1865 14.939Q181.6575 14.720500000000001 181.02499999999998 14.720500000000001Q180.404 14.720500000000001 179.875 14.939Q179.34599999999998 15.157499999999999 178.94924999999998 15.56575Q178.55249999999998 15.974 178.334 16.52025Q178.1155 17.0665 178.1155 17.7105Q178.1155 18.3545 178.334 18.9065Q178.55249999999998 19.4585 178.94924999999998 19.861Q179.34599999999998 20.2635 179.875 20.48775Q180.404 20.712 181.02499999999998 20.712Z M189.0015 22.0V13.432500000000001H192.61249999999998Q193.46349999999998 13.432500000000001 194.06725 13.725750000000001Q194.671 14.019 194.99874999999997 14.55375Q195.32649999999998 15.0885 195.32649999999998 15.8475Q195.32649999999998 16.434 195.01024999999998 16.94575Q194.694 17.4575 194.004 17.791V17.0665Q194.63649999999998 17.308 195.0045 17.6645Q195.3725 18.021 195.522 18.458Q195.67149999999998 18.895 195.67149999999998 19.378Q195.67149999999998 20.6085 194.86075 21.30425Q194.04999999999998 22.0 192.61249999999998 22.0ZM190.5655 20.62H192.77349999999998Q193.38299999999998 20.62 193.74525 20.28075Q194.1075 19.9415 194.1075 19.378Q194.1075 18.8145 193.74525 18.4695Q193.38299999999998 18.1245 192.77349999999998 18.1245H190.5655ZM190.5655 16.756H192.69299999999998Q193.176 16.756 193.46349999999998 16.474249999999998Q193.75099999999998 16.1925 193.75099999999998 15.744Q193.75099999999998 15.2955 193.46349999999998 15.031Q193.176 14.7665 192.69299999999998 14.7665H190.5655Z M198.3465 22.0 201.302 13.432500000000001H203.326L206.2815 22.0H204.5795L203.97 20.16H200.658L200.037 22.0ZM201.1065 18.78H203.5215L202.0955 14.5135H202.5325Z M209.336 22.0V13.432500000000001H210.9V20.62H214.5685V22.0Z" style="fill:var(--wm-sub)"/><path d="M79.178 55.0V30.415H95.711V34.87H84.293V40.447H95.051V44.902H84.293V50.545H95.711V55.0Z M127.137 55.0 118.722 30.415H124.332L130.668 50.149H129.546L135.882 30.415H141.492L133.077 55.0Z M155.682 55.396Q152.91 55.396 150.534 54.439Q148.158 53.482 146.39249999999998 51.7495Q144.62699999999998 50.016999999999996 143.637 47.706999999999994Q142.647 45.397 142.647 42.691Q142.647 39.985 143.6205 37.675Q144.594 35.364999999999995 146.3595 33.649Q148.125 31.933 150.50099999999998 30.976Q152.87699999999998 30.019 155.682 30.019Q158.487 30.019 160.863 30.976Q163.239 31.933 165.0045 33.649Q166.76999999999998 35.364999999999995 167.74349999999998 37.675Q168.71699999999998 39.985 168.71699999999998 42.691Q168.71699999999998 45.397 167.72699999999998 47.706999999999994Q166.737 50.016999999999996 164.9715 51.7495Q163.206 53.482 160.82999999999998 54.439Q158.454 55.396 155.682 55.396ZM155.682 50.775999999999996Q157.365 50.775999999999996 158.8005 50.182Q160.236 49.588 161.325 48.5155Q162.414 47.443 163.00799999999998 45.958Q163.602 44.473 163.602 42.691Q163.602 40.909 163.00799999999998 39.4405Q162.414 37.971999999999994 161.325 36.882999999999996Q160.236 35.794 158.8005 35.216499999999996Q157.365 34.638999999999996 155.682 34.638999999999996Q153.999 34.638999999999996 152.56349999999998 35.216499999999996Q151.128 35.794 150.039 36.882999999999996Q148.95 37.971999999999994 148.356 39.4405Q147.762 40.909 147.762 42.691Q147.762 44.473 148.356 45.958Q148.95 47.443 150.039 48.5155Q151.128 49.588 152.56349999999998 50.182Q153.999 50.775999999999996 155.682 50.775999999999996Z M169.54199999999997 55.0 177.85799999999998 30.415H184.65599999999998L192.97199999999998 55.0H187.39499999999998L185.74499999999998 49.984H176.73599999999996L175.08599999999998 55.0ZM178.15499999999997 45.528999999999996H184.32599999999996L180.56399999999996 33.913H181.95Z" style="fill:var(--wm-ink)"/><path d="M99.973 48.135999999999996V43.846000000000004H114.823V48.135999999999996Z" fill="#FFB627"/></svg><span class="lang">EN ▾</span></div>
+            <div class="hero-m"><div class="sun"></div><svg class="plane" viewBox="0 0 24 24" style="color:#1557E0" aria-hidden="true"><use href="#i-plane"/></svg><svg viewBox="0 0 400 120" aria-hidden="true"><use href="#skyline"/></svg></div>
+            <div class="ph-h">Skip the airport queue. Arrive pre-approved.</div>
+            <div class="ph-s">Thailand Visa on Arrival, approved online before you fly. Regular 2–3 days · Express 24 h.</div>
+            <div class="pcard" style="display:grid;gap:8px">
+              <div class="field"><small>Your nationality</small><div>India ▾</div></div>
+              <div class="btn pri">Check if I can apply</div>
+            </div>
+            <div class="mini"><div><span class="n">1</span>Package</div><div><span class="n">2</span>Documents</div><div><span class="n">3</span>Extras</div><div><span class="n">4</span>Pay &amp; go</div></div>
+            <div class="trust"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><use href="#i-shield"/></svg>Sent directly to Thai Immigration · encrypted</div>
+          </div>
+          <div class="navbar"><span class="on"><svg aria-hidden="true"><use href="#i-home"/></svg>Home</span><span><svg aria-hidden="true"><use href="#i-doc"/></svg>My trips</span><span><svg aria-hidden="true"><use href="#i-chat"/></svg>Help</span><span><svg aria-hidden="true"><use href="#i-user"/></svg>Account</span></div>
+        </div></div>
+        <p class="cap"><b>Landing</b> — ตอบ 3 คำถามแรกทันที: ใช้ได้ไหม · นานไหม · ปลอดภัยไหม; เช็คสิทธิ์ก่อนให้สมัคร</p>
+      </div>
+
+      <!-- 2 Package -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="stepper"><i class="on"></i><i></i><i></i><i></i></div>
+            <div class="steplbl"><b>1 Package</b><span>Documents</span><span>Extras</span><span>Pay</span></div>
+            <div class="ph-h" style="font-size:18px">When do you land?</div>
+            <div class="field"><small>Flight number &amp; date</small><div>TG 316 · 14 Dec 2026</div></div>
+            <div class="pcard" style="display:flex;gap:10px;align-items:center;background:var(--p-sky);border-color:#C9D8F7">
+              <svg viewBox="0 0 24 24" width="20" height="20" style="color:#1557E0;flex:none" aria-hidden="true"><use href="#i-plane"/></svg>
+              <div><b>Delhi DEL → Bangkok BKK</b><div class="ph-s">Thai Airways · lands 05:40 · Suvarnabhumi</div></div>
+            </div>
+            <div class="ph-s">You fly in <b style="color:var(--p-ink)">5 days</b> — both packages are available.</div>
+            <div class="pkg sel"><div class="row"><b>Regular</b><span class="radio on"></span></div><div class="ph-s">Decision in 2–3 days</div><div class="row"><span class="price">THB 2,600</span><span class="tag mint">Best value</span></div></div>
+            <div class="pkg"><div class="row"><b>Express</b><span class="radio"></span></div><div class="ph-s">Decision within 24 hours</div><div class="row"><span class="price">THB 4,500</span><span class="tag gold">Fastest</span></div></div>
+            <div class="ph-s" style="font-size:10.5px">Price = THB 2,000 Thai government visa fee + platform service fee.</div>
+            <div class="sticky"><div class="btn pri">Continue</div></div>
+          </div>
+        </div></div>
+        <p class="cap"><b>ขั้น 1 เลือกแพ็กเกจ</b> — ใส่แค่เลขเที่ยวบิน ระบบเติมที่เหลือ และคำนวณให้ว่าแพ็กเกจไหนยังทัน; ค่าธรรมเนียมแยกส่วนรัฐ/ส่วนบริการชัดเจน</p>
+      </div>
+
+      <!-- 3 Documents -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="stepper"><i class="done"></i><i class="on"></i><i></i><i></i></div>
+            <div class="steplbl"><span>Package</span><b>2 Documents</b><span>Extras</span><span>Pay</span></div>
+            <div class="ph-h" style="font-size:18px">Scan Anika's passport</div>
+            <div class="cam">
+              <div class="pp"><div class="face"></div><div class="ln" style="top:18%;width:40%"></div><div class="ln" style="top:34%;width:30%"></div><div class="ln" style="top:50%;width:44%"></div><div class="mrz"></div></div>
+              <span class="corner" style="left:14px;top:14px;border-right:0;border-bottom:0;border-radius:8px 0 0 0"></span><span class="corner" style="right:14px;top:14px;border-left:0;border-bottom:0;border-radius:0 8px 0 0"></span>
+              <span class="corner" style="left:14px;bottom:14px;border-right:0;border-top:0;border-radius:0 0 0 8px"></span><span class="corner" style="right:14px;bottom:14px;border-left:0;border-top:0;border-radius:0 0 8px 0"></span>
+            </div>
+            <div class="checks">
+              <div><span class="dot g">✓</span>MRZ read · details filled in for you</div>
+              <div><span class="dot g">✓</span>Valid until 08 Mar 2031</div>
+            </div>
+            <div class="doc"><span><b>Face photo</b><div class="ph-s">Auto-cropped, plain background</div></span><span class="tag ok">✓ Done</span></div>
+            <div class="doc"><span><b>Return flight ticket</b><div class="ph-s">BKK → DEL · 26 Dec</div></span><span class="tag ok">✓ Done</span></div>
+            <div class="doc need"><span><b>Hotel booking</b><div class="ph-s">PDF or photo, name must match</div></span><span class="tag gold">Upload</span></div>
+          </div>
+        </div></div>
+        <p class="cap"><b>ขั้น 2 เอกสาร</b> — กล้องมีกรอบนำ + ตรวจคุณภาพทันที, OCR เติมข้อมูลให้, รายการที่ยังขาดเป็นสีทอง (ไม่ใช้แดงเพื่อไม่ให้ตกใจ)</p>
+      </div>
+
+      <!-- 4 Extras -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="stepper"><i class="done"></i><i class="done"></i><i class="on"></i><i></i></div>
+            <div class="steplbl"><span>Package</span><span>Documents</span><b>3 Extras</b><span>Pay</span></div>
+            <div class="ph-h" style="font-size:18px">Ready when you land</div>
+            <div class="ph-s">Optional. Nothing is added unless you switch it on.</div>
+            <div class="addon on"><span class="ico" style="background:#DDF7F5;color:#0A7C78"><svg aria-hidden="true"><use href="#i-sim"/></svg></span><span><b>eSIM 15 days · 5G</b><div class="ph-s">QR arrives by email · THB 399</div></span><span class="tg on"></span></div>
+            <div class="addon on"><span class="ico" style="background:#E8F1FF;color:#1557E0"><svg aria-hidden="true"><use href="#i-shield"/></svg></span><span><b>Travel insurance</b><div class="ph-s">Medical up to USD 50,000 · THB 290</div></span><span class="tg on"></span></div>
+            <div class="addon"><span class="ico" style="background:#FFF1CC;color:#8A5A00"><svg aria-hidden="true"><use href="#i-car"/></svg></span><span><b>Airport pickup</b><div class="ph-s">Driver tracks TG 316 · THB 1,200</div></span><span class="tg"></span></div>
+            <div class="addon"><span class="ico" style="background:#FFE3EE;color:#B0154F"><svg aria-hidden="true"><use href="#i-star"/></svg></span><span><b>VIP Fast Track</b><div class="ph-s">Personal assistant at BKK · THB 1,500</div></span><span class="tg"></span></div>
+            <div class="sticky"><div class="tot"><span class="ph-s">2 travellers · extras</span><b>THB 1,378</b></div><div class="btn pri">Continue to payment</div></div>
+          </div>
+        </div></div>
+        <p class="cap"><b>ขั้น 3 บริการเสริม</b> — ค่าเริ่มต้น “ปิด” ทุกตัว (เก็บหลักจากระบบเดิม), แสดงเฉพาะบริการที่ใช้ได้กับสนามบินและวันเดินทางนี้</p>
+      </div>
+
+      <!-- 5 Pay -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="stepper"><i class="done"></i><i class="done"></i><i class="done"></i><i class="on"></i></div>
+            <div class="steplbl"><span>Package</span><span>Documents</span><span>Extras</span><b>4 Pay</b></div>
+            <div class="ph-h" style="font-size:18px">One payment for everything</div>
+            <div class="pcard">
+              <div class="li"><span>Visa fee (Thai Gov.) × 2</span><b>4,000</b></div>
+              <div class="li"><span>Regular service × 2</span><b>1,200</b></div>
+              <div class="li"><span>eSIM 15 days × 2</span><b>798</b></div>
+              <div class="li"><span>Travel insurance × 2</span><b>580</b></div>
+              <div class="li" style="border-top:1px dashed var(--p-line);margin-top:4px;padding-top:7px"><span style="color:var(--p-ink);font-weight:700">Total</span><b style="font-family:var(--f-display);font-size:15px;font-weight:800">THB 6,578</b></div>
+              <div class="ph-s" style="font-size:10.5px">≈ INR 16,040 · charged in THB</div>
+            </div>
+            <div class="pm"><span class="on">Card</span><span>Apple Pay</span><span>Google Pay</span><span>Alipay</span><span>WeChat Pay</span><span>UPI</span></div>
+            <div class="trust"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><use href="#i-shield"/></svg>If Immigration declines, the visa fee is refunded.</div>
+            <div class="sticky"><div class="btn pri">Pay THB 6,578</div><div class="ph-s" style="text-align:center;font-size:10.5px">3-D Secure · card details never touch our servers</div></div>
+          </div>
+        </div></div>
+        <p class="cap"><b>ขั้น 4 ชำระเงินครั้งเดียว</b> — แจกแจงทุกบรรทัด แสดงสกุลเงินของลูกค้า และบอกนโยบายคืนเงินก่อนกดจ่าย</p>
+      </div>
+
+      <!-- 6 Status -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="topbar"><b style="font-family:var(--f-display);font-size:15px">Trip to Bangkok</b><span class="tag sky">14 Dec</span></div>
+            <div class="pcard" style="display:grid;gap:6px">
+              <div class="trv"><b>Anika Sharma</b><span class="tag sky">Under review</span></div>
+              <div class="trv"><b>Rohan Sharma</b><span class="tag gold">Action needed</span></div>
+            </div>
+            <div class="doc need" style="align-items:flex-start;flex-direction:column;gap:6px">
+              <b>Rohan: please retake the face photo</b>
+              <div class="ph-s">Immigration says the photo is blurry. Use daylight and look straight at the camera.</div>
+              <div class="btn gold" style="height:36px;width:100%">Retake photo</div>
+            </div>
+            <div class="tl">
+              <div class="st done"><span class="dot g">✓</span><span><b>Paid</b><small>09 Dec 14:02</small></span></div>
+              <div class="st done"><span class="dot g">✓</span><span><b>Documents checked</b><small>09 Dec 14:20</small></span></div>
+              <div class="st done"><span class="dot g">✓</span><span><b>Sent to Thai Immigration</b><small>09 Dec 14:21</small></span></div>
+              <div class="st now"><span class="dot b pulse">•</span><span><b>Under review</b><small>Decision expected by 11 Dec 18:00</small></span></div>
+              <div class="st"><span class="dot n"> </span><span><b style="color:var(--p-muted)">E-VOA ready</b></span></div>
+            </div>
+          </div>
+          <div class="navbar"><span><svg aria-hidden="true"><use href="#i-home"/></svg>Home</span><span class="on"><svg aria-hidden="true"><use href="#i-doc"/></svg>My trips</span><span><svg aria-hidden="true"><use href="#i-chat"/></svg>Help</span><span><svg aria-hidden="true"><use href="#i-user"/></svg>Account</span></div>
+        </div></div>
+        <p class="cap"><b>ติดตามสถานะ</b> — ไทม์ไลน์พร้อมเวลาคาดการณ์, สถานะรายคนในกลุ่ม, เมื่อ สตม. ขอเพิ่มบอกเหตุผลเป็นภาษาคนพร้อมปุ่มแก้ทันที</p>
+      </div>
+
+      <!-- 7 Pass -->
+      <div class="phone-wrap">
+        <div class="phone"><div class="screen">
+          <div class="sb"><span>9:41</span><span>5G ▮▮▮</span></div>
+          <div class="scr">
+            <div class="topbar"><b style="font-family:var(--f-display);font-size:15px">Your E-VOA</b><span class="tag ok">✓ Approved</span></div>
+            <div class="pass">
+              <div class="top">
+                <div class="row"><svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><use href="#mark"/></svg><span style="font-size:10px;font-weight:700;letter-spacing:.12em">E-VISA ON ARRIVAL · THAILAND</span></div>
+                <div class="row"><span class="big">DEL → BKK</span><span style="font-weight:700">TG 316</span></div>
+              </div>
+              <div class="perf"></div>
+              <div class="body">
+                <span><small>Traveller</small><div>ANIKA SHARMA</div></span>
+                <span><small>Passport</small><div>•••• 4821</div></span>
+                <span><small>Arrival</small><div>14 Dec 2026</div></span>
+                <span><small>Stay up to</small><div>15 days</div></span>
+                <span><small>Approval no.</small><div>EVOA-26-7Q4K9</div></span>
+                <span><small>Lane</small><div>E-VOA, Hall D</div></span>
+                <div class="qr"><svg viewBox="-1 -1 27 27" aria-label="ตัวอย่าง QR (ไม่ใช่ของจริง)"><path d="M0 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 0h1v1h-1zM1 6h1v1h-1zM2 0h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 4h1v1h-1zM2 6h1v1h-1zM3 0h1v1h-1zM3 2h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 6h1v1h-1zM4 0h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 6h1v1h-1zM5 0h1v1h-1zM5 6h1v1h-1zM6 0h1v1h-1zM6 1h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM18 0h1v1h-1zM18 1h1v1h-1zM18 2h1v1h-1zM18 3h1v1h-1zM18 4h1v1h-1zM18 5h1v1h-1zM18 6h1v1h-1zM19 0h1v1h-1zM19 6h1v1h-1zM20 0h1v1h-1zM20 2h1v1h-1zM20 3h1v1h-1zM20 4h1v1h-1zM20 6h1v1h-1zM21 0h1v1h-1zM21 2h1v1h-1zM21 3h1v1h-1zM21 4h1v1h-1zM21 6h1v1h-1zM22 0h1v1h-1zM22 2h1v1h-1zM22 3h1v1h-1zM22 4h1v1h-1zM22 6h1v1h-1zM23 0h1v1h-1zM23 6h1v1h-1zM24 0h1v1h-1zM24 1h1v1h-1zM24 2h1v1h-1zM24 3h1v1h-1zM24 4h1v1h-1zM24 5h1v1h-1zM24 6h1v1h-1zM0 18h1v1h-1zM0 19h1v1h-1zM0 20h1v1h-1zM0 21h1v1h-1zM0 22h1v1h-1zM0 23h1v1h-1zM0 24h1v1h-1zM1 18h1v1h-1zM1 24h1v1h-1zM2 18h1v1h-1zM2 20h1v1h-1zM2 21h1v1h-1zM2 22h1v1h-1zM2 24h1v1h-1zM3 18h1v1h-1zM3 20h1v1h-1zM3 21h1v1h-1zM3 22h1v1h-1zM3 24h1v1h-1zM4 18h1v1h-1zM4 20h1v1h-1zM4 21h1v1h-1zM4 22h1v1h-1zM4 24h1v1h-1zM5 18h1v1h-1zM5 24h1v1h-1zM6 18h1v1h-1zM6 19h1v1h-1zM6 20h1v1h-1zM6 21h1v1h-1zM6 22h1v1h-1zM6 23h1v1h-1zM6 24h1v1h-1zM0 8h1v1h-1zM0 9h1v1h-1zM0 11h1v1h-1zM0 13h1v1h-1zM0 14h1v1h-1zM0 16h1v1h-1zM1 8h1v1h-1zM1 9h1v1h-1zM1 10h1v1h-1zM1 11h1v1h-1zM1 13h1v1h-1zM1 14h1v1h-1zM2 9h1v1h-1zM2 11h1v1h-1zM2 13h1v1h-1zM2 14h1v1h-1zM2 15h1v1h-1zM2 16h1v1h-1zM3 9h1v1h-1zM3 12h1v1h-1zM3 14h1v1h-1zM3 15h1v1h-1zM3 16h1v1h-1zM4 9h1v1h-1zM4 10h1v1h-1zM4 12h1v1h-1zM4 13h1v1h-1zM4 16h1v1h-1zM5 12h1v1h-1zM5 14h1v1h-1zM5 15h1v1h-1zM6 8h1v1h-1zM6 10h1v1h-1zM6 15h1v1h-1zM7 10h1v1h-1zM7 13h1v1h-1zM7 15h1v1h-1zM8 3h1v1h-1zM8 4h1v1h-1zM8 6h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM8 9h1v1h-1zM8 10h1v1h-1zM8 12h1v1h-1zM8 13h1v1h-1zM8 14h1v1h-1zM8 16h1v1h-1zM8 17h1v1h-1zM8 22h1v1h-1zM8 23h1v1h-1zM8 24h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 8h1v1h-1zM9 9h1v1h-1zM9 10h1v1h-1zM9 11h1v1h-1zM9 18h1v1h-1zM9 23h1v1h-1zM9 24h1v1h-1zM10 0h1v1h-1zM10 2h1v1h-1zM10 3h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1zM10 7h1v1h-1zM10 8h1v1h-1zM10 9h1v1h-1zM10 10h1v1h-1zM10 11h1v1h-1zM10 12h1v1h-1zM10 15h1v1h-1zM10 16h1v1h-1zM10 17h1v1h-1zM10 18h1v1h-1zM10 19h1v1h-1zM10 22h1v1h-1zM10 24h1v1h-1zM11 0h1v1h-1zM11 1h1v1h-1zM11 2h1v1h-1zM11 4h1v1h-1zM11 5h1v1h-1zM11 8h1v1h-1zM11 10h1v1h-1zM11 15h1v1h-1zM11 16h1v1h-1zM11 17h1v1h-1zM11 21h1v1h-1zM11 22h1v1h-1zM12 4h1v1h-1zM12 6h1v1h-1zM12 7h1v1h-1zM12 8h1v1h-1zM12 9h1v1h-1zM12 10h1v1h-1zM12 13h1v1h-1zM12 17h1v1h-1zM12 18h1v1h-1zM12 19h1v1h-1zM12 20h1v1h-1zM12 21h1v1h-1zM13 0h1v1h-1zM13 3h1v1h-1zM13 8h1v1h-1zM13 9h1v1h-1zM13 11h1v1h-1zM13 14h1v1h-1zM13 15h1v1h-1zM13 18h1v1h-1zM13 19h1v1h-1zM13 20h1v1h-1zM13 23h1v1h-1zM14 2h1v1h-1zM14 4h1v1h-1zM14 5h1v1h-1zM14 10h1v1h-1zM14 13h1v1h-1zM14 14h1v1h-1zM14 15h1v1h-1zM14 16h1v1h-1zM14 18h1v1h-1zM14 19h1v1h-1zM14 20h1v1h-1zM14 22h1v1h-1zM14 23h1v1h-1zM15 1h1v1h-1zM15 6h1v1h-1zM15 7h1v1h-1zM15 8h1v1h-1zM15 9h1v1h-1zM15 11h1v1h-1zM15 12h1v1h-1zM15 15h1v1h-1zM15 19h1v1h-1zM15 21h1v1h-1zM15 22h1v1h-1zM16 3h1v1h-1zM16 8h1v1h-1zM16 10h1v1h-1zM16 15h1v1h-1zM16 19h1v1h-1zM16 20h1v1h-1zM16 21h1v1h-1zM16 22h1v1h-1zM16 23h1v1h-1zM16 24h1v1h-1zM17 11h1v1h-1zM17 14h1v1h-1zM17 17h1v1h-1zM17 19h1v1h-1zM17 23h1v1h-1zM17 24h1v1h-1zM18 9h1v1h-1zM18 10h1v1h-1zM18 11h1v1h-1zM18 13h1v1h-1zM18 15h1v1h-1zM18 16h1v1h-1zM18 17h1v1h-1zM18 20h1v1h-1zM18 24h1v1h-1zM19 8h1v1h-1zM19 9h1v1h-1zM19 11h1v1h-1zM19 12h1v1h-1zM19 13h1v1h-1zM19 16h1v1h-1zM19 17h1v1h-1zM19 21h1v1h-1zM19 22h1v1h-1zM19 24h1v1h-1zM20 8h1v1h-1zM20 12h1v1h-1zM20 14h1v1h-1zM20 16h1v1h-1zM20 17h1v1h-1zM20 20h1v1h-1zM20 21h1v1h-1zM20 23h1v1h-1zM20 24h1v1h-1zM21 8h1v1h-1zM21 9h1v1h-1zM21 10h1v1h-1zM21 11h1v1h-1zM21 12h1v1h-1zM21 14h1v1h-1zM21 16h1v1h-1zM21 17h1v1h-1zM21 18h1v1h-1zM21 19h1v1h-1zM21 20h1v1h-1zM21 23h1v1h-1zM21 24h1v1h-1zM22 9h1v1h-1zM22 11h1v1h-1zM22 14h1v1h-1zM22 18h1v1h-1zM22 22h1v1h-1zM22 23h1v1h-1zM22 24h1v1h-1zM23 8h1v1h-1zM23 9h1v1h-1zM23 11h1v1h-1zM23 12h1v1h-1zM23 13h1v1h-1zM23 17h1v1h-1zM23 18h1v1h-1zM23 19h1v1h-1zM23 20h1v1h-1zM23 21h1v1h-1zM23 22h1v1h-1zM23 23h1v1h-1zM24 10h1v1h-1zM24 12h1v1h-1zM24 13h1v1h-1zM24 14h1v1h-1zM24 15h1v1h-1zM24 16h1v1h-1zM24 18h1v1h-1zM24 20h1v1h-1zM24 21h1v1h-1zM24 22h1v1h-1zM24 23h1v1h-1zM24 24h1v1h-1z" fill="#0B2545"/></svg><span class="ph-s" style="font-size:10.5px">Show this at the E-VOA lane with your passport. Works offline.</span></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="btn ghost" style="height:38px">Add to Wallet</div><div class="btn ghost" style="height:38px">PDF</div></div>
+            <div class="btn pri" style="height:40px">Arrival guide: Suvarnabhumi</div>
+          </div>
+        </div></div>
+        <p class="cap"><b>E-VOA Pass</b> — การ์ดสไตล์ boarding pass ใช้ offline ได้, ปิดเลขพาสปอร์ตบางส่วน, ต่อด้วยคู่มือสนามบินและบริการที่ซื้อไว้</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">5 · หลังบ้าน (Desktop)</div>
+    <h2>Ops Console: สงบ ชัด เห็นสิ่งที่ต้องทำก่อน</h2>
+    <p class="lead">หลังบ้านใช้สีน้อยกว่าฝั่งลูกค้า (น้ำเงินเข้ม + เทา) ให้สีถูกใช้กับ “สถานะ” และ “SLA ใกล้หมดเวลา” เท่านั้น</p>
+    <div class="desk">
+      <aside>
+        <div style="display:flex;gap:8px;align-items:center;padding:0 6px 12px;color:#FFFFFF;font-weight:700"><svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><use href="#mark"/></svg>Ops Console</div>
+        <div class="it">Overview</div><div class="it on">Application queue</div><div class="it">Payments &amp; refunds</div><div class="it">Partners</div><div class="it">Agencies</div><div class="it">Content &amp; FAQ</div><div class="it">Settings</div>
+      </aside>
+      <main>
+        <div class="kpis">
+          <div class="kpi"><small>Submitted today</small><b>1,284</b></div>
+          <div class="kpi"><small>Waiting for Immigration</small><b>3,912</b></div>
+          <div class="kpi"><small>Action needed</small><b style="color:#8A5A00">146</b></div>
+          <div class="kpi"><small>SLA at risk (&lt; 6 h)</small><b style="color:#C2261C">23</b></div>
+        </div>
+        <div class="tbl"><table>
+          <thead><tr><th>Application</th><th>Traveller</th><th>Nationality</th><th>Package</th><th>Arrival</th><th>Status</th><th>SLA</th></tr></thead>
+          <tbody>
+            <tr><td>EV-26-118204</td><td>Rohan Sharma</td><td>India</td><td>Regular</td><td>14 Dec · BKK</td><td><span class="tag gold">Action needed</span></td><td><span class="sla"><i style="width:42%;background:#0FB5AE"></i></span>31 h</td></tr>
+            <tr><td>EV-26-118199</td><td>Wang Lei</td><td>China</td><td>Express</td><td>10 Dec · DMK</td><td><span class="tag sky">Under review</span></td><td><span class="sla"><i style="width:88%;background:#C2261C"></i></span>3 h</td></tr>
+            <tr><td>EV-26-118187</td><td>Aigerim Bekova</td><td>Kazakhstan</td><td>Regular</td><td>12 Dec · HKT</td><td><span class="tag ok">✓ Approved</span></td><td>—</td></tr>
+            <tr><td>EV-26-118170</td><td>Mohammed Al-Qahtani</td><td>Saudi Arabia</td><td>Express</td><td>10 Dec · BKK</td><td><span class="tag err">✕ Submission failed</span></td><td><span class="sla"><i style="width:70%;background:#FFB627"></i></span>7 h</td></tr>
+          </tbody>
+        </table></div>
+      </main>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">6 · ชิ้นส่วน &amp; หลักการ</div>
+    <h2>Components และกฎที่ใช้ทั้งระบบ</h2>
+    <div class="card" style="display:grid;gap:14px">
+      <div class="comp"><span class="btn pri" style="background:#1557E0;color:#FFFFFF">Primary</span><span class="btn gold" style="background:#FFB627;color:#0B2545">Secondary</span><span class="btn ghost" style="background:#FFFFFF;color:#1557E0;border:1.5px solid #C9D8F7">Ghost</span>
+        <span class="tag ok">✓ Approved</span><span class="tag sky">Under review</span><span class="tag gold">Action needed</span><span class="tag err">✕ Rejected</span><span class="tag mint">Best value</span></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>รูปทรง &amp; ระยะ</h3><ul class="rules">
+        <li>มุมโค้ง: การ์ด 20px · ปุ่ม/ช่องกรอก 14px · ป้ายสถานะเต็มมน</li>
+        <li>ระยะห่างฐาน 4px (4·8·12·16·24·32·48)</li>
+        <li>เป้าแตะ ≥ 44px · ช่องกรอก 16px · focus ring 3px สีน้ำเงิน</li>
+        <li>เงาสีน้ำเงินเข้มโปร่ง ไม่ใช่ดำล้วน · ใช้กับการ์ดที่ “ลอย” เท่านั้น</li>
+      </ul></div>
+      <div class="card"><h3>หลัก UX ที่ห้ามละเมิด</h3><ul class="rules">
+        <li><b>ราคาเห็นก่อนกรอก</b> ไม่มีค่าธรรมเนียมแอบโผล่ตอนจ่าย</li>
+        <li><b>บริการเสริมเป็น opt-in</b> ไม่ติ๊กไว้ให้ ไม่ใช้ dark pattern</li>
+        <li><b>บันทึกอัตโนมัติทุกช่อง</b> ปิดแอปแล้วกลับมาทำต่อได้</li>
+        <li><b>สถานะไม่สื่อด้วยสีอย่างเดียว</b> มีไอคอน + ข้อความเสมอ</li>
+        <li><b>ข้อผิดพลาดบอกวิธีแก้</b> เป็นภาษาของผู้ใช้</li>
+      </ul></div>
+    </div>
+    <p class="note">ไฟล์โลโก้ทั้งหมดอยู่ในโฟลเดอร์ <span class="mono">brand/</span> ของ repo · รายละเอียดเต็มอยู่ใน <span class="mono">docs/evoa/03-UX-UI-DESIGN.md</span> และรายการฟีเจอร์ใน <span class="mono">docs/evoa/02-FUNCTIONS-FEATURES-DESIGN.md</span></p>
+  </section>
+</div>
