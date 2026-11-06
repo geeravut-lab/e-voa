@@ -9,7 +9,7 @@ export type AppStatus = (typeof STATUSES)[number];
 
 export const TRANSITIONS: Record<AppStatus, readonly AppStatus[]> = {
   draft: ["awaiting_payment", "cancelled", "expired"],
-  awaiting_payment: ["paid", "expired", "cancelled"],
+  awaiting_payment: ["paid", "expired", "cancelled", "draft"],
   expired: [],
   paid: ["pre_check", "cancelled"],
   pre_check: ["submitted", "submission_failed", "action_required", "cancelled"],

@@ -197,3 +197,20 @@ describe("Insurance (CIS)", () => {
     expect((await call("/insurance/CIS/travelPAPolicyIssueService", { method: "POST", headers: auth, body: { ...policy("RQ3"), PlanCode: "X" } })).json.data.PlanCode).toBeTruthy();
   });
 });
+
+describe("Flight lookup and insurance files", () => {
+  it("looks up a flight and refuses unknown ones", async () => {
+    const ok = await call("/flights/lookup?flight=TG316&date=2026-12-14");
+    expect(ok.json).toMatchObject({ flight: "TG316", airline: { iata: "TG" }, arrival: { iata: "BKK" } }); expect(ok.json.arrival.scheduledLocal).toMatch(/^\d{2}:\d{2}$/);
+    expect((await call("/flights/lookup?flight=ZZ1&date=2026-12-14")).status).toBe(404);
+    expect((await call("/flights/lookup?flight=TG316&date=14-12-2026")).status).toBe(404);
+  });
+  it("serves the policy and e-card files the insurance callback points to", async () => {
+    const auth = { "g-api-key": "k", Authorization: "Bearer t", "Content-Type": "application/json" };
+    const body = { RequestNo: "RQ-FILES", CountryName: "THAILAND", PlanCode: "GTA0501", PolicyUnit: "D", PolicyType: "I", PolicyDate: "14/12/2026", ExpiryDate: "26/12/2026", NumberPerson: "1", NetAmount: "45", Amount: "41", CustomerType: "P", CustomerPrefix: "MISS", CustomerName: "A", CustomerSureName: "B", CardType: "P", IdCard: "P1", Email: "a@b.co", InsurePrefix: "MISS", InsureName: "A", InsureSurName: "B", InsureCardType: "P", InsureIdCard: "P1", InsureEmail: "a@b.co", Address1: "X" };
+    const r = await call("/insurance/CIS/travelPAPolicyIssueService", { method: "POST", headers: auth, body });
+    const pdf = await fetch(r.json.data.policy_url); expect(pdf.status).toBe(200); expect((await pdf.text()).startsWith("%PDF")).toBe(true);
+    const cb = await until(() => received.find((x) => x.url === "/ins/Confirm_COI" && x.body.RequestNo === "RQ-FILES")); expect(cb).toBeTruthy();
+    expect((await fetch(cb.body.ecard_url)).headers.get("content-type")).toBe("image/png");
+  });
+});

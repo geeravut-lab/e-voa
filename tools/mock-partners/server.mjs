@@ -192,6 +192,11 @@ export function createMockServer(opts = {}) {
 
   async function partner(req, res, path, url) {
     // ---- insurance (CIS): Bearer + g-api-key
+    if (path.startsWith("/insurance/files/") && req.method === "GET") {       // downloads need no key (the real partner sends links like this)
+      const name = decodeURIComponent(path.slice("/insurance/files/".length));
+      if (name.endsWith("-ecard.png")) { const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"); res.writeHead(200, { "Content-Type": "image/png", "Content-Length": png.length }); return res.end(png); }
+      const pdf = Buffer.from(SAMPLE_PDF.replace("SIMULATED E-VOA", `SIMULATED INSURANCE CERTIFICATE ${name}`)); res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": pdf.length }); return res.end(pdf);
+    }
     if (path.startsWith("/insurance/CIS/")) {
       if (!req.headers["g-api-key"] || !String(req.headers["authorization"] ?? "").startsWith("Bearer ")) return send(res, 401, { status: "error", message: "Not authorized" });
       if (path.endsWith("/travelPAPolicyIssueService") && req.method === "POST") {
@@ -201,9 +206,10 @@ export function createMockServer(opts = {}) {
         if (missing.length) return send(res, 200, { status: "error", data: Object.fromEntries(missing.map((m) => [m, [`The ${m.replace(/([A-Z])/g, " $1").toLowerCase().trim()} field is required.`]])), 0: "Validation Error" });
         if (!INSURANCE_PLANS.some((p) => p.PlanCode === b.PlanCode)) return send(res, 200, { status: "error", data: { PlanCode: ["Invalid PlanCode."] }, 0: "Validation Error" });
         if (state.insurance.has(b.RequestNo)) return send(res, 200, { status: "error", data: { RequestNo: ["Duplicate RequestNo."] }, 0: "Validation Error" });
-        const policy = { RequestNo: b.RequestNo, policy_status: "SUCCESS", policy_no: `POL${String(++state.seq).padStart(7, "0")}`, policy_url: `https://mock.invalid/coi/${b.RequestNo}.pdf`, policy_remark: "", invoice_No: `INV${state.seq}` };
+        const origin = `http://${req.headers.host ?? "localhost:4010"}`;
+        const policy = { RequestNo: b.RequestNo, policy_status: "SUCCESS", policy_no: `POL${String(++state.seq).padStart(7, "0")}`, policy_url: `${origin}/insurance/files/${encodeURIComponent(b.RequestNo)}.pdf`, policy_remark: "", invoice_No: `INV${state.seq}` };
         state.insurance.set(b.RequestNo, policy);
-        later(Math.min(cfg.decisionDelayMs, 1500), () => callback("insurance", "/Confirm_COI", { ...policy, policy_status: "Success", ecard_url: `https://mock.invalid/ecard/${b.RequestNo}.png` }));
+        later(Math.min(cfg.decisionDelayMs, 1500), () => callback("insurance", "/Confirm_COI", { ...policy, policy_status: "Success", ecard_url: `${origin}/insurance/files/${encodeURIComponent(b.RequestNo)}-ecard.png` }));
         return send(res, 200, { status: "success", data: policy });
       }
       return send(res, 404, { status: "error", message: "Incorrect Request" });
@@ -246,6 +252,17 @@ export function createMockServer(opts = {}) {
     return send(res, 404, { status: 404, message: "Incorrect Request" });
   }
 
+  // ------------------------------------------------------------------ flight information (stand-in for a flight data provider)
+  const AIRLINES = { TG: ["Thai Airways", "DEL", "IN"], AI: ["Air India", "DEL", "IN"], "6E": ["IndiGo", "BOM", "IN"], EK: ["Emirates", "DXB", "AE"], CA: ["Air China", "PEK", "CN"], MU: ["China Eastern", "PVG", "CN"], CI: ["China Airlines", "TPE", "TW"], SU: ["Aeroflot", "SVO", "RU"], KC: ["Air Astana", "ALA", "KZ"], SV: ["Saudia", "RUH", "SA"], BA: ["British Airways", "LHR", "GB"] };
+  function flights(req, res, url) {
+    const flight = (url.searchParams.get("flight") ?? "").toUpperCase().replace(/\s+/g, ""), date = url.searchParams.get("date") ?? "";
+    const m = /^([A-Z0-9]{2})(\d{1,4})$/.exec(flight);
+    if (!m || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !AIRLINES[m[1]]) return send(res, 404, { error: "flight not found" });
+    const n = Number(m[2]); const hh = String(n % 24).padStart(2, "0"), mm = ["05", "15", "35", "50"][n % 4];
+    const [name, origin, country] = AIRLINES[m[1]];
+    return send(res, 200, { flight: `${m[1]}${m[2]}`, date, airline: { iata: m[1], name }, origin: { iata: origin, country }, arrival: { iata: n % 7 === 0 ? "DMK" : n % 11 === 0 ? "HKT" : "BKK", scheduledLocal: `${hh}:${mm}` } });
+  }
+
   // ------------------------------------------------------------------ simulator controls
   async function admin(req, res, path) {
     const b = req.method === "POST" ? await readBody(req) : {};
@@ -268,6 +285,7 @@ export function createMockServer(opts = {}) {
       if (path === "/" || path === "/health") return send(res, 200, { ok: true, service: "thaipass-mock-partners" });
       if (path.startsWith("/__admin/")) return await admin(req, res, path);
       if (path.startsWith("/immigration/th/v1/")) return await immigration(req, res, path, url);
+      if (path === "/flights/lookup") return flights(req, res, url);
       if (/^\/(insurance|sim|vip|bhs)\//.test(path)) return await partner(req, res, path, url);
       return send(res, 404, { status: 404, message: "Incorrect Request" });
     } catch (e) { cfg.log(`error ${e.stack}`); send(res, 500, { status: 500, message: "Internal Server Error" }); }
