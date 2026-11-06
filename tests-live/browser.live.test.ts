@@ -110,7 +110,7 @@ describe("traveler journey in the browser", () => {
     const code = String((nat.extra as { CountryCode?: string }).CountryCode ?? "");
     if (code) {
       await sql(`insert into public.platform_settings (key, value) values ('eligibility', '{"voa":["${code}"],"visa_free":[]}') on conflict (key) do update set value=excluded.value`);
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 31_000));   // settings are cached for 30 s per server
       await p.goto(`${APP}/eligibility?n=${nat.id}`);
       expect(await p.getByText("You can apply for a Visa on Arrival").count()).toBe(1);
     }
@@ -123,17 +123,17 @@ describe("traveler journey in the browser", () => {
     const errs: string[] = []; p.on("pageerror", (e: unknown) => errs.push(String(e)));
     const day = new Date(Date.now() + 12 * 86_400_000), iso = (d: Date) => d.toISOString().slice(0, 10);
     await p.goto(`${APP}/apply`);
-    await p.getByLabel("Arrival date").fill(iso(day));
-    await p.getByLabel("Flight number").first().fill("TG316");
+    await p.getByLabel("Arrival date", { exact: true }).fill(iso(day));
+    await p.getByLabel("Flight number", { exact: true }).first().fill("TG316");
     await p.getByRole("button", { name: "Find" }).click();
     await p.getByText(/Found:/).waitFor({ timeout: 15_000 });
-    expect(await p.getByLabel("Time").first().inputValue()).toMatch(/^\d{2}:\d{2}$/);
-    await p.getByLabel("Boarded in (country)").selectOption({ index: 1 });
-    await p.getByLabel("Purpose of visit").selectOption({ index: 1 });
-    await p.getByLabel("First city in Thailand").fill("Bangkok");
-    await p.getByLabel("Departure date").fill(iso(new Date(day.getTime() + 10 * 86_400_000)));
-    await p.getByLabel("Flight number").nth(1).fill("TG317");
-    await p.getByLabel("Airline").nth(1).selectOption({ index: 1 });
+    expect(await p.getByLabel("Time", { exact: true }).first().inputValue()).toMatch(/^\d{2}:\d{2}$/);
+    await p.getByLabel("Boarded in (country)", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("Purpose of visit", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("First city in Thailand", { exact: true }).fill("Bangkok");
+    await p.getByLabel("Departure date", { exact: true }).fill(iso(new Date(day.getTime() + 10 * 86_400_000)));
+    await p.getByLabel("Flight number", { exact: true }).nth(1).fill("TG317");
+    await p.getByLabel("Airline", { exact: true }).nth(1).selectOption({ index: 1 });
     await shot(p, "wizard-1-390");
     expect(await overflowX(p)).toBe(false);
     await p.getByRole("button", { name: "Next" }).click();
@@ -142,29 +142,29 @@ describe("traveler journey in the browser", () => {
 
     // step 2: the passport lines fill the form and the check digits are verified
     const dob = "900501", exp = `${String(day.getUTCFullYear() + 5).slice(2)}0301`;
-    await p.getByLabel("Read the passport lines").fill(mrz("L898902C3", dob, exp));
+    await p.getByLabel("Read the passport lines", { exact: true }).fill(mrz("L898902C3", dob, exp));
     await p.getByRole("button", { name: "Fill in from passport" }).click();
     await p.getByText("Read and verified").waitFor({ timeout: 15_000 });
-    expect(await p.getByLabel("Surname").inputValue()).toBe("ERIKSSON");
-    expect(await p.getByLabel("Passport number").inputValue()).toBe("L898902C3");
-    await p.getByLabel("Title").selectOption({ index: 1 });
-    await p.getByLabel("Gender").selectOption({ index: 1 });
-    await p.getByLabel("Nationality").selectOption({ index: 1 });
-    await p.getByLabel("Passport issue date").fill("2021-03-09");
-    await p.getByLabel("Place of issue").fill("Delhi");
-    await p.getByLabel("Email").fill(traveler.email);
-    await p.getByLabel("Country code").fill("91"); await p.getByLabel("Mobile number").fill("912345678");
-    await p.getByLabel("Country of residence").selectOption({ index: 1 });
-    await p.getByLabel("State / province").fill("Delhi"); await p.getByLabel("Home address").fill("1 Test Road, Delhi");
-    await p.getByLabel("Occupation").selectOption({ index: 1 }); await p.getByLabel("Yearly income").selectOption({ index: 1 });
-    await p.getByLabel("Type of stay").selectOption({ index: 1 }); await p.getByLabel("Hotel / place name").fill("Test Hotel");
-    await p.getByLabel("Province").selectOption({ index: 1 });
+    expect(await p.getByLabel("Surname", { exact: true }).inputValue()).toBe("ERIKSSON");
+    expect(await p.getByLabel("Passport number", { exact: true }).inputValue()).toBe("L898902C3");
+    await p.getByLabel("Title", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("Gender", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("Nationality", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("Passport issue date", { exact: true }).fill("2021-03-09");
+    await p.getByLabel("Place of issue", { exact: true }).fill("Delhi");
+    await p.getByLabel("Email", { exact: true }).fill(traveler.email);
+    await p.getByLabel("Country code", { exact: true }).fill("91"); await p.getByLabel("Mobile number", { exact: true }).fill("912345678");
+    await p.getByLabel("Country of residence", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("State / province", { exact: true }).fill("Delhi"); await p.getByLabel("Home address", { exact: true }).fill("1 Test Road, Delhi");
+    await p.getByLabel("Occupation", { exact: true }).selectOption({ index: 1 }); await p.getByLabel("Yearly income", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("Type of stay", { exact: true }).selectOption({ index: 1 }); await p.getByLabel("Hotel / place name", { exact: true }).fill("Test Hotel");
+    await p.getByLabel("Province", { exact: true }).selectOption({ index: 1 });
     await p.waitForFunction(() => (document.querySelector('select[name="district_id"]') as HTMLSelectElement | null)?.options.length! > 1, null, { timeout: 15_000 });
-    await p.getByLabel("District").selectOption({ index: 1 });
+    await p.getByLabel("District", { exact: true }).selectOption({ index: 1 });
     await p.waitForFunction(() => (document.querySelector('select[name="sub_district_id"]') as HTMLSelectElement | null)?.options.length! > 1, null, { timeout: 15_000 });
-    await p.getByLabel("Sub-district").selectOption({ index: 1 });
-    await p.getByLabel("Postal code").fill("10330"); await p.getByLabel("Street address").fill("1 Test Road");
-    await p.getByLabel("Contact person or booking reference").fill("BK123");
+    await p.getByLabel("Sub-district", { exact: true }).selectOption({ index: 1 });
+    await p.getByLabel("Postal code", { exact: true }).fill("10330"); await p.getByLabel("Street address", { exact: true }).fill("1 Test Road");
+    await p.getByLabel("Contact person or booking reference", { exact: true }).fill("BK123");
     await shot(p, "wizard-2-390");
     await p.getByRole("button", { name: "Save traveler" }).click();
     await p.waitForURL(/app=/, { timeout: 20_000 });
@@ -241,7 +241,7 @@ describe("traveler journey in the browser", () => {
     const staff = await makeUser("ops", true); const ctx = await ctxFor(staff, 1280, 800); const p = await ctx.newPage();
     await p.goto(`${APP}/admin/queue?g=all`); await p.getByText(/EV-\d{2}-\d{6}/).first().waitFor({ timeout: 20_000 }); await shot(p, "ops-queue-1280");
     await p.goto(`${APP}/admin/queue/${ids.app}`); await p.getByText("Approval and rejection come only from Thai Immigration").waitFor();
-    await p.getByLabel("Write a note").fill("checked by test"); await p.getByRole("button", { name: "Add note" }).click();
+    await p.getByLabel("Write a note", { exact: true }).fill("checked by test"); await p.getByRole("button", { name: "Add note" }).click();
     await p.getByText("checked by test").first().waitFor({ timeout: 15_000 }); await shot(p, "ops-detail-1280");
     const t = await ctxFor(traveler); const tp = await t.newPage();
     expect((await tp.goto(`${APP}/admin/queue`))?.status()).toBe(404); expect((await tp.goto(`${APP}/admin/queue/${ids.app}`))?.status()).toBe(404);
