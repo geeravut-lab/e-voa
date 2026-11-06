@@ -10,6 +10,7 @@ import { DEFAULT_RETENTION } from "@/config/defaults";
 import { reconcilePaid, expireUnpaid } from "@/lib/payments/service";
 import { recheckWaiting } from "@/lib/applications/service";
 import { processAddonQueue, syncPartnerPackages } from "@/lib/partners/service";
+import { runRules } from "@/lib/rules/service";
 
 const DEFAULT_BUDGET_MS = 20_000;
 const budgetMs = () => { const n = Number(process.env.TICK_BUDGET_MS); return Number.isFinite(n) && n >= 1000 ? n : DEFAULT_BUDGET_MS; };          // tests on a slow link may raise it
@@ -28,6 +29,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     ["payments", async () => ({ reconciled: await reconcilePaid(), expired: await expireUnpaid() })],
     ["pre_check", async () => recheckWaiting()],
     ["addons", async () => processAddonQueue()],
+    ["rules", async () => runRules()],
     ["partner_packages", async () => {
       const { data } = await createAdminClient().from("partner_packages").select("synced_at").order("synced_at", { ascending: true }).limit(1);
       const last = data?.[0]?.synced_at ? Date.parse(data[0].synced_at) : 0;

@@ -1,5 +1,5 @@
 // Which events the audit trail records. Pure (no database): the admin page, the writer and the tests share it.
-export type AuditCategory = "auth" | "application" | "payment" | "document" | "ops" | "immigration" | "addon" | "partner" | "agency" | "channel" | "invoice" | "settings";
+export type AuditCategory = "auth" | "application" | "payment" | "document" | "ops" | "immigration" | "addon" | "partner" | "agency" | "channel" | "invoice" | "settings" | "report";
 export const AUDIT_CATEGORIES: { id: AuditCategory; examples: string }[] = [
   { id: "auth", examples: "auth.login · auth.signout" },
   { id: "application", examples: "application.cancel · application.upgrade · trip.change · traveler.delete · consent.recorded · precheck.failed" },
@@ -13,6 +13,7 @@ export const AUDIT_CATEGORIES: { id: AuditCategory; examples: string }[] = [
   { id: "channel", examples: "channel.link · channel.unlink" },
   { id: "invoice", examples: "invoice.issue" },
   { id: "settings", examples: "settings.* · feature.flags · brand.name" },
+  { id: "report", examples: "report.revenue_export" },
 ];
 export type AuditConfig = { enabled: boolean; disabled: AuditCategory[] };
 export const DEFAULT_AUDIT_CONFIG: AuditConfig = { enabled: true, disabled: [] };

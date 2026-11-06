@@ -217,3 +217,25 @@ export async function saveAuditConfigAction(_p: ActionResult, fd: FormData): Pro
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.audit", entity: "audit_config", detail: { enabled, disabled: disabled.join(",") }, force: true });
   return done("/admin/audit");
 }
+
+export async function saveRulesAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseRules } = await import("@/lib/rules/rules");
+  const on = (k: string) => fd.get(k) === "on", n = (k: string) => Number(fd.get(k));
+  const cfg = parseRules({
+    payment_reminder: { enabled: on("pr_on"), after_hours: n("pr_h") }, unpaid_expire: { enabled: on("ue_on"), after_days: n("ue_d") }, fix_reminder: { enabled: on("fr_on"), after_hours: n("fr_h") },
+    sla_warning: { enabled: on("sw_on"), before_hours: n("sw_h") }, sla_overdue: { enabled: on("so_on") },
+  });
+  if (!(await putSetting("automation_rules", cfg, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.rules", entity: "automation_rules", detail: { pr: cfg.payment_reminder.enabled, ue: cfg.unpaid_expire.enabled, fr: cfg.fix_reminder.enabled, sw: cfg.sla_warning.enabled, so: cfg.sla_overdue.enabled } });
+  return done("/admin/rules");
+}
+export async function runRulesAction(_p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { runRules } = await import("@/lib/rules/service");
+  const r = await runRules();
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.rules_run", entity: "automation_rules", detail: { reminders: r.payment_reminders, expired: r.expired, fix: r.fix_reminders, warn: r.sla_warnings, late: r.sla_overdue } });
+  return done("/admin/rules");
+}

@@ -52,7 +52,9 @@ export const NAV: NavItem[] = [
 
   { key: "admin_home", label: "nav_admin", barLabel: "nav_admin", href: "/admin", icon: "shield", tone: "sky", size: "half", area: "admin", auth: true, status: "live", side: true },
   { key: "admin_notifs", label: "admin_notif_title", barLabel: "nav_alerts", sub: "admin_notif_hint", href: "/admin/notifications", icon: "bell", art: "notifications", tone: "sand", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "revenue", label: "admin_revenue_title", sub: "admin_revenue_hint", href: "/admin/revenue", icon: "chart", art: "analytics", tone: "mint", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "ops", label: "card_ops", barLabel: "nav_queue", sub: "card_ops_sub", href: "/admin/queue", icon: "queue", art: "ops", tone: "gold", size: "wide", area: "admin", auth: true, status: "live", phase: "Phase 2", home: true, side: true },
+  { key: "rules", label: "admin_rules_title", sub: "admin_rules_hint", href: "/admin/rules", icon: "toggle", art: "features", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "admin_elig", label: "admin_elig_title", sub: "admin_elig_hint", href: "/admin/eligibility", icon: "search", art: "check", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "errors", label: "errors_title", barLabel: "errors_title", sub: "errors_hint", href: "/admin/errors", icon: "scroll", art: "audit", tone: "rose", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "channels", label: "admin_channels_title", sub: "admin_channels_hint", href: "/admin/channels", icon: "link", art: "help", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },

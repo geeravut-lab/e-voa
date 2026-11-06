@@ -93,6 +93,9 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Agency portal `/agency` (+ `/admin/agencies`): registration, approval, team, CSV import, discount, commission | ✅ |
 | Partner portal `/partner` (+ `/admin/partners`): packages, voucher codes, redeem, settlement CSV, monthly payout record | ✅ |
 
+| **Revenue dashboard** `/admin/revenue`: e-VOA, insurance, SIM, VIP, beauty & health; today / this week / this month / this year / custom range (Thai time); summary, chart, per-category bars, payment list, **CSV export** of the chosen range | ✅ |
+| **Automation rules** `/admin/rules`: payment reminder, close unpaid applications (too old or flight landed), reminder to fix, deadline warning and overdue notice for staff; "Run now"; runs in the daily tick | ✅ (the free Vercel plan runs the tick once a day) |
+
 ## Still planned
 
-⬜ automation rules engine (SLA reminders, payment time-outs) · ⬜ more languages (HI, AR, RU, KO, JA, ZH-TW) · ⬜ Wallet passes · ⬜ Government/TAT dashboard · ⬜ partner portal: refunds/void by the partner, per-package stock, partner e-mail notices · ⬜ agency: invoices per agency, commission payout record
+⬜ more languages (HI, AR, RU, KO, JA, ZH-TW) · ⬜ Wallet passes · ⬜ Government/TAT dashboard · ⬜ partner portal: refunds/void by the partner, per-package stock, partner e-mail notices · ⬜ agency: invoices per agency, commission payout record

@@ -418,9 +418,36 @@ describe("menus, language, notifications", () => {
   it("the audit page offers the master switch and one tick box per kind of event, all ticked by default", async () => {
     const staff = await makeUser("audit-s", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
     await p.goto(`${APP}/admin/audit`); await p.getByText("Record the audit trail").waitFor({ timeout: 20_000 });
-    expect(await p.locator("input[name=kind]").count()).toBe(12);
-    expect(await p.locator("input[name=kind]:checked").count()).toBe(12); expect(await p.locator("input[name=enabled]:checked").count()).toBe(1);
+    expect(await p.locator("input[name=kind]").count()).toBe(13);
+    expect(await p.locator("input[name=kind]:checked").count()).toBe(13); expect(await p.locator("input[name=enabled]:checked").count()).toBe(1);
     expect(await overflowX(p)).toBe(false); await shot(p, "audit-settings-390"); await ctx.close();
+  });
+
+  it("revenue page: summary, chart, categories, the five period choices, a custom range, and a CSV export that only staff can download", async () => {
+    const staff = await makeUser("rev-s", true); const trav = await makeUser("rev-t");
+    const ctx = await ctxFor(staff, 1280, 800); const p = await ctx.newPage();
+    await p.goto(`${APP}/admin/revenue`); await p.getByText("Net revenue", { exact: true }).waitFor({ timeout: 20_000 });
+    for (const x of ["Today", "This week", "This month", "This year", "Custom range"]) expect(await p.getByText(x, { exact: true }).count(), x).toBeGreaterThan(0);
+    for (const x of ["e-VOA (visa and service fee)", "Insurance", "SIM / eSIM", "VIP services", "Beauty & health"]) expect(await p.getByText(x, { exact: true }).count(), x).toBeGreaterThan(0);
+    expect(await p.locator("svg[role=img]").count()).toBeGreaterThan(0); await shot(p, "revenue-1280");
+    await p.getByRole("link", { name: "This year" }).click(); await p.waitForURL(/range=year/); await p.getByText(/Showing 20\d\d-01-01 to 20\d\d-12-31/).waitFor();
+    await p.locator("input[type=date]").first().fill("2026-11-01"); await p.locator("input[type=date]").nth(1).fill("2026-11-06"); await p.getByRole("button", { name: "Custom range" }).click();
+    await p.waitForURL(/range=custom&from=2026-11-01&to=2026-11-06/); await p.getByText("Showing 2026-11-01 to 2026-11-06").waitFor();
+    const href = await p.getByRole("link", { name: /Export CSV/ }).getAttribute("href"); expect(href).toContain("range=custom");
+    const res = await ctx.request.get(`${APP}${href}`); expect(res.status()).toBe(200); expect(res.headers()["content-type"]).toContain("text/csv"); expect(res.headers()["content-disposition"]).toContain("revenue-2026-11-01_2026-11-06.csv");
+    const csv = await res.text(); expect(csv.replace("\uFEFF", "").split("\n")[0]).toBe("type,date_time_bangkok,receipt_no,reference,category,description,amount_thb"); expect(csv).toContain("total_net");
+    const c2 = await ctxFor(trav); const r2 = await c2.request.get(`${APP}${href}`); expect(r2.status(), "travelers cannot export").toBe(404);
+    expect((await (await browser.newContext()).request.get(`${APP}/admin/revenue/export`)).status(), "signed-out people cannot either").toBe(404);
+    await c2.close();
+    const m = await ctxFor(staff); const pm = await m.newPage(); await pm.goto(`${APP}/admin/revenue?range=week`); await pm.getByText("Net revenue", { exact: true }).waitFor(); expect(await overflowX(pm)).toBe(false); await shot(pm, "revenue-390"); await m.close();
+    await ctx.close();
+  });
+
+  it("automation rules page shows each rule with its switch and number", async () => {
+    const staff = await makeUser("rules-s", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
+    await p.goto(`${APP}/admin/rules`); await p.getByText("Payment reminder", { exact: true }).waitFor({ timeout: 20_000 });
+    expect(await p.locator("input[type=checkbox]").count()).toBe(5); expect(await p.locator("input[type=number]").count()).toBe(4);
+    expect(await p.getByRole("button", { name: "Run the rules now" }).count()).toBe(1); expect(await overflowX(p)).toBe(false); await shot(p, "rules-390"); await ctx.close();
   });
 
   it("the language is a drop-down; choosing one changes the page language", async () => {

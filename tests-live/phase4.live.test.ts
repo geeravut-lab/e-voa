@@ -19,9 +19,13 @@ import { addMember as addPartnerMember, applyForPartner, closeSettlement, member
 import { periodOf, settlementCsv } from "@/lib/partner-portal/rules";
 import { issueAddon, offersFor, syncPartnerPackages } from "@/lib/partners/service";
 import { admin, cleanupUsers, makeDraft, makeUser, sql } from "./helpers";
+import { loadRevenue } from "@/lib/revenue/service";
+import { runRules } from "@/lib/rules/service";
+import { resolveRange } from "@/lib/revenue/range";
+import { summarize } from "@/lib/revenue/aggregate";
 
 let mock: { listen: (p?: number) => Promise<number>; close: () => Promise<void>; state: { aiRequests: { model: string; system: string; tools: string[]; output_config: unknown }[]; messagesSent: Record<string, unknown>[] } }; let mockBase = "";
-const partnerIds: string[] = []; const agencyIds: string[] = [];
+const partnerIds: string[] = []; const revPayIds: string[] = []; const agencyIds: string[] = [];
 let masterWasEmpty = false; let aiRowBefore: { requests: number; input_tokens: number; output_tokens: number } | null = null; const today = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
 
 beforeAll(async () => {
@@ -34,6 +38,7 @@ beforeAll(async () => {
 }, 300_000);
 
 afterAll(async () => {
+  if (revPayIds.length) await admin.from("refunds").delete().in("payment_id", revPayIds);
   const problems = await cleanupUsers();
   for (const id of agencyIds) { const { data: ds } = await admin.from("documents").select("storage_path").eq("agency_id", id); if (ds?.length) await admin.storage.from("documents").remove(ds.map((d) => d.storage_path)); await admin.from("agencies").delete().eq("id", id); }
   for (const id of partnerIds) { await admin.from("partner_packages").delete().eq("partner_id", id); await admin.from("partners").delete().eq("id", id); }
@@ -323,5 +328,69 @@ describe("audit trail settings", () => {
       await putSetting("audit_config", { enabled: false, disabled: [] }, a.id);
       await audit({ actorId: a.id, action: "auth.audit_probe" }); expect(await count("auth.audit_probe"), "the whole trail off").toBe(0);
     } finally { await sql("delete from public.platform_settings where key = 'audit_config'"); }
+  });
+});
+
+describe("revenue dashboard data", () => {
+  it("splits a payment into e-VOA and add-on categories, subtracts refunds, and respects the Thai-time range", async () => {
+    const u = await makeUser("rev"); const d = await makeDraft(u, "APR");
+    const mk = async (cat: string, price: number) => (await admin.from("addon_orders").insert({ owner_id: u.id, application_id: d.appId, category: cat, package_code: "X", package_name: `Rev ${cat}`, price_thb: price, status: "issued", request_ref: `AO-rev-${cat}-${Math.random().toString(36).slice(2)}` }).select("id").single()).data!.id as string;
+    const [ins, esim, vip, health] = [await mk("insurance", 290), await mk("esim", 400), await mk("vip", 1500), await mk("health", 800)];
+    const items = [{ kind: "visa_fee", applicationId: d.appId, label: "Thai visa fee", amountThb: 2000 }, { kind: "service_fee", applicationId: d.appId, label: "Service fee (regular)", amountThb: 600 },
+      ...[[ins, 290], [esim, 400], [vip, 1500], [health, 800]].map(([id, a]) => ({ kind: "addon", applicationId: d.appId, addonOrderId: id, label: `Add-on ${a}`, amountThb: a }))];
+    const pay = (await admin.from("payments").insert({ owner_id: u.id, amount_thb: 5590, provider: "stripe", status: "paid", paid_at: new Date().toISOString(), receipt_no: `RC-REVTEST-${Date.now().toString(36)}`, items }).select("id, receipt_no").single()).data!;
+    revPayIds.push(pay.id);
+    await admin.from("refunds").insert({ payment_id: pay.id, addon_order_id: esim, amount_thb: 400, kind: "addon", reason: "unused", status: "succeeded" });
+    await admin.from("refunds").insert({ payment_id: pay.id, addon_order_id: vip, amount_thb: 999, kind: "addon", reason: "failed one", status: "failed" });          // a failed refund is not money returned
+    const range = resolveRange("today", new Date());
+    const { paid, refunds } = await loadRevenue(range);
+    const mine = paid.filter((l) => l.paymentId === pay.id), myRefunds = refunds.filter((r) => r.receiptNo === pay.receipt_no);
+    expect(mine).toHaveLength(6); expect(mine.every((l) => l.reference.startsWith("EV-"))).toBe(true);
+    const s = summarize(mine, myRefunds, range);
+    expect(s.byCategory).toMatchObject({ evoa: { gross: 2600, net: 2600 }, insurance: { net: 290 }, sim: { gross: 400, refunds: 400, net: 0 }, vip: { net: 1500 }, health: { net: 800 } });
+    expect(s.net).toBe(5190); expect(s.payments).toBe(1); expect(myRefunds).toHaveLength(1);
+    const yesterday = resolveRange("custom", new Date(), "2000-01-01", "2000-01-02");          // a range far away: this payment is not in it
+    expect((await loadRevenue(yesterday)).paid.some((l) => l.paymentId === pay.id)).toBe(false);
+  });
+});
+
+describe("rules engine", () => {
+  // the table keeps updated_at current with a trigger: switch triggers off for this one statement so a test can make an application "old"
+  const age = (id: string, updated: string, created?: string) => sql(`begin; set local session_replication_role = replica; update public.applications set updated_at = now() - interval '${updated}'${created ? `, created_at = now() - interval '${created}'` : ""} where id = '${id}'; commit;`);
+  const nots = async (userId: string, key: string) => ((await admin.from("app_notifications").select("id").eq("user_id", userId).eq("dedupe_key", key)).data ?? []).length;
+  it("reminds about unpaid applications once, closes old ones, reminds about fixes, and warns staff about deadlines; paid ones are left alone", async () => {
+    const u = await makeUser("rule-u"); const staff = await makeUser("rule-s", { admin: true });
+    const young = await makeDraft(u, "APR"), old = await makeDraft(u, "APR", { days: 60 }), landed = await makeDraft(u, "APR"), paidApp = await makeDraft(u, "APR");
+    await age(young.appId, "2 days"); await age(old.appId, "20 days", "20 days");
+    await sql(`update public.trips set arrival_date = (now() - interval '2 days')::date where id = '${landed.tripId}'`);
+    for (const to of ["awaiting_payment", "paid"]) await admin.rpc("transition_application", { p_id: paidApp.appId, p_to: to, p_reason: null, p_source: "system", p_actor: null });
+    await sql(`update public.applications set sla_due_at = now() + interval '3 hours' where id = '${paidApp.appId}'`);
+    const before = (await admin.from("applications").select("status").eq("id", paidApp.appId).single()).data!.status;
+    const r1 = await runRules(new Date(), { onlyOwners: [u.id], adminIds: [staff.id] });
+    expect(r1).toMatchObject({ payment_reminders: 1, expired: 2, sla_warnings: 1 });
+    expect(await nots(u.id, `rule:payrem:${young.appId}`)).toBe(1);
+    const st = async (id: string) => (await admin.from("applications").select("status").eq("id", id).single()).data!.status;
+    expect(await st(old.appId)).toBe("expired"); expect(await st(landed.appId)).toBe("expired"); expect(await st(young.appId)).toBe("draft"); expect(await st(paidApp.appId)).toBe(before);
+    expect(await nots(u.id, `rule:expired:${old.appId}`)).toBe(1); expect(await nots(staff.id, `rule:slawarn:${paidApp.appId}:${staff.id}`)).toBe(1);
+    // running again repeats nothing
+    const r2 = await runRules(new Date(), { onlyOwners: [u.id], adminIds: [staff.id] });
+    expect(r2).toMatchObject({ payment_reminders: 0, expired: 0, sla_warnings: 0 }); expect(await nots(u.id, `rule:payrem:${young.appId}`)).toBe(1);
+    // the deadline passes: one "late" notice per staff member, once
+    await sql(`update public.applications set sla_due_at = now() - interval '1 hour' where id = '${paidApp.appId}'`);
+    expect(await runRules(new Date(), { onlyOwners: [u.id], adminIds: [staff.id] })).toMatchObject({ sla_overdue: 1 });
+    expect(await runRules(new Date(), { onlyOwners: [u.id], adminIds: [staff.id] })).toMatchObject({ sla_overdue: 0 });
+  });
+  it("a fix that waits gets one reminder; switching a rule off stops it", async () => {
+    const u = await makeUser("rule-f"); const d = await makeDraft(u, "APR");
+    for (const to of ["awaiting_payment", "paid", "pre_check", "action_required"]) await admin.rpc("transition_application", { p_id: d.appId, p_to: to, p_reason: null, p_source: "system", p_actor: null });
+    await age(d.appId, "2 days");
+    await putSetting("automation_rules", { fix_reminder: { enabled: false, after_hours: 24 } }, u.id);
+    try {
+      expect(await runRules(new Date(), { onlyOwners: [u.id] })).toMatchObject({ fix_reminders: 0 });
+      await putSetting("automation_rules", { fix_reminder: { enabled: true, after_hours: 24 } }, u.id);
+      expect(await runRules(new Date(), { onlyOwners: [u.id] })).toMatchObject({ fix_reminders: 1 });
+      expect(await nots(u.id, `rule:fix:${d.appId}`)).toBe(1);
+      expect(await runRules(new Date(), { onlyOwners: [u.id] })).toMatchObject({ fix_reminders: 0 });
+    } finally { await sql("delete from public.platform_settings where key = 'automation_rules'"); }
   });
 });
