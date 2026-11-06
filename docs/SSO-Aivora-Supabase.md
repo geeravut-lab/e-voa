@@ -9,7 +9,7 @@ prompt นี้ต่อยอดจากเวอร์ชัน Firebase ท
 - CALLBACK  = https://e-voa.vercel.app/sso/callback
 
 ค่าที่ต้องตั้งเป็น environment variable ที่ Vercel ของ **แอปนี้** (ไม่ใช่ที่ hub):
-- SUPABASE_URL          = https://vlxsvgzxgxmekekupfbh.supabase.co
+- SUPABASE_URL          = https://ytzktizvmeayugdfzzlk.supabase.co
 - SUPABASE_SERVICE_ROLE = <ค่าอยู่ใน env SUPABASE_SERVICE_ROLE_KEY ของ Netlify — ห้ามเขียนลงไฟล์>
 
 หลักการที่ห้ามละเมิด:
