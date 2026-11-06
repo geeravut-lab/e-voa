@@ -25,6 +25,10 @@ and set `MOCK_CALLBACK_SECRET` to the same value as `IMMIGRATION_CALLBACK_SECRET
 
 Partner calls are signed with `timestamp`, `key` and `X-API-KEY = HMAC-SHA256(secret, timestamp)` (hex). **This signature is our assumption**: the original documents describe it with a picture we cannot read. Confirm the real algorithm with each partner. Defaults: secret `mock-secret`, key `mock-public`.
 
+Point the app at the add-on simulators: `PARTNER_INSURANCE_URL=http://localhost:4010/insurance/CIS`, `PARTNER_SIM_URL=http://localhost:4010/sim`, `PARTNER_VIP_URL=http://localhost:4010/vip`,
+`PARTNER_BHS_URL=http://localhost:4010/bhs`, `INSURANCE_G_API_KEY`/`INSURANCE_TOKEN` any value, `PARTNER_SECRET=mock-secret`, `PARTNER_PUBLIC_KEY=mock-public`, `FLIGHT_API_URL=http://localhost:4010`.
+Partner callbacks go to `/api/partners/<provider>/<original path>` with `Authorization: Bearer <PARTNER_CALLBACK_SECRET>` (give the simulator `MOCK_CALLBACK_INSURANCE=http://localhost:3000/api/partners/insurance`, and the same for `sim`, `vip`, `bhs`).
+
 ## Choosing the Immigration outcome (end of the passport number)
 
 | Passport ends with | Result |
@@ -50,3 +54,10 @@ Whenever something that touches Immigration or a partner is built or changed, **
 2. Does Immigration retry a callback when we answer non-2xx? (we answer 503 only when the application is in flight but not yet matched.)
 3. Can the E-VOA be digital only, with a QR/verification link, or must it stay printable? (Q8)
 4. The partner request signature (above).
+
+## Phase 2/3 live checks (`tests-live/phase2.live.test.ts`)
+
+Real Supabase + real **Stripe TEST** API + this simulator: catalogue and rules, flight lookup, incomplete order refused, add-ons chosen server-side, a real Stripe Checkout Session with the exact total
+(unpaid = not paid), a real test PaymentIntent recorded through `mark_payment_paid` (the hosted Checkout page cannot be reached from the cloud sandbox, so the card step itself is **not** driven),
+receipt number, insurance callback → document attached → Immigration → E-VOA → signed pass token, RLS, refunds through Stripe (policy, double refund, cap), rejection refunds only unused add-ons,
+partner outage → retries → failed → refunded, unpaid order expiry. It removes everything it created.

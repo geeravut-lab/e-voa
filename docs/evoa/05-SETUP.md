@@ -39,6 +39,13 @@ Environment variables (Production and Preview):
 | `DATA_ENCRYPTION_KEY` | 32 random bytes, base64 (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`). **Back it up: without it passport numbers and files cannot be read.** | **NO** |
 | `IMMIGRATION_API_URL` / `IMMIGRATION_API_TOKEN` / `IMMIGRATION_API_FROM` | From Immigration (not available yet). Leave empty until then | **NO** |
 | `IMMIGRATION_CALLBACK_SECRET` | Random string you give to Immigration for `POST /api/immigration/callback` | **NO** |
+| `STRIPE_SECRET_KEY` | Stripe **test** secret key (`sk_test_…`). Use the live key only when you decide to take real money | **NO** |
+| `STRIPE_WEBHOOK_SECRET` | In Stripe → Developers → Webhooks add `https://e-voa.vercel.app/api/stripe/webhook` (events `checkout.session.completed`, `checkout.session.expired`), copy its signing secret here. The return page also asks Stripe directly, so payments are confirmed even before the webhook is set | **NO** |
+| `PARTNER_INSURANCE_URL` `PARTNER_SIM_URL` `PARTNER_VIP_URL` `PARTNER_BHS_URL` | Partner API base addresses (not available yet). Empty = that add-on is simply not offered | **NO** |
+| `INSURANCE_G_API_KEY` `INSURANCE_TOKEN` | Insurance partner credentials | **NO** |
+| `PARTNER_SECRET` `PARTNER_PUBLIC_KEY` | SIM / VIP / Beauty & Health request signing (assumed HMAC; confirm with each partner) | **NO** |
+| `PARTNER_CALLBACK_SECRET` | Random string you give the partners for `POST /api/partners/<provider>/<path>` | **NO** |
+| `FLIGHT_API_URL` `FLIGHT_API_KEY` | Optional flight-number lookup provider (`GET /flights/lookup?flight=&date=`) | **NO** |
 | `AIVORA_HUB_URL` | `https://aivora-lc.netlify.app` (default) | no |
 | `AIVORA_APP_SLUG` | `e-voa` (default) | no |
 

@@ -48,3 +48,16 @@ draft → awaiting_payment → paid → pre_check → submitted → under_review
 `src/lib/immigration/`: `schema.ts` (ICD fields) · `gateway.ts` (HTTP client, error kinds, GET retries) · `docket.ts` (builds the docket from the database, validates before sending) ·
 `pipeline.ts` (queue, send, callback, polling fallback, additional documents) · `sync.ts` (reference lists). The decision comes back at `POST /api/immigration/callback`
 (Bearer `IMMIGRATION_CALLBACK_SECRET`); if a callback arrives before our bookkeeping, it is matched by batch id; repeated callbacks are applied once.
+
+## Phase 2/3 tables (migration `20261107000100/200`)
+
+| Table | What | Who sees it |
+| --- | --- | --- |
+| `payments` (+ `receipt_no`, `items`, `provider_payment_ref`, `trip_id`, `expires_at`) | One payment per trip checkout; `items` is the frozen list of what was bought; `mark_payment_paid()` sets paid exactly once and gives `RC-YY-000001` | owner, admin |
+| `refunds` | Every refund (kind `addon` = policy, `exception` = decided by staff) with Stripe's id and status | owner, admin |
+| `partner_packages` | Local copy of what partners sell (insurance plan, SIM, eSIM, VIP, health) | everyone (active rows) |
+| `addon_orders` | One row per add-on per application; `request_ref` is OUR id sent to the partner so the same order is never bought twice; `partner_ref`, `delivery` (e-card, LPA/QR, voucher) | owner, admin |
+| `application_notes` | Staff notes, never shown to travelers | admin |
+| `trips.package` | The package is chosen in step 1 and copied to every application of the trip | owner |
+
+Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insurance`, `refund_policy`.

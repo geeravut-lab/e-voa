@@ -49,14 +49,31 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Tick job (queue, polling, list sync, purge) | ✅ |
 | Open questions for Immigration (idempotent docket? callback retries? digital pass?) | 🟡 listed in 06-MOCK-PARTNERS.md |
 
-## Phase 2 — Application and payment (weeks 3–6)
+## Phase 2 — Application and payment 🟡 (built; card step tested with Stripe TEST API, not through the hosted page)
 
-⬜ Eligibility check · ⬜ application wizard (package → documents → extras → pay) · ⬜ passport MRZ/OCR + photo quality check · ⬜ flight lookup · ⬜ group applications ·
-⬜ checkout with Stripe + local gateway, receipts, reconciliation · ⬜ status timeline + notifications · ⬜ E-VOA Pass (QR, PDF, offline) · ⬜ Ops console (queue, document review, SLA timers) · ⬜ refund rules (Q4)
+| Item | Status |
+| --- | --- |
+| Eligibility page `/eligibility` + admin lists `/admin/eligibility` | ✅ shows "cannot answer yet" until you enter the official lists (nothing is guessed) |
+| 4-step wizard `/apply`: trip + package (Regular ≥72 h / Express ≥24 h) → travelers + documents → extras → review and pay; several travelers per trip | ✅ |
+| Passport reading: paste/type the 2 MRZ lines, every check digit verified | ✅ · ⬜ camera/photo OCR (planned: self-hosted tesseract, not built) |
+| Flight lookup | ✅ with the simulator · ⬜ real provider (`FLIGHT_API_URL`) |
+| Document upload (shrunk to Immigration's limits, encrypted), pre-check (passport 180 days, 15-day stay, documents) | ✅ |
+| Stripe Checkout (THB, test mode), amount re-checked with Stripe, webhook with signature + de-duplication, receipt numbers, expiry, refunds per policy | ✅ with the Stripe TEST API · 🟡 hosted Checkout page not reachable from the cloud sandbox: please pay once yourself with card 4242 4242 4242 4242 · ⬜ local gateway (later) |
+| Status page `/trips`, `/trips/[id]` (timeline, fix and resend, add-on delivery) | ✅ |
+| E-VOA pass `/pass`, `/pass/[id]` (signed QR drawn into the page, save as picture for offline, print) and public check `/v/<token>` | ✅ |
+| Receipts `/receipts/[id]`, fees and refund rule `/fees` | ✅ |
+| Ops console `/admin/queue` (counts, SLA, filters) and detail (documents with audit, notes, request fix, retry send, cancel, exception refund, add-on retry/refund) | ✅ · staff cannot set approved/rejected: only Immigration can |
+| Tick: payments reconcile/expire, pre-check recheck, add-on queue, catalogue sync | ✅ (daily on Hobby) |
+| ⬜ Group/agency uploads · ⬜ Ops: bulk actions, assignment, saved filters | next |
 
-## Phase 3 — Add-ons (weeks 5–8)
+## Phase 3 — Add-ons 🟡 (built and tested against the simulator; waits for real partner access)
 
-⬜ Insurance · ⬜ SIM/eSIM · ⬜ VIP services · ⬜ Beauty & Health · ⬜ partner API pattern (package list → buy → confirm → callback) · ⬜ add-on rules per airport / package (e.g. not for Express)
+| Item | Status |
+| --- | --- |
+| Insurance (policy callback attaches the certificate to the application), SIM, eSIM (LPA + QR), VIP, Beauty & Health (voucher, used, lab result) | ✅ simulator · ⬜ real partners (credentials, signature algorithm) |
+| Rules: SIM/VIP only at listed airports and not with Express (admin-editable `addon_rules`) enforced on the server | ✅ |
+| Same order never bought twice (`request_ref`), retries with back-off, failure → automatic refund, rejection → unused add-ons refunded | ✅ |
+| Public `/extras` catalogue | ✅ |
 
 ## Go-live gate (week 8)
 
