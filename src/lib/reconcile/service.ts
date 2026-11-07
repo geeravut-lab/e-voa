@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { stripeConfigured, listCharges, listStripeRefunds, paymentIntentExists, refundExists, type StripeChargeRaw, type StripeRefundRaw } from "@/lib/payments/stripe";
+import { stripeConfigured, listPaymentIntents, listStripeRefunds, paymentIntentExists, refundExists, type StripeIntentRaw, type StripeRefundRaw } from "@/lib/payments/stripe";
 import { notifyUser } from "@/lib/notify";
 import { DICTS } from "@/lib/i18n/dict";
 import { isLang } from "@/lib/i18n/langs";
@@ -8,8 +8,8 @@ import { fmt } from "@/lib/i18n/dict";
 import { reconcile, thaiDayRange, yesterdayThai, isPaidStatus, type Report } from "./rules";
 
 const db = () => createAdminClient();
-export type StripeSide = { charges: (fromSec: number, toSec: number) => Promise<StripeChargeRaw[]>; refunds: (fromSec: number, toSec: number) => Promise<StripeRefundRaw[]>; hasPi: (id: string) => Promise<boolean>; hasRefund: (id: string) => Promise<boolean> };
-const REAL: StripeSide = { charges: listCharges, refunds: listStripeRefunds, hasPi: paymentIntentExists, hasRefund: refundExists };
+export type StripeSide = { intents: (fromSec: number, toSec: number) => Promise<StripeIntentRaw[]>; refunds: (fromSec: number, toSec: number) => Promise<StripeRefundRaw[]>; hasPi: (id: string) => Promise<boolean>; hasRefund: (id: string) => Promise<boolean> };
+const REAL: StripeSide = { intents: listPaymentIntents, refunds: listStripeRefunds, hasPi: paymentIntentExists, hasRefund: refundExists };
 const thb = (satang: number) => Math.round(satang) / 100;
 
 /** Compares one Thai day with Stripe, stores the result (one row per day, replaced when run again) and returns it. `stripe` can be replaced in tests. */
@@ -19,9 +19,19 @@ export async function reconcileDay(day: string, stripe: StripeSide = REAL): Prom
   if (stripe === REAL && !stripeConfigured()) { await save({ status: "skipped", error: "STRIPE_SECRET_KEY is not set" }); return { status: "skipped" }; }
   try {
     const slackFrom = new Date(range.from.getTime() - 86_400_000), slackTo = new Date(range.to.getTime() + 86_400_000), sec = (d: Date) => Math.floor(d.getTime() / 1000);
-    const [rawCharges, rawRefunds] = await Promise.all([stripe.charges(sec(slackFrom), sec(slackTo)), stripe.refunds(sec(slackFrom), sec(slackTo))]);
-    const charges = rawCharges.filter((c) => c.currency === "thb" && c.status === "succeeded").map((c) => ({ id: c.id, pi: c.payment_intent, amountThb: thb(c.amount), created: c.created, paid: c.paid }));
-    const refunds = rawRefunds.filter((r) => r.currency === "thb").map((r) => ({ id: r.id, pi: r.payment_intent, amountThb: thb(r.amount), created: r.created, status: r.status }));
+    const [rawIntents, rawRefunds] = await Promise.all([stripe.intents(sec(slackFrom), sec(slackTo)), stripe.refunds(sec(slackFrom), sec(slackTo))]);
+    // The Stripe account may be shared with other apps: only what belongs to ThaiPass is compared. A payment is ours when its metadata.payment_id is one of OUR payment ids
+    // (or its PaymentIntent id is already on one of our payments). Anything else in the account is none of our business.
+    const metaIds = [...new Set(rawIntents.map((p) => p.metadata?.payment_id).filter((x): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x)))];
+    const [{ data: mine }, { data: allPi }] = await Promise.all([
+      metaIds.length ? db().from("payments").select("id").in("id", metaIds) : Promise.resolve({ data: [] as { id: string }[] }),
+      db().from("payments").select("provider_payment_ref").not("provider_payment_ref", "is", null).limit(50000),
+    ]);
+    const ourIds = new Set((mine ?? []).map((m) => m.id)), ourPis = new Set((allPi ?? []).map((m) => m.provider_payment_ref as string));
+    const intents = rawIntents.filter((p) => p.currency === "thb" && p.status === "succeeded" && ((p.metadata?.payment_id && ourIds.has(p.metadata.payment_id)) || ourPis.has(p.id)));
+    for (const p of intents) ourPis.add(p.id);
+    const charges = intents.map((p) => { const lc = typeof p.latest_charge === "object" && p.latest_charge ? p.latest_charge : null; return { id: p.id, pi: p.id, amountThb: thb(p.amount_received), created: lc?.created ?? p.created, paid: true }; });
+    const refunds = rawRefunds.filter((r) => r.currency === "thb" && r.payment_intent && ourPis.has(r.payment_intent)).map((r) => ({ id: r.id, pi: r.payment_intent, amountThb: thb(r.amount), created: r.created, status: r.status }));
     const piList = charges.map((c) => c.pi).filter((x): x is string => !!x);
     const cols = "id, provider_payment_ref, amount_thb, status, paid_at, receipt_no";
     const [byTime, byPi, { data: rf }] = await Promise.all([

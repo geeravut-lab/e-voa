@@ -58,8 +58,8 @@ export function createCheckoutSession(a: { paymentId: string; items: { label: st
     cancel_url: a.cancelUrl,
     locale: a.locale ?? "auto",
     expires_at: Math.floor(Date.now() / 1000) + Math.max(30, a.minutesToExpire ?? 60) * 60,
-    metadata: { payment_id: a.paymentId },
-    payment_intent_data: { metadata: { payment_id: a.paymentId } },
+    metadata: { payment_id: a.paymentId, app: "thaipass-evoa" },
+    payment_intent_data: { metadata: { payment_id: a.paymentId, app: "thaipass-evoa" } },
     line_items: a.items.map((i) => ({ quantity: 1, price_data: { currency: "thb", unit_amount: i.amountSatang, product_data: { name: i.label.slice(0, 120) } } })),
   }, `checkout:${a.paymentId}`);
 }
@@ -94,17 +94,20 @@ export const signWebhook = (rawBody: string, secret: string, t = Math.floor(Date
 
 // ---- reading what Stripe has recorded (for the daily reconciliation)
 export type StripeChargeRaw = { id: string; payment_intent: string | null; amount: number; currency: string; created: number; paid: boolean; status: string };
+/** A PaymentIntent with the charge expanded (the charge time is when the money moved). `metadata.payment_id` is how a payment of ours is recognised: the Stripe account can be shared with other apps. */
+export type StripeIntentRaw = { id: string; amount_received: number; currency: string; created: number; status: string; metadata: Record<string, string>; latest_charge: { created: number; paid: boolean } | string | null };
 export type StripeRefundRaw = { id: string; payment_intent: string | null; amount: number; currency: string; created: number; status: string };
 type Page<T> = { data: T[]; has_more: boolean };
-async function listAll<T extends { id: string }>(path: string, fromSec: number, toSec: number, maxPages = 20): Promise<T[]> {
+async function listAll<T extends { id: string }>(path: string, fromSec: number, toSec: number, maxPages = 20, extra: { [k: string]: Param } = {}): Promise<T[]> {
   const out: T[] = []; let after: string | undefined;
   for (let i = 0; i < maxPages; i++) {
-    const page = await call<Page<T>>("GET", path, { created: { gte: fromSec, lt: toSec }, limit: 100, starting_after: after });
+    const page = await call<Page<T>>("GET", path, { created: { gte: fromSec, lt: toSec }, limit: 100, starting_after: after, ...extra });
     out.push(...page.data); if (!page.has_more || page.data.length === 0) return out; after = page.data[page.data.length - 1].id;
   }
   throw new StripeError("too many records to read in one go", 0, "too_many");
 }
 export const listCharges = (fromSec: number, toSec: number) => listAll<StripeChargeRaw>("/charges", fromSec, toSec);
+export const listPaymentIntents = (fromSec: number, toSec: number) => listAll<StripeIntentRaw>("/payment_intents", fromSec, toSec, 20, { "expand": ["data.latest_charge"] });
 export const listStripeRefunds = (fromSec: number, toSec: number) => listAll<StripeRefundRaw>("/refunds", fromSec, toSec);
 export const paymentIntentExists = async (id: string) => { try { await call("GET", `/payment_intents/${encodeURIComponent(id)}`); return true; } catch (e) { if (e instanceof StripeError && e.status === 404) return false; throw e; } };
 export const refundExists = async (id: string) => { try { await call("GET", `/refunds/${encodeURIComponent(id)}`); return true; } catch (e) { if (e instanceof StripeError && e.status === 404) return false; throw e; } };

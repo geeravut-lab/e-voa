@@ -125,14 +125,20 @@ describe("daily reconciliation", () => {
     const row = (pi: string, thb: number, receipt: string, h = 10) => sql(`insert into public.payments (owner_id, amount_thb, provider, provider_ref, provider_payment_ref, status, paid_at, receipt_no, items) values ('${u.id}', ${thb}, 'stripe', 'cs_p5_${receipt}', '${pi}', 'paid', '${at(h)}', '${receipt}', '[]'::jsonb)`);
     await row(`pi_a_${rnd}`, 2600, `P5A-${rnd}`); await row(`pi_c_${rnd}`, 900, `P5C-${rnd}`); await row(`pi_d_${rnd}`, 1200, `P5D-${rnd}`);
     const sec = (h: number) => Math.floor(Date.parse(at(h)) / 1000) + 60;
+    // Stripe side (the account is shared with other apps: payments that are not ours must be ignored). Our payments are recognised by metadata.payment_id.
+    const [{ id: payA }] = await sql<{ id: string }>(`select id from public.payments where receipt_no = 'P5A-${rnd}'`), [{ id: payD }] = await sql<{ id: string }>(`select id from public.payments where receipt_no = 'P5D-${rnd}'`);
+    const [{ id: payB }] = await sql<{ id: string }>(`insert into public.payments (owner_id, amount_thb, provider, provider_ref, status, items) values ('${u.id}', 700, 'stripe', 'cs_p5_B${rnd}', 'pending', '[]'::jsonb) returning id`);        // ours, but never marked paid
+    const intent = (pi: string, satang: number, h: number, meta: Record<string, string>, currency = "thb") => ({ id: pi, amount_received: satang, currency, created: sec(h) - 600, status: "succeeded", metadata: meta, latest_charge: { created: sec(h), paid: true } });
     const stripe: StripeSide = {
-      charges: async () => [{ id: "ch_a", payment_intent: `pi_a_${rnd}`, amount: 260000, currency: "thb", created: sec(10), paid: true, status: "succeeded" }, { id: "ch_b", payment_intent: `pi_b_${rnd}`, amount: 70000, currency: "thb", created: sec(11), paid: true, status: "succeeded" },
-        { id: "ch_d", payment_intent: `pi_d_${rnd}`, amount: 100000, currency: "thb", created: sec(10), paid: true, status: "succeeded" }, { id: "ch_usd", payment_intent: "pi_usd", amount: 5000, currency: "usd", created: sec(10), paid: true, status: "succeeded" }],
-      refunds: async () => [], hasPi: async () => false, hasRefund: async () => false,
+      intents: async () => [intent(`pi_a_${rnd}`, 260000, 10, { payment_id: payA }), intent(`pi_b_${rnd}`, 70000, 11, { payment_id: payB }), intent(`pi_d_${rnd}`, 100000, 10, { payment_id: payD }),
+        intent("pi_other_1", 299900, 10, {}), intent("pi_other_2", 328900, 12, { payment_id: "not-a-uuid" }), intent("pi_other_3", 460000, 12, { payment_id: "11111111-1111-4111-8111-111111111111" }), intent("pi_usd", 5000, 10, { payment_id: payA }, "usd")],
+      refunds: async () => [{ id: "re_other", payment_intent: "pi_other_1", amount: 39900, currency: "thb", created: sec(11), status: "succeeded" }],
+      hasPi: async () => false, hasRefund: async () => false,
     };
     const r = await reconcileDay(day, stripe); expect(r.status).toBe("issues"); if (!r.report) return;
     const kinds = r.report.issues.map((x) => `${x.kind}:${x.ref}`).sort();
-    expect(kinds).toEqual([`amount_mismatch:P5D-${rnd}`, `ours_only:P5C-${rnd}`, `stripe_only:pi_b_${rnd}`].sort());                // A matches; B only Stripe; C only ours; D differs; the US-dollar charge is not ours to compare
+    expect(kinds).toEqual([`amount_mismatch:P5D-${rnd}`, `ours_only:P5C-${rnd}`, `stripe_only:pi_b_${rnd}`].sort());
+    expect(r.report.stripeCount).toBe(3);                                                                                                           // 2,600 + 700 + 1,000 only: the other app's 299,900 / 328,900 / 460,000 are not counted                // A matches; B is paid in Stripe but not in our records; C only ours; D differs; payments of OTHER apps in the shared Stripe account (no/odd/unknown payment_id, or another currency) and their refunds are ignored
     const saved = (await sql<{ status: string; stripe_gross_thb: number; reviewed_at: string | null }>(`select status, stripe_gross_thb, reviewed_at from public.reconciliation_reports where day = '${day}'`))[0];
     expect(saved.status).toBe("issues"); expect(saved.stripe_gross_thb).toBeGreaterThanOrEqual(4300);
     expect((await attentionItems()).find((i) => i.key === "recon_issues")?.count).toBeGreaterThanOrEqual(1);
@@ -141,7 +147,7 @@ describe("daily reconciliation", () => {
     await sql(`update public.reconciliation_reports set reviewed_at = now() where day = '${day}'`);
     expect((await attentionItems()).find((i) => i.key === "recon_issues")?.count ?? 0).toBe(0);                                                   // reviewed: it stops asking
     // Stripe unreachable: the day is recorded as an error, not as "all good"
-    const bad = await reconcileDay(day, { ...stripe, charges: async () => { throw new Error("Stripe is down"); } }); expect(bad.status).toBe("error");
+    const bad = await reconcileDay(day, { ...stripe, intents: async () => { throw new Error("Stripe is down"); } }); expect(bad.status).toBe("error");
     expect((await sql<{ status: string; error: string }>(`select status, error from public.reconciliation_reports where day = '${day}'`))[0]).toEqual({ status: "error", error: "Stripe is down" });
   });
 });
