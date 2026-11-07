@@ -154,36 +154,42 @@ describe("daily reconciliation", () => {
 });
 
 describe("FAQ and news from the back office", () => {
-  it("shows published items in the reader's language (English as the fallback), in order, and falls back to the built-in FAQ when none is published", async () => {
+  // The real database may already hold the owner's own questions and news: these checks never assume it is empty and never touch rows they did not create.
+  // Test items sort before everything else (sort 1-2 / dates in 2099).
+  it("shows published items in the reader's language (English as the fallback), in order, and leaves out what is not published", async () => {
     cleanups.push(`delete from public.content_items where title->>'en' like 'P5 %'`);
-    const before = await loadFaq("en"); expect(before.length).toBe(FAQ.en.length);                                                                   // nothing written yet: the built-in questions
-    const ins = (kind: string, title: object, body: object, o = "") => sql(`insert into public.content_items (kind, title, body, ${o ? o.split("|")[0] : "published"}) values ('${kind}', '${JSON.stringify(title)}'::jsonb, '${JSON.stringify(body)}'::jsonb, ${o ? o.split("|")[1] : "true"})`);
-    await ins("faq", { en: "P5 Second", th: "P5 ที่สอง" }, { en: "Answer two", th: "ตอบสอง" }, "published, sort|true, 20"); await ins("faq", { en: "P5 First" }, { en: "Answer one" }, "published, sort|true, 10"); await ins("faq", { en: "P5 Hidden" }, { en: "x" }, "published|false");
-    expect((await loadFaq("en")).map((f) => f.q)).toEqual(["P5 First", "P5 Second"]);                                                                // only the published ones, by order
-    expect((await loadFaq("th")).map((f) => f.q)).toEqual(["P5 First", "P5 ที่สอง"]);                                                              // Thai where written, English where not
-    expect((await loadFaq("ja")).map((f) => f.a)).toEqual(["Answer one", "Answer two"]);
-    await ins("news", { en: "P5 Old news" }, { en: "old" }, "published, published_at|true, '2024-01-01'"); await ins("news", { en: "P5 Pinned news", th: "P5 ข่าวปักหมุด" }, { en: "new" }, "published, pinned, published_at|true, true, now()");
+    const existing = await loadFaq("en"); expect(existing.length).toBeGreaterThan(0);                                                           // built-in questions, or the owner's own
+    const ins = (kind: string, title: object, body: object, cols: string, vals: string) => sql(`insert into public.content_items (kind, title, body, ${cols}) values ('${kind}', '${JSON.stringify(title)}'::jsonb, '${JSON.stringify(body)}'::jsonb, ${vals})`);
+    await ins("faq", { en: "P5 Second", th: "P5 ที่สอง" }, { en: "Answer two", th: "ตอบสอง" }, "published, sort", "true, 2"); await ins("faq", { en: "P5 First" }, { en: "Answer one" }, "published, sort", "true, 1"); await ins("faq", { en: "P5 Hidden" }, { en: "x" }, "published, sort", "false, 0");
+    const en = await loadFaq("en"); expect(en.slice(0, 2).map((f) => f.q)).toEqual(["P5 First", "P5 Second"]); expect(en.map((f) => f.q)).not.toContain("P5 Hidden");   // by order, unpublished left out
+    expect((await loadFaq("th")).slice(0, 2).map((f) => f.q)).toEqual(["P5 First", "P5 ที่สอง"]);                                              // Thai where written, English where not
+    expect((await loadFaq("ja")).slice(0, 2).map((f) => f.a)).toEqual(["Answer one", "Answer two"]);
+    await ins("news", { en: "P5 Old news" }, { en: "old" }, "published, published_at", "true, '2099-01-01'"); await ins("news", { en: "P5 Pinned news", th: "P5 ข่าวปักหมุด" }, { en: "new" }, "published, pinned, published_at", "true, true, '2099-01-02'");
     expect((await loadNews("en")).slice(0, 2).map((n) => n.title)).toEqual(["P5 Pinned news", "P5 Old news"]); expect((await pinnedNews("th"))?.title).toBe("P5 ข่าวปักหมุด");
     await sql(`delete from public.content_items where title->>'en' like 'P5 %'`);
-    expect((await loadFaq("en")).length).toBe(FAQ.en.length); expect(await pinnedNews("en")).toBeNull();                                            // back to the built-in FAQ
+    expect((await loadFaq("en")).map((f) => f.q)).toEqual(existing.map((f) => f.q));                                                              // back to exactly what was there before
+  });
+  it("falls back to the built-in FAQ when nothing is published (checked only where the database has no questions of its own)", async () => {
+    const own = Number((await sql<{ n: number }>(`select count(*)::int n from public.content_items where kind = 'faq' and published`))[0].n);
+    if (own > 0) return;                                                                                                                         // the owner has written questions: nothing to check, and nothing to disturb
+    expect((await loadFaq("en")).length).toBe(FAQ.en.length);
   });
 });
 
 describe("travel articles from the back office", () => {
-  it("shows published articles in the reader's language with English as the fallback, keeps addresses unique, and falls back to the built-in articles when none is published", async () => {
+  it("shows published articles in the reader's language with English as the fallback, keeps addresses unique, and leaves out what is not published", async () => {
     cleanups.push(`delete from public.content_items where slug like 'p5-art-%'`);
-    expect((await loadArticles("en")).map((a) => a.slug)).toEqual(ARTICLES.en.map((a) => a.slug));                                                    // nothing written yet: the built-in articles
+    const before = await loadArticles("en"); expect(before.length).toBeGreaterThan(0);                                                           // built-in articles, or the owner's own
     const ins = (slug: string, pub: boolean, title: object, body: object, at: string) => sql(`insert into public.content_items (kind, slug, title, summary, body, published, published_at) values ('article', '${slug}', '${JSON.stringify(title)}'::jsonb, '${JSON.stringify({ en: "A summary", th: "สรุป" })}'::jsonb, '${JSON.stringify(body)}'::jsonb, ${pub}, '${at}')`);
-    await ins("p5-art-newer", true, { en: "P5 Newer", th: "P5 ใหม่กว่า" }, { en: "Intro\n\n## Part one\n\nText A\n\nText B", th: "บทนำ\n\n## ส่วนหนึ่ง\n\nข้อความ" }, "2026-12-02T00:00:00Z");
-    await ins("p5-art-older", true, { en: "P5 Older" }, { en: "## Only heading\nOne paragraph" }, "2026-11-01T00:00:00Z"); await ins("p5-art-hidden", false, { en: "P5 Hidden" }, { en: "x" }, "2026-12-03T00:00:00Z");
-    expect((await loadArticles("en")).map((a) => a.slug)).toEqual(["p5-art-newer", "p5-art-older"]);                                                  // newest first, unpublished left out, the built-in ones are not mixed in
-    const th = await loadArticle("p5-art-newer", "th"); expect(th).toMatchObject({ title: "P5 ใหม่กว่า", summary: "สรุป", date: "2026-12-02" }); expect(th!.body).toEqual([{ h: "", p: ["บทนำ"] }, { h: "ส่วนหนึ่ง", p: ["ข้อความ"] }]);
-    expect((await loadArticle("p5-art-older", "th"))!.title).toBe("P5 Older");                                                                        // Thai not written: English
+    await ins("p5-art-newer", true, { en: "P5 Newer", th: "P5 ใหม่กว่า" }, { en: "Intro\n\n## Part one\n\nText A\n\nText B", th: "บทนำ\n\n## ส่วนหนึ่ง\n\nข้อความ" }, "2099-01-02T00:00:00Z");
+    await ins("p5-art-older", true, { en: "P5 Older" }, { en: "## Only heading\nOne paragraph" }, "2099-01-01T00:00:00Z"); await ins("p5-art-hidden", false, { en: "P5 Hidden" }, { en: "x" }, "2099-01-03T00:00:00Z");
+    const list = (await loadArticles("en")).map((a) => a.slug); expect(list.slice(0, 2)).toEqual(["p5-art-newer", "p5-art-older"]); expect(list).not.toContain("p5-art-hidden");   // newest first, unpublished left out
+    const th = await loadArticle("p5-art-newer", "th"); expect(th).toMatchObject({ title: "P5 ใหม่กว่า", summary: "สรุป", date: "2099-01-02" }); expect(th!.body).toEqual([{ h: "", p: ["บทนำ"] }, { h: "ส่วนหนึ่ง", p: ["ข้อความ"] }]);
+    expect((await loadArticle("p5-art-older", "th"))!.title).toBe("P5 Older");                                                                    // Thai not written: English
     expect(await loadArticle("p5-art-hidden", "en")).toBeNull(); expect(await loadArticle("nope", "en")).toBeNull();
-    await expect(ins("p5-art-newer", true, { en: "dup" }, { en: "dup" }, "2026-12-04T00:00:00Z")).rejects.toThrow(/duplicate|unique/i);               // one address, one article
-    await expect(ins("Bad Slug", true, { en: "x" }, { en: "x" }, "2026-12-04T00:00:00Z")).rejects.toThrow(/slug_check|violates/i);                    // the database refuses an untidy address
+    await expect(ins("p5-art-newer", true, { en: "dup" }, { en: "dup" }, "2099-01-04T00:00:00Z")).rejects.toThrow(/duplicate|unique/i);           // one address, one article
+    await expect(ins("Bad Slug", true, { en: "x" }, { en: "x" }, "2099-01-04T00:00:00Z")).rejects.toThrow(/slug_check|violates/i);                // the database refuses an untidy address
     await sql(`delete from public.content_items where slug like 'p5-art-%'`);
-    expect((await loadArticles("en")).length).toBe(ARTICLES.en.length);
+    expect((await loadArticles("en")).map((a) => a.slug)).toEqual(before.map((a) => a.slug));
   });
 });
-
