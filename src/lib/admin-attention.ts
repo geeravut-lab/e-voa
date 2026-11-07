@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Everything that waits for staff, computed live from the database (so it disappears by itself when it has been dealt with).
  * Each item says what happened, how many, and where to go. The bell for staff shows the total.
  */
-export type AttentionItem = { sig: string; seen?: boolean; key: "submission_failed" | "sla_overdue" | "addons_failed" | "refunds_failed" | "agencies_pending" | "partners_pending" | "settle_due" | "errors_24h"; count: number; href: string; severity: "high" | "normal"; refs?: string[] };
+export type AttentionItem = { sig: string; seen?: boolean; key: "submission_failed" | "sla_overdue" | "addons_failed" | "refunds_failed" | "agencies_pending" | "partners_pending" | "settle_due" | "errors_24h" | "recon_issues"; count: number; href: string; severity: "high" | "normal"; refs?: string[] };
 
 const SLA_OPEN = ["paid", "pre_check", "submitted", "under_review", "action_required"];
 
@@ -15,7 +15,7 @@ export async function attentionItems(): Promise<AttentionItem[]> {
   const now = new Date(), nowIso = now.toISOString();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
   const day = new Date(now.getTime() - 86_400_000).toISOString(), week = new Date(now.getTime() - 14 * 86_400_000).toISOString();
-  const [failed, overdue, addons, refunds, agencies, partners, settle, errors] = await Promise.all([
+  const [failed, overdue, addons, refunds, agencies, partners, settle, errors, recon] = await Promise.all([
     db.from("applications").select("ref_no", { ...head }).eq("status", "submission_failed"),
     db.from("applications").select("ref_no", head).in("status", SLA_OPEN).lt("sla_due_at", nowIso),
     db.from("addon_orders").select("id", head).eq("status", "failed").gte("created_at", week),
@@ -24,6 +24,7 @@ export async function attentionItems(): Promise<AttentionItem[]> {
     db.from("partners").select("id", head).eq("status", "pending"),
     db.from("addon_orders").select("id", head).eq("status", "used").is("settlement_id", null).not("partner_id", "is", null).lt("used_at", monthStart),
     db.from("error_log").select("id", head).gte("at", day),
+    db.from("reconciliation_reports").select("day", head).eq("status", "issues").is("reviewed_at", null),
   ]);
   const refs = async (status: string[], overdueOnly: boolean) => {
     let q = db.from("applications").select("ref_no").in("status", status).order("sla_due_at", { ascending: true, nullsFirst: false }).limit(5);
@@ -41,6 +42,7 @@ export async function attentionItems(): Promise<AttentionItem[]> {
   add({ key: "partners_pending", count: partners.count ?? 0, href: "/admin/partners", severity: "normal" });
   add({ key: "settle_due", count: settle.count ?? 0, href: "/admin/partners", severity: "normal" });
   add({ key: "errors_24h", count: errors.count ?? 0, href: "/admin/errors", severity: "normal", sig: `last:${lastError}` });
+  add({ key: "recon_issues", count: recon.count ?? 0, href: "/admin/reconcile", severity: "high" });
   return out;
 }
 

@@ -2,11 +2,11 @@ import { FAQ } from "@/lib/content/faq";
 import { PREPARE } from "@/lib/content/guide";
 import type { Lang } from "@/lib/i18n/langs";
 
-export type Facts = { fees: { visa: number; regular: number; express: number }; refund: { visa: boolean; addons: boolean }; channels: string; lang: Lang };
+export type Facts = { faq?: { q: string; a: string }[]; fees: { visa: number; regular: number; express: number }; refund: { visa: boolean; addons: boolean }; channels: string; lang: Lang };
 
 /** Everything the assistant may state as fact comes from here: the service's own FAQ, checklist, current prices and refund rule, and the official channels. */
 export function buildSystemPrompt(f: Facts): string {
-  const faq = FAQ.en.map((x) => `Q: ${x.q}\nA: ${x.a}`).join("\n\n");
+  const faq = (f.faq?.length ? f.faq : FAQ.en).map((x) => `Q: ${x.q}\nA: ${x.a}`).join("\n\n");
   const prep = PREPARE.en.items.map((i) => `- ${i.h}: ${i.p}`).join("\n");
   return `You are the help assistant of ThaiPass e-VOA, a PRIVATE service that helps travelers prepare and submit a Thailand Visa on Arrival (e-VOA) application to Thai Immigration. You are not a government service and you do not decide applications: Thai Immigration decides.
 

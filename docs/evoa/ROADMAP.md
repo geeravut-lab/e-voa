@@ -111,6 +111,13 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **Home grids without holes**: a half-width card that would stand alone in a row (before a wide card, or last) becomes full width; order and colours unchanged (admin home and traveler home) | ✅ |
 | **/gov shortcut**: a card and menu entry for read-only statistics accounts only; distinct icons for the AI assistant and AI instructions cards | ✅ |
 
+| **E-mail notices**: every status notice also goes by e-mail (in the traveler's language, with a link to switch them off); each person can turn status e-mails off at `/account/notifications` (receipts are always sent); staff see how mail is going on `/admin/messaging` (counts and codes only) | ✅ tested with a fake mail provider · ⬜ `RESEND_API_KEY` and a verified sender domain in Vercel |
+| **PDPA: my data** `/account/privacy`: download everything we hold as JSON (passport numbers readable, only to the person); **delete my account**: erases name, contact, passport data, documents, signatures and chat links, blanks the application answers, closes the sign-in for good; payments, receipts, tax invoices and consent records are kept (law); refused while an application or payment is in progress, for staff and for agency/partner owners | ✅ real database, files and sign-in checked · ⬜ legal review of what must be kept and for how long |
+| **Discount codes** `/admin/discounts`: percent or fixed baht off the SERVICE fee only (never the government fee or an add-on); dates, total limit, per-person limit; "Apply" at checkout shows the new total; the use is taken when the traveler goes to pay and given back if the payment fails; codes are switched off, never deleted | ✅ with Stripe test mode |
+| **Apply again** from an earlier application: same traveler, airports, airline and purpose filled in; dates and flights left empty | ✅ |
+| **FAQ and news** `/admin/content`: write questions (EN required, TH and 中文 optional) and news; load the built-in FAQ once to edit it; pinned news shows on the home page; `/news` for visitors; the AI assistant answers from the published English questions | ✅ |
+| **Reconciliation** `/admin/reconcile`: every day (Thai time) our paid payments and refunds are compared with Stripe's; differences (Stripe-only, ours-only, amount, refund) are listed with a CSV export, staff are notified, the day stays on the attention list until marked reviewed | ✅ compared with injected Stripe data · ⬜ first run against real Stripe data |
+
 ## Still planned
 
-⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders)
+⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes · ⬜ rich text and images in news

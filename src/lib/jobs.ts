@@ -12,6 +12,7 @@ import { reconcilePaid, expireUnpaid } from "@/lib/payments/service";
 import { recheckWaiting } from "@/lib/applications/service";
 import { processAddonQueue, syncPartnerPackages } from "@/lib/partners/service";
 import { syncWalletPasses } from "@/lib/wallet/service";
+import { runDailyReconcile } from "@/lib/reconcile/service";
 import { runRules } from "@/lib/rules/service";
 
 const DEFAULT_BUDGET_MS = 20_000;
@@ -33,6 +34,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     ["addons", async () => processAddonQueue()],
     ["rules", async () => runRules()],
     ["wallet", async () => syncWalletPasses()],
+    ["reconcile", async () => runDailyReconcile()],
     ["partner_packages", async () => {
       const { data } = await createAdminClient().from("partner_packages").select("synced_at").order("synced_at", { ascending: true }).limit(1);
       const last = data?.[0]?.synced_at ? Date.parse(data[0].synced_at) : 0;
@@ -50,6 +52,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
       const db = createAdminClient(); const day = 86_400_000, iso = (ms: number) => new Date(Date.now() - ms).toISOString();
       await db.from("rate_limits").delete().lt("window_start", iso(day));
       await db.from("error_log").delete().lt("at", iso(30 * day));
+      await db.from("mail_log").delete().lt("at", iso(30 * day));
       await db.from("form_drafts").delete().lt("updated_at", iso(30 * day));
       return "ok";
     }],

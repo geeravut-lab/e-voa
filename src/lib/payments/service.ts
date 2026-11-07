@@ -1,4 +1,5 @@
 import "server-only";
+import { priceWithCode, releaseDiscount, reserveDiscount } from "@/lib/discounts/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSetting } from "@/lib/settings";
 import { audit } from "@/lib/audit";
@@ -29,7 +30,7 @@ export type CheckoutResult = { ok: true; url: string; paymentId: string } | { ok
  * Turns a trip's draft applications (and the add-ons picked for them) into ONE payment and one Stripe Checkout page.
  * Nothing is charged here; the money is confirmed later by confirmPayment (webhook or the return page), both of which ask Stripe again.
  */
-export async function startCheckout(userId: string, email: string | null, tripId: string, lang: Lang = "en"): Promise<CheckoutResult> {
+export async function startCheckout(userId: string, email: string | null, tripId: string, lang: Lang = "en", discountCode = ""): Promise<CheckoutResult> {
   const db = admin();
   const { data: apps } = await db.from("applications").select("id, ref_no, status, package, visa_fee_thb, service_fee_thb, traveler_id, form, payment_id").eq("trip_id", tripId).eq("owner_id", userId).in("status", ["draft", "awaiting_payment"]);
   if (!apps || apps.length === 0) return { ok: false, error: "err_nothing_to_pay" };
@@ -56,16 +57,20 @@ export async function startCheckout(userId: string, email: string | null, tripId
   const { data: fresh } = await db.from("applications").select("id").in("id", apps.map((a) => a.id)).in("status", ["draft", "awaiting_payment"]);
   if ((fresh?.length ?? 0) !== apps.length) return { ok: false, error: "err_generic" };
 
-  const items: LineItem[] = buildLineItems(
+  let items: LineItem[] = buildLineItems(
     apps.map((a) => ({ id: a.id, package: a.package as PackageKind, travelerName: names.get(a.id) ?? a.ref_no, visaFeeThb: a.visa_fee_thb, serviceFeeThb: a.service_fee_thb })),
     addonRows.map((x) => ({ id: x.id, applicationId: x.application_id, name: x.package_name, priceThb: Number(x.price_thb) })),
   );
+  // a discount code (service fee only) is checked again here: what the screen showed is not trusted
+  let disc: { codeId: string; thb: number } | null = null;
+  if (discountCode.trim()) { const p = await priceWithCode(userId, items, discountCode); if (!p.ok) return { ok: false, error: p.error }; items = p.items; disc = { codeId: p.codeId, thb: p.discountThb }; }
   let total: number; try { total = totalThb(items); } catch { return { ok: false, error: "err_generic" }; }
   if (total <= 0) return { ok: false, error: "err_nothing_to_pay" };
 
-  const pay = await db.from("payments").insert({ owner_id: userId, amount_thb: total, provider: "stripe", trip_id: tripId, items, expires_at: new Date(Date.now() + 60 * 60_000).toISOString() }).select("id").single();
+  const pay = await db.from("payments").insert({ owner_id: userId, amount_thb: total, discount_thb: disc?.thb ?? 0, provider: "stripe", trip_id: tripId, items, expires_at: new Date(Date.now() + 60 * 60_000).toISOString() }).select("id").single();
   if (pay.error || !pay.data) return { ok: false, error: "err_generic" };
   const paymentId = pay.data.id as string;
+  if (disc) { const r = await reserveDiscount(disc.codeId, userId, paymentId, disc.thb); if (r !== "ok") { await failPayment(paymentId, `discount: ${r}`); return { ok: false, error: r }; } }
   const link = await Promise.all(apps.map((a) => db.from("applications").update({ payment_id: paymentId, payment_receipt_ref: `PR-${a.ref_no}-${paymentId.slice(0, 6)}` }).eq("id", a.id).select("id")));
   if (link.some((r) => r.data?.length !== 1)) { await failPayment(paymentId, "could not attach applications"); return { ok: false, error: "err_generic" }; }
   if (addonRows.length) await db.from("addon_orders").update({ payment_id: paymentId }).in("id", addonRows.map((x) => x.id));
@@ -93,6 +98,7 @@ export async function failPayment(paymentId: string, why: string): Promise<void>
   const { data: p } = await db.from("payments").update({ status: "failed" }).eq("id", paymentId).eq("status", "pending").select("id, provider_ref");
   if (!p || p.length === 0) return;                                    // already paid or already closed: leave it
   if (p[0].provider_ref) await expireSession(p[0].provider_ref).catch(() => undefined);
+  await releaseDiscount(paymentId);                                    // the code's use goes back
   const { data: apps } = await db.from("applications").select("id").eq("payment_id", paymentId);
   for (const a of apps ?? []) await transition(a.id, "draft", ["awaiting_payment"], null, "payment");
   await db.from("addon_orders").update({ payment_id: null }).eq("payment_id", paymentId).eq("status", "pending_payment");
@@ -242,7 +248,7 @@ async function mailReceipt(paymentId: string): Promise<void> {
   const items = (Array.isArray(p.items) ? p.items : []) as { label: string; amountThb: number }[];
   const pdf = await buildReceiptPdf({ brand, receiptNo: p.receipt_no, paidAt: p.paid_at, lines: items.map((i) => ({ label: i.label, amountThb: Number(i.amountThb) })), totalThb: Number(p.amount_thb), refunds: [], note: DICTS.en.receipt_note });
   const { html, text } = renderMail({ brand, title: t.mail_receipt_title, lines: [fmt(t.mail_receipt_body, { amount: Number(p.amount_thb).toLocaleString("en-US"), receipt: p.receipt_no })], button: { text: t.mail_open, url: `${SITE_URL}/trips` }, footer: t.mail_footer });
-  await sendMail({ to: prof.email, subject: `${brand}: ${t.mail_receipt_title} ${p.receipt_no}`, html, text, attachments: [{ filename: `${p.receipt_no}.pdf`, content: Buffer.from(pdf) }] });
+  await sendMail({ to: prof.email, subject: `${brand}: ${t.mail_receipt_title} ${p.receipt_no}`, html, text, kind: "receipt", attachments: [{ filename: `${p.receipt_no}.pdf`, content: Buffer.from(pdf) }] });
 }
 
 // ------------------------------------------------------------------ upgrade Regular → Express (pay the difference)

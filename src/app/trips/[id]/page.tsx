@@ -48,6 +48,7 @@ export default async function TripDetail({ params }: { params: Promise<{ id: str
         {trip && <p className="text-sm tabular">{t.apply_arrival}: {trip.arrival_date} {trip.arrival_time ?? ""} {trip.arrival_flight_no ?? ""}</p>}
         <div className="flex flex-wrap gap-2 pt-1">
           {(a.status === "approved" || a.status === "used") && <AppLink href={`/pass/${a.id}`} className={btnClass("gold")}>{t.trip_open_pass}</AppLink>}
+          {["approved", "used", "rejected", "cancelled", "expired", "no_show"].includes(a.status) && <AppLink href={`/apply?again=${a.id}`} className={btnClass("primary")}>{t.apply_again}</AppLink>}
           {a.payment_id && <AppLink href={`/receipts/${a.payment_id}`} className={btnClass("ghost")}>{t.pay_see_receipt}</AppLink>}
           {evoa && <a href={`/api/documents/${evoa.id}`} target="_blank" rel="noopener" className={btnClass("ghost")}>{t.trip_download_evoa}</a>}
         </div>

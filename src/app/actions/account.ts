@@ -40,3 +40,13 @@ export async function openNotification(id: string): Promise<{ link: string | nul
   }
   return { link: data?.link && data.link.startsWith("/") && !data.link.startsWith("//") ? data.link : null };
 }
+
+/** Each person decides whether status updates also come by e-mail (receipts are always sent). */
+export async function saveEmailNoticesAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const v = await getViewer(); if (!v.user) return { ok: false, error: "err_not_signed_in" };
+  const { data, error } = await (await createClient()).from("profiles").update({ email_notices: fd.get("email_notices") === "on" }).eq("id", v.user.id).select("id");
+  if (error || data?.length !== 1) return { ok: false, error: "err_generic" };               // a write that matches no row is not success
+  revalidatePath("/account/notifications");
+  return { ok: true };
+}
+

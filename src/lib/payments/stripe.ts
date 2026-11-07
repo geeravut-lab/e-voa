@@ -91,3 +91,21 @@ export function verifyWebhook(rawBody: string, header: string | null, secret: st
 /** For tests and local tools: builds a valid header for a body. */
 export const signWebhook = (rawBody: string, secret: string, t = Math.floor(Date.now() / 1000)) =>
   `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${rawBody}`).digest("hex")}`;
+
+// ---- reading what Stripe has recorded (for the daily reconciliation)
+export type StripeChargeRaw = { id: string; payment_intent: string | null; amount: number; currency: string; created: number; paid: boolean; status: string };
+export type StripeRefundRaw = { id: string; payment_intent: string | null; amount: number; currency: string; created: number; status: string };
+type Page<T> = { data: T[]; has_more: boolean };
+async function listAll<T extends { id: string }>(path: string, fromSec: number, toSec: number, maxPages = 20): Promise<T[]> {
+  const out: T[] = []; let after: string | undefined;
+  for (let i = 0; i < maxPages; i++) {
+    const page = await call<Page<T>>("GET", path, { created: { gte: fromSec, lt: toSec }, limit: 100, starting_after: after });
+    out.push(...page.data); if (!page.has_more || page.data.length === 0) return out; after = page.data[page.data.length - 1].id;
+  }
+  throw new StripeError("too many records to read in one go", 0, "too_many");
+}
+export const listCharges = (fromSec: number, toSec: number) => listAll<StripeChargeRaw>("/charges", fromSec, toSec);
+export const listStripeRefunds = (fromSec: number, toSec: number) => listAll<StripeRefundRaw>("/refunds", fromSec, toSec);
+export const paymentIntentExists = async (id: string) => { try { await call("GET", `/payment_intents/${encodeURIComponent(id)}`); return true; } catch (e) { if (e instanceof StripeError && e.status === 404) return false; throw e; } };
+export const refundExists = async (id: string) => { try { await call("GET", `/refunds/${encodeURIComponent(id)}`); return true; } catch (e) { if (e instanceof StripeError && e.status === 404) return false; throw e; } };
+

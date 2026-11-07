@@ -10,10 +10,13 @@ import { HomeCard } from "@/components/HomeCard";
 import { GreetingCard } from "@/components/GreetingCard";
 import { NavRowLink } from "@/components/AppLink";
 import { btnClass } from "@/components/buttonStyles";
+import { pinnedNews } from "@/lib/content/server";
 
-export default async function HomePage() {
-  const [viewer, { t, brand }, flags] = await Promise.all([getViewer(), getT(), loadFlags()]);
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ erased?: string }> }) {
+  const [viewer, { t, brand, lang }, flags] = await Promise.all([getViewer(), getT(), loadFlags()]);
   if (viewer.isAdmin) redirect("/admin");                // staff work in the back office only
+  const erased = (await searchParams).erased === "1";
+  const pinned = viewer.isAdmin ? null : await pinnedNews(lang);                 // the newest pinned announcement
   const signedIn = !!viewer.user;
   const name = displayNameOf(viewer);
   const cards = NAV.filter((n) => n.home && (!n.feature || flags[n.feature]) && (!n.viewerOnly || viewer.isReportViewer) && (n.area === "traveler" || viewer.isAdmin));
@@ -40,7 +43,17 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-4">
+      {erased && <p role="status" className="rounded-control bg-mint p-3 text-sm font-semibold text-teal-deep">{t.privacy_erased}</p>}
       <GreetingCard title={signedIn && name ? fmt(t.home_hello_name, { name }) : t.home_hello} subtitle={t.home_ask} />
+
+      {pinned && (
+        <NavRowLink href="/news" className="block rounded-card border border-gold bg-gold-soft p-4 shadow-card">
+          <span className="text-xs font-bold uppercase tracking-wider text-gold-deep">{t.news_title}</span>
+          <b className="mt-1 block text-gold-deep">{pinned.title}</b>
+          <span className="mt-1 block line-clamp-2 text-sm text-ink">{pinned.body}</span>
+          <span className="mt-2 block text-sm font-semibold text-primary">{t.news_read_all} →</span>
+        </NavRowLink>
+      )}
 
       {!signedIn && (
         <section className="flex flex-col gap-3 rounded-card border border-sky-line bg-sky p-4 sm:flex-row sm:items-center sm:justify-between">

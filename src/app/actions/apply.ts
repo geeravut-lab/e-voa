@@ -182,7 +182,7 @@ export async function checkoutAction(_p: ActionResult, fd: FormData): Promise<Ac
   if (signerName.length < 2 || !signature) return { ok: false, error: "err_signature_required" };
   const { count: addonCount } = await createAdminClient().from("addon_orders").select("id", { count: "exact", head: true }).eq("owner_id", a.user.id).eq("status", "pending_payment").in("application_id", ((await createAdminClient().from("applications").select("id").eq("trip_id", tripId).eq("owner_id", a.user.id)).data ?? []).map((x) => x.id));
   if ((addonCount ?? 0) > 0 && !on("consent_partners")) return { ok: false, error: "err_consent_required" };
-  const r = await startCheckout(a.user.id, a.user.email ?? null, tripId, await getLang());
+  const r = await startCheckout(a.user.id, a.user.email ?? null, tripId, await getLang(), String(fd.get("discount_code") ?? ""));
   if (!r.ok) return { ok: false, error: r.error };
   const c = await recordConsent(a.user.id, tripId, { signerName, signature, withPartners: (addonCount ?? 0) > 0 });
   if (!c.ok) { await failPayment(r.paymentId, "consent could not be recorded"); return { ok: false, error: c.error }; }
@@ -230,3 +230,13 @@ export async function resubmitAction(_p: ActionResult, fd: FormData): Promise<Ac
   revalidatePath(`/trips/${app.id}`); revalidatePath("/trips");
   return { ok: true };
 }
+
+/** The "Apply" button next to the discount field: what the code takes off and the new total. Nothing is reserved until the traveler pays. */
+export async function previewDiscountAction(tripId: string, code: string): Promise<{ ok: true; discountThb: number; totalThb: number; code: string } | { ok: false; error: string }> {
+  const a = await need(); if (!a.ok) return { ok: false, error: a.error };
+  if (!/^[0-9a-f-]{36}$/i.test(tripId)) return { ok: false, error: "err_generic" };
+  if (!(await rateLimit(`discount:${a.user.id}`, 20, 3600))) return { ok: false, error: "err_rate_limited" };                      // guessing codes is slowed down
+  const { quoteForTrip } = await import("@/lib/discounts/service");
+  return quoteForTrip(a.user.id, tripId, code);
+}
+

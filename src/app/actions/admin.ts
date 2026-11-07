@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAdminAction } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
@@ -98,6 +99,116 @@ export async function revokeReportViewerAction(userId: string, _p: ActionResult,
   if (error || data?.length !== 1) return { ok: false, error: "err_generic" };                  // a delete that matches nothing is not success
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "tourism.viewer_remove", entity: "profiles", entityId: userId });
   return done("/admin/tourism");
+}
+
+/** Creates a discount code. Percent 1–100 or a fixed baht amount; optional dates and limits. A code is never deleted afterwards, only turned off. */
+export async function createDiscountAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { CODE_RE, normalizeCode } = await import("@/lib/discounts/rules");
+  const code = normalizeCode(String(fd.get("code") ?? "")); if (!CODE_RE.test(code)) return { ok: false, error: "err_discount_code_format" };
+  const kind = fd.get("kind") === "fixed" ? "fixed" : "percent", value = Number(fd.get("value"));
+  if (!Number.isInteger(value) || value < 1 || (kind === "percent" ? value > 100 : value > 100_000)) return { ok: false, error: "err_number_invalid" };
+  const date = (k: string): string | null | undefined => { const v = String(fd.get(k) ?? "").trim(); if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? undefined : d.toISOString(); };
+  const from = date("valid_from"), to = date("valid_to"); if (from === undefined || to === undefined || (from && to && to < from)) return { ok: false, error: "err_number_invalid" };
+  const maxRaw = String(fd.get("max_uses") ?? "").trim(), max = maxRaw ? Number(maxRaw) : null, per = Number(fd.get("per_user") || 1);
+  if ((max !== null && (!Number.isInteger(max) || max < 1 || max > 1_000_000)) || !Number.isInteger(per) || per < 1 || per > 1000) return { ok: false, error: "err_number_invalid" };
+  const { data, error } = await createAdminClient().from("discount_codes").insert({ code, kind, value, valid_from: from, valid_to: to, max_uses: max, per_user: per, note: String(fd.get("note") ?? "").trim().slice(0, 200) || null, created_by: a.viewer.user.id }).select("id");
+  if (error?.code === "23505") return { ok: false, error: "err_discount_exists" };
+  if (error || data?.length !== 1) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "discount.create", entity: "discount_code", entityId: data[0].id, detail: { code, kind, value } });
+  return done("/admin/discounts");
+}
+
+export async function setDiscountActiveAction(id: string, active: boolean, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "err_generic" };
+  const { data, error } = await createAdminClient().from("discount_codes").update({ active }).eq("id", id).select("id");
+  if (error || data?.length !== 1) return { ok: false, error: "err_generic" };                  // a write that matches no row is not success
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: active ? "discount.on" : "discount.off", entity: "discount_code", entityId: id });
+  return done("/admin/discounts");
+}
+
+// ---------------------------------------------------------------- FAQ and news (content_items)
+/** Creates or updates one FAQ question or news item. English is required; Thai and Chinese are optional (a missing language shows the English text). */
+export async function saveContentAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { cleanTexts, TITLE_MAX, BODY_MAX } = await import("@/lib/content/managed");
+  const kind = fd.get("kind") === "news" ? "news" : "faq", idRaw = String(fd.get("id") ?? "");
+  if (idRaw && !/^[0-9a-f-]{36}$/i.test(idRaw)) return { ok: false, error: "err_generic" };
+  const pick = (name: string, max: number) => cleanTexts({ en: fd.get(`${name}_en`), th: fd.get(`${name}_th`), "zh-CN": fd.get(`${name}_zh`) }, max);
+  const title = pick("title", TITLE_MAX), body = pick("body", BODY_MAX);
+  if (!title.en || !body.en) return { ok: false, error: "err_content_en_required" };
+  const published = fd.get("published") === "on", pinned = kind === "news" && fd.get("pinned") === "on", sortN = Number(fd.get("sort") || 100), sort = Number.isInteger(sortN) && sortN >= 0 && sortN <= 9999 ? sortN : 100;
+  const db = createAdminClient(), now = new Date().toISOString();
+  let id = idRaw;
+  if (id) {
+    const { data: old } = await db.from("content_items").select("published_at, kind").eq("id", id).maybeSingle();
+    if (!old || old.kind !== kind) return { ok: false, error: "err_not_found" };
+    const upd = await db.from("content_items").update({ title, body, published, pinned, sort, published_at: published ? old.published_at ?? now : old.published_at, updated_by: a.viewer.user.id, updated_at: now }).eq("id", id).select("id");
+    if (upd.error || upd.data?.length !== 1) return { ok: false, error: "err_generic" };                  // a write that matches no row is not success
+  } else {
+    const ins = await db.from("content_items").insert({ kind, title, body, published, pinned, sort, published_at: published ? now : null, created_by: a.viewer.user.id, updated_by: a.viewer.user.id }).select("id");
+    if (ins.error || ins.data?.length !== 1) return { ok: false, error: "err_generic" };
+    id = ins.data[0].id;
+  }
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: idRaw ? "content.update" : "content.create", entity: "content_item", entityId: id, detail: { kind, published } });
+  revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/", "layout");
+  if (!idRaw) redirect(`/admin/content/${id}`);
+  return done(`/admin/content/${id}`);
+}
+
+export async function deleteContentAction(id: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "err_generic" };
+  const { data, error } = await createAdminClient().from("content_items").delete().eq("id", id).select("id, kind");
+  if (error || data?.length !== 1) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.delete", entity: "content_item", entityId: id, detail: { kind: data[0].kind } });
+  revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/", "layout");
+  redirect(`/admin/content?kind=${data[0].kind}`);
+}
+
+/** Copies the built-in FAQ (English, Thai, Chinese) into the editor, once, so every question can be edited or hidden. */
+export async function seedFaqAction(_p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const db = createAdminClient();
+  const { count } = await db.from("content_items").select("id", { count: "exact", head: true }).eq("kind", "faq");
+  if ((count ?? 0) > 0) return { ok: false, error: "err_content_seed_exists" };
+  const { FAQ } = await import("@/lib/content/faq");
+  const rows = FAQ.en.map((q, i) => ({ kind: "faq", title: { en: q.q, ...(FAQ.th[i] ? { th: FAQ.th[i].q } : {}), ...(FAQ["zh-CN"][i] ? { "zh-CN": FAQ["zh-CN"][i].q } : {}) }, body: { en: q.a, ...(FAQ.th[i] ? { th: FAQ.th[i].a } : {}), ...(FAQ["zh-CN"][i] ? { "zh-CN": FAQ["zh-CN"][i].a } : {}) }, published: true, sort: (i + 1) * 10, created_by: a.viewer.user.id, updated_by: a.viewer.user.id }));
+  const { data, error } = await db.from("content_items").insert(rows).select("id");
+  if (error || data?.length !== rows.length) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.seed_faq", entity: "content_item", detail: { count: rows.length } });
+  revalidatePath("/help");
+  return done("/admin/content");
+}
+
+/** Runs (or re-runs) the reconciliation of one Thai day. */
+export async function runReconcileAction(day: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { thaiDayRange, yesterdayThai } = await import("@/lib/reconcile/rules");
+  if (!thaiDayRange(day) || day > yesterdayThai(new Date(Date.now() + 86_400_000))) return { ok: false, error: "err_number_invalid" };
+  const { reconcileDay } = await import("@/lib/reconcile/service");
+  const r = await reconcileDay(day);
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "reconcile.run", entity: "reconciliation", detail: { day, status: r.status } });
+  if (r.status === "error") return { ok: false, error: "err_generic" };
+  return done("/admin/reconcile");
+}
+
+/** "I have looked at these differences": the day stops asking for attention. */
+export async function reviewReconcileAction(day: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ok: false, error: "err_generic" };
+  const { data, error } = await createAdminClient().from("reconciliation_reports").update({ reviewed_at: new Date().toISOString(), reviewed_by: a.viewer.user.id }).eq("day", day).select("day");
+  if (error || data?.length !== 1) return { ok: false, error: "err_generic" };                  // a write that matches no row is not success
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "reconcile.review", entity: "reconciliation", detail: { day } });
+  return done("/admin/reconcile");
 }
 
 const int = (v: FormDataEntryValue | null, min: number, max: number): number | null => {

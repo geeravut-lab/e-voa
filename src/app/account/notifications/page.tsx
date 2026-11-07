@@ -7,6 +7,10 @@ import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
 import { LineConnect } from "@/components/LineConnect";
+import { mailConfigured } from "@/lib/mailer";
+import { createClient } from "@/lib/supabase/server";
+import { saveEmailNoticesAction } from "@/app/actions/account";
+import { fmt } from "@/lib/i18n/dict";
 import { inputCls } from "@/components/inputStyles";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +19,7 @@ export default async function NoticeChannels() {
   const v = await requireUser("/account/notifications");
   const { t } = await getT();
   const [chans, cfg] = await Promise.all([channelsOf(v.user.id), loadMessaging()]);
+  const { data: prof } = await (await createClient()).from("profiles").select("email, email_notices").eq("id", v.user.id).maybeSingle();
   const line = chans.find((c) => c.channel === "line"), wa = chans.find((c) => c.channel === "whatsapp");
   const lineOn = lineConfigured() && cfg.line_enabled, waOn = whatsappConfigured() && cfg.whatsapp_enabled;
   const box = "space-y-3 rounded-card border border-line bg-surface p-5 shadow-card";
@@ -22,6 +27,16 @@ export default async function NoticeChannels() {
   return (
     <div className="space-y-4">
       <PageHead title={t.chat_title} hint={t.chat_hint} art="notifications" tone="sand" />
+      {mailConfigured() && prof?.email && (
+        <section className={box}>
+          <h2 className="font-display text-lg font-bold">{t.email_notices_title}</h2>
+          <ActionForm action={saveEmailNoticesAction} className="space-y-3">
+            <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="email_notices" defaultChecked={prof.email_notices !== false} className="mt-1 h-5 w-5" /><span>{t.email_notices_on}</span></label>
+            <p className="break-all text-xs text-muted">{fmt(t.email_notices_to, { email: prof.email })}</p>
+            <SubmitButton>{t.save}</SubmitButton>
+          </ActionForm>
+        </section>
+      )}
       <section className={box}>
         <h2 className="font-display text-lg font-bold">LINE</h2>
         {!lineOn ? <p className="text-sm text-muted">{t.chat_unavailable}</p> : <>
