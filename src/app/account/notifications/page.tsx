@@ -2,10 +2,11 @@ import { requireUser } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { channelsOf } from "@/lib/messaging/service";
 import { lineConfigured, loadMessaging, whatsappConfigured } from "@/lib/messaging/settings";
-import { confirmWhatsappAction, disconnectChannelAction, startLineLinkAction, startWhatsappAction, testChannelsAction } from "@/app/actions/messaging";
+import { confirmWhatsappAction, disconnectChannelAction, startWhatsappAction, testChannelsAction } from "@/app/actions/messaging";
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
+import { LineConnect } from "@/components/LineConnect";
 import { inputCls } from "@/components/inputStyles";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function NoticeChannels() {
         <h2 className="font-display text-lg font-bold">LINE</h2>
         {!lineOn ? <p className="text-sm text-muted">{t.chat_unavailable}</p> : <>
           {status(line)}
-          {line?.status !== "active" && <ActionForm action={startLineLinkAction} className="space-y-2"><p className="text-sm text-muted">{t.chat_line_how}</p><SubmitButton>{line?.status === "pending" ? t.chat_new_code : t.chat_connect}</SubmitButton></ActionForm>}
+          {line?.status !== "active" && <LineConnect pending={line?.status === "pending"} />}
           {line && <ActionForm action={disconnectChannelAction.bind(null, "line")}><SubmitButton variant="ghost">{t.chat_disconnect}</SubmitButton></ActionForm>}
         </>}
       </section>

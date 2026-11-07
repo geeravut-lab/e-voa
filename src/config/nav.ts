@@ -28,6 +28,7 @@ export type NavItem = {
   phase?: string;               // shown on the "coming soon" page
   feature?: FeatureKey;
   bottom?: boolean;             // one of the 4 fixed entries of the mobile bar (the 5th, centre, is "apply")
+  viewerOnly?: boolean;         // shown only to read-only statistics accounts (report viewers)
   home?: boolean;               // shown as a card on the home page
   side?: boolean;               // shown in the desktop sidebar
 };
@@ -49,6 +50,7 @@ export const NAV: NavItem[] = [
   { key: "account", label: "card_account", sub: "card_account_sub", href: "/account", icon: "user", art: "account", tone: "sky", size: "half", area: "traveler", auth: true, status: "live", home: true },
   { key: "agency", label: "card_agency", sub: "card_agency_sub", href: "/agency", icon: "users", art: "travelers", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
   { key: "partner", label: "card_partner", sub: "card_partner_sub", href: "/partner", icon: "sparkles", art: "extras", tone: "mint", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
+  { key: "gov", label: "admin_tourism_title", sub: "gov_hint", href: "/gov", icon: "chart", art: "analytics", tone: "gold", size: "half", area: "traveler", auth: true, status: "live", viewerOnly: true, home: true, side: true },
 
   { key: "admin_home", label: "nav_admin", barLabel: "nav_admin", href: "/admin", icon: "shield", tone: "sky", size: "half", area: "admin", auth: true, status: "live", side: true },
   { key: "admin_notifs", label: "admin_notif_title", barLabel: "nav_alerts", sub: "admin_notif_hint", href: "/admin/notifications", icon: "bell", art: "notifications", tone: "sand", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
@@ -61,8 +63,8 @@ export const NAV: NavItem[] = [
   { key: "channels", label: "admin_channels_title", sub: "admin_channels_hint", href: "/admin/channels", icon: "link", art: "help", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "company", label: "admin_company_title", sub: "admin_company_hint", href: "/admin/company", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "airports", label: "admin_airports_title", sub: "admin_airports_hint", href: "/admin/airports", icon: "map", art: "guide", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "help", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "prompts", label: "admin_prompts_title", sub: "admin_prompts_hint", href: "/admin/prompts", icon: "scroll", art: "help", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "ai", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "prompts", label: "admin_prompts_title", sub: "admin_prompts_hint", href: "/admin/prompts", icon: "scroll", art: "prompts", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "messaging", label: "admin_msg_title", sub: "admin_msg_hint", href: "/admin/messaging", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "agencies", label: "admin_agencies_title", sub: "admin_agencies_hint", href: "/admin/agencies", icon: "users", art: "travelers", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "partners", label: "admin_partners_title", sub: "admin_partners_hint", href: "/admin/partners", icon: "users", art: "extras", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },

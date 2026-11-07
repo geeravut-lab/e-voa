@@ -7,8 +7,8 @@ const ENV = ["GOOGLE_WALLET_ISSUER_ID", "GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL", "
 const setEnv = (o: Record<string, string>) => { for (const k of ENV) delete process.env[k]; Object.assign(process.env, o); };
 afterEach(() => setEnv({}));
 const good = { GOOGLE_WALLET_ISSUER_ID: "3388000000012345678", GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL: "wallet@proj.iam.gserviceaccount.com", GOOGLE_WALLET_PRIVATE_KEY: privateKey };
-const pass: WalletPass = { ref: "EV-26-000116", name: "Ada Lovelace", brand: "ThaiPass e-VOA", lang: "en", arrival: "1 December 2026", flight: "TG921", passportLast4: "4567", verifyUrl: "https://e-voa.example/v/abc.def", logoUrl: "https://e-voa.example/brand/logo",
-  labels: { ref: "Reference", arrival: "Arrival", flight: "Flight", passport: "Passport", check: "Check status", title: "E-VOA pass", notGov: "Private service" } };
+const pass: WalletPass = { ref: "EV-26-000116", name: "Ada Lovelace", brand: "ThaiPass e-VOA", lang: "en", arrival: "1 December 2026", flight: "TG921", passportLast4: "4567", status: "Approved", verifyUrl: "https://e-voa.example/v/abc.def", logoUrl: "https://e-voa.example/brand/logo",
+  labels: { ref: "Reference", arrival: "Arrival", flight: "Flight", passport: "Passport", check: "Check status", title: "E-VOA pass", notGov: "Private service", status: "Approved" } };
 
 describe("Google Wallet setup", () => {
   it("is off until every value is present and well formed", () => {
@@ -45,11 +45,11 @@ describe("the save link", () => {
     expect(o.id).toBe("3388000000012345678.EV-26-000116"); expect(o.classId).toBe("3388000000012345678.evoa_pass"); expect(o.state).toBe("ACTIVE");
     expect(o.barcode).toEqual({ type: "QR_CODE", value: pass.verifyUrl, alternateText: "EV-26-000116" });
     const text = JSON.stringify(o); expect(text).toContain("••••4567"); expect(text).toContain("Private service");
-    expect(o.textModulesData.map((m) => m.id)).toEqual(["ref", "arrival", "flight", "passport", "notice"]);
+    expect(o.textModulesData.map((m) => m.id)).toEqual(["status", "ref", "arrival", "flight", "passport", "notice"]);
   });
   it("leaves out what is unknown and cleans the object id", () => {
     const o = buildPayload(c(), { ...pass, arrival: null, flight: null, passportLast4: null }).genericObjects[0];
-    expect(o.textModulesData.map((m) => m.id)).toEqual(["ref", "notice"]);
+    expect(o.textModulesData.map((m) => m.id)).toEqual(["status", "ref", "notice"]);
     expect(objectIdFor(c(), "EV 26/1")).toBe("3388000000012345678.EV_26_1");
   });
   it("opens at pay.google.com/gp/v/save", () => { expect(saveUrl(c(), pass)).toMatch(/^https:\/\/pay\.google\.com\/gp\/v\/save\/[\w-]+\.[\w-]+\.[\w-]+$/); });

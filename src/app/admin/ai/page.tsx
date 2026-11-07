@@ -28,7 +28,7 @@ export default async function AdminAi() {
   const num = (name: string, label: string, v: number) => <label className="block space-y-1"><span className="text-sm font-semibold">{label}</span><input name={name} type="number" defaultValue={v} className={`${inputCls} tabular`} /></label>;
   return (
     <div className="space-y-4">
-      <PageHead title={t.admin_ai_title} hint={t.admin_ai_hint} art="help" tone="sky" />
+      <PageHead title={t.admin_ai_title} hint={t.admin_ai_hint} art="ai" tone="sky" />
       {!aiConfigured() && <p role="alert" className="rounded-card border border-gold bg-gold-soft p-4 text-sm font-semibold text-gold-deep">⚠ {t.admin_ai_nokey}</p>}
       <ActionForm action={saveAiAction} className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
         <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="enabled" defaultChecked={cfg.enabled} className="mt-1 h-5 w-5" /><span>{t.admin_ai_enabled}</span></label>

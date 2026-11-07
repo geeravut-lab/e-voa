@@ -5,7 +5,8 @@ import { envValue } from "@/lib/env";
 import { THEME_COLOR } from "@/config/theme";
 
 export type WalletConfig = { issuerId: string; email: string; privateKey: string; classSuffix: string; origin: string; background: string };
-export type WalletPass = { ref: string; name: string; brand: string; lang: string; arrival: string | null; flight: string | null; passportLast4: string | null; verifyUrl: string; logoUrl: string; labels: { ref: string; arrival: string; flight: string; passport: string; check: string; title: string; notGov: string } };
+/** `active` is not part of the pass text: an application that is no longer approved is sent to Google as INACTIVE (the pass stays in the wallet but greyed out). */
+export type WalletPass = { ref: string; name: string; brand: string; lang: string; arrival: string | null; flight: string | null; passportLast4: string | null; status: string; verifyUrl: string; logoUrl: string; labels: { ref: string; arrival: string; flight: string; passport: string; check: string; title: string; notGov: string; status: string } };
 
 /** A private key pasted into a one-line environment field keeps "\n" as two characters: turn them back into line breaks. */
 export const normalizeKey = (k: string) => k.replace(/\\n/g, "\n").trim();
@@ -24,9 +25,10 @@ const b64u = (b: Buffer | string) => Buffer.from(b).toString("base64url");
 /** Object ids may contain only letters, digits, "." "_" "-": the reference EV-26-000116 already does, anything else is replaced. */
 export const objectIdFor = (c: WalletConfig, ref: string) => `${c.issuerId}.${ref.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 60)}`;
 
-export function buildPayload(c: WalletConfig, p: WalletPass) {
+export function buildPayload(c: WalletConfig, p: WalletPass, active = true) {
   const text = (value: string) => ({ defaultValue: { language: p.lang, value } });
   const modules = [
+    { id: "status", header: p.labels.status, body: p.status },
     { id: "ref", header: p.labels.ref, body: p.ref },
     ...(p.arrival ? [{ id: "arrival", header: p.labels.arrival, body: p.arrival }] : []),
     ...(p.flight ? [{ id: "flight", header: p.labels.flight, body: p.flight }] : []),
@@ -36,7 +38,7 @@ export function buildPayload(c: WalletConfig, p: WalletPass) {
   return {
     genericClasses: [{ id: `${c.issuerId}.${c.classSuffix}` }],
     genericObjects: [{
-      id: objectIdFor(c, p.ref), classId: `${c.issuerId}.${c.classSuffix}`, state: "ACTIVE", hexBackgroundColor: c.background,
+      id: objectIdFor(c, p.ref), classId: `${c.issuerId}.${c.classSuffix}`, state: active ? "ACTIVE" : "INACTIVE", hexBackgroundColor: c.background,
       logo: { sourceUri: { uri: p.logoUrl }, contentDescription: text(p.brand) },
       cardTitle: text(p.brand), header: text(p.name), subheader: text(p.labels.title),
       barcode: { type: "QR_CODE", value: p.verifyUrl, alternateText: p.ref },
@@ -46,10 +48,10 @@ export function buildPayload(c: WalletConfig, p: WalletPass) {
 }
 
 /** The signed token inside the link. `now` is injectable for tests. */
-export function signSaveJwt(c: WalletConfig, p: WalletPass, now = Math.floor(Date.now() / 1000)): string {
+export function signSaveJwt(c: WalletConfig, p: WalletPass, now = Math.floor(Date.now() / 1000), active = true): string {
   const head = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const body = b64u(JSON.stringify({ iss: c.email, aud: "google", typ: "savetowallet", iat: now, origins: [c.origin], payload: buildPayload(c, p) }));
+  const body = b64u(JSON.stringify({ iss: c.email, aud: "google", typ: "savetowallet", iat: now, origins: [c.origin], payload: buildPayload(c, p, active) }));
   const sig = createSign("RSA-SHA256").update(`${head}.${body}`).sign(c.privateKey, "base64url");
   return `${head}.${body}.${sig}`;
 }
-export const saveUrl = (c: WalletConfig, p: WalletPass) => `https://pay.google.com/gp/v/save/${signSaveJwt(c, p)}`;
+export const saveUrl = (c: WalletConfig, p: WalletPass, active = true) => `https://pay.google.com/gp/v/save/${signSaveJwt(c, p, undefined, active)}`;

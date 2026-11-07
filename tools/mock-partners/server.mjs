@@ -87,10 +87,11 @@ export function createMockServer(opts = {}) {
     },
     log: opts.log ?? (process.env.MOCK_QUIET === "1" ? () => {} : (m) => console.log(`[mock] ${m}`)),
   };
-  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, messagesSent: [], seq: 0, errOnce: new Set() };
+  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, walletPatches: [], messagesSent: [], seq: 0, errOnce: new Set() };
   const timers = new Set();
 
   const send = (res, code, body, headers = {}) => { const s = JSON.stringify(body); res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(s), ...headers }); res.end(s); };
+  const readRaw = (req) => new Promise((resolve) => { const chunks = []; req.on("data", (c) => chunks.push(c)); req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8"))); });
   const readBody = (req) => new Promise((resolve) => { const chunks = []; req.on("data", (c) => chunks.push(c)); req.on("end", () => { const raw = Buffer.concat(chunks).toString("utf8"); if (!raw) return resolve({}); const ct = req.headers["content-type"] ?? ""; try { resolve(ct.includes("x-www-form-urlencoded") ? Object.fromEntries(new URLSearchParams(raw)) : JSON.parse(raw)); } catch { resolve({ __invalid: true }); } }); });
 
   async function callback(kind, path, body, method = "POST") {
@@ -342,11 +343,11 @@ export function createMockServer(opts = {}) {
   // ------------------------------------------------------------------ simulator controls
   async function admin(req, res, path) {
     const b = req.method === "POST" ? await readBody(req) : {};
-    if (path === "/__admin/state") return send(res, 200, { config: { ...cfg, partnerSecret: "***", callbackSecret: "***" }, applications: [...state.applications.values()], insurance: [...state.insurance.values()], sim: [...state.sim.values()], vip: [...state.vip.values()], bhs: [...state.bhs.values()], callbacksSent: state.callbacksSent, aiRequests: state.aiRequests, messagesSent: state.messagesSent });
+    if (path === "/__admin/state") return send(res, 200, { config: { ...cfg, partnerSecret: "***", callbackSecret: "***" }, applications: [...state.applications.values()], insurance: [...state.insurance.values()], sim: [...state.sim.values()], vip: [...state.vip.values()], bhs: [...state.bhs.values()], callbacksSent: state.callbacksSent, aiRequests: state.aiRequests, walletPatches: state.walletPatches, messagesSent: state.messagesSent });
     if (path === "/__admin/decide" && req.method === "POST") { const app = state.applications.get(b.webReferenceNumber); if (!app) return send(res, 404, { error: "unknown application" }); await decide(app, Number(b.statusId), b.statusDesc); return send(res, 200, { ok: true, status: app.status }); }
     if (path === "/__admin/config" && req.method === "POST") { for (const k of ["decisionDelayMs", "duplicateMode"]) if (b[k] !== undefined) cfg[k] = b[k]; for (const k of Object.keys(cfg.callbacks)) if (b.callbacks?.[k] !== undefined) cfg.callbacks[k] = b.callbacks[k]; return send(res, 200, { ok: true }); }
     if (path === "/__admin/ai-break" && req.method === "POST") { state.aiBreak = b?.provider ? { ...state.aiBreak, [b.provider]: b.status || 0 } : {}; return send(res, 200, { ok: true, aiBreak: state.aiBreak }); }
-    if (path === "/__admin/reset" && req.method === "POST") { state.aiBreak = {}; for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
+    if (path === "/__admin/reset" && req.method === "POST") { state.aiBreak = {}; for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.walletPatches.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
     // partner-side events: the partner tells ThaiPass that something happened (SIM picked up, VIP used, voucher used, lab result)
     if (path === "/__admin/partner/sim-confirm" && req.method === "POST") { const r = state.sim.get(b.TransactionID); if (!r) return send(res, 404, { error: "unknown TransactionID" }); r.used = true; await callback("sim", "/SIM/TRUE/sim_confirm", { PassportNumber: r.PassportNumber, TransactionID: r.TransactionID, ConfirmBy: b.ConfirmBy ?? "airport-counter-1", Remark: b.Remark ?? "" }); return send(res, 200, { ok: true }); }
     if (path === "/__admin/partner/vip-confirm" && req.method === "POST") { const r = state.vip.get(b.TransactionID); if (!r) return send(res, 404, { error: "unknown TransactionID" }); r.used = true; await callback("vip", "/Services/VIP/vip_confirm", { PassportNumber: r.PassportNumber, TransactionID: r.TransactionID, ConfirmBy: b.ConfirmBy ?? "vip-staff-1", Remark: b.Remark ?? "" }); return send(res, 200, { ok: true }); }
@@ -366,6 +367,14 @@ export function createMockServer(opts = {}) {
       if (path === "/ai/v1/messages" && req.method === "POST") return await anthropicMock(req, res);
       if (path === "/ai/v1/models" && req.method === "GET") return send(res, 200, { data: [{ id: "claude-sonnet-5-5", type: "model" }, { id: "claude-haiku-5-5", type: "model" }, { id: "claude-opus-5-5", type: "model" }], has_more: false, first_id: "claude-sonnet-5-5", last_id: "claude-opus-5-5" });
       if (path.startsWith("/ai/v1beta/")) return await googleMock(req, res, path);
+      // Google Wallet (updating a saved pass): OAuth token for a service account, then PATCH of the pass object (an id containing MISSING answers 404 like a pass nobody saved)
+      if (path === "/wallet/token" && req.method === "POST") { const f = Object.fromEntries(new URLSearchParams(await readRaw(req))); return f.grant_type === "urn:ietf:params:oauth:grant-type:jwt-bearer" && String(f.assertion ?? "").split(".").length === 3 ? send(res, 200, { access_token: "mock-wallet-token", expires_in: 3600, token_type: "Bearer" }) : send(res, 400, { error: "invalid_grant" }); }
+      if (path.startsWith("/wallet/walletobjects/v1/genericObject/") && req.method === "PATCH") {
+        const body = await readBody(req), id = decodeURIComponent(path.split("/").pop());
+        if (req.headers.authorization !== "Bearer mock-wallet-token") return send(res, 401, { error: { code: 401, message: "unauthorized" } });
+        if (id.includes("MISSING")) return send(res, 404, { error: { code: 404, message: "Object not found" } });
+        state.walletPatches.push({ id, state: body.state, text: JSON.stringify(body.textModulesData ?? []), header: body.header?.defaultValue?.value }); return send(res, 200, { id, ...body });
+      }
       if (/^\/(line|whatsapp)\//.test(path)) return await messaging(req, res, path, url);
       if (/^\/(insurance|sim|vip|bhs)\//.test(path)) return await partner(req, res, path, url);
       return send(res, 404, { status: 404, message: "Incorrect Request" });

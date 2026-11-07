@@ -105,6 +105,11 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **Google Wallet pass**: "Add to Google Wallet" on the E-VOA pass (approved applications only; QR, reference, arrival, flight, last four passport characters, private-service notice); the link is signed on our server with the service account key | ✅ link and signature tested · ⬜ real Google credentials, publishing access from Google, a real save on a phone |
 | **Government / TAT statistics** `/admin/tourism` (staff) and `/gov` (read-only accounts staff add by e-mail): approved arrivals by day, nationality, arrival airport, purpose, gender, age group, length of stay, package; approval rate, decision time, lead time; range filter and CSV export. Counts only, groups under 5 hidden | ✅ |
 
+| **Apple Wallet pass**: "Add to Apple Wallet" on the E-VOA pass (signed `.pkpass`: QR, reference, arrival, flight, last four passport characters, notice; shows on the lock screen near the arrival day); Apple's PassKit web service (`/api/wallet/apple`) so phones fetch newer versions | ✅ file, signature (checked with openssl), web service and push tested with throw-away certificates · ⬜ real Apple certificates, a real install on an iPhone, a real push through Apple |
+| **Updates after issue**: the daily tick compares what each handed-out pass shows with the application now; a change is sent to Google (PATCH: shown as not valid when the application is no longer approved) or announced to Apple phones (push) | ✅ against the simulator · ⬜ against real Google / Apple |
+| **Connect LINE in numbered steps**: one-time code with **Copy**, **Add friend on LINE** (official add-friend link), **Send the code in LINE** (opens our chat with the code typed), page turns to "Connected" by itself | ✅ tested in the browser with a signed webhook · ⬜ with the real LINE account |
+| **/gov shortcut**: a card and menu entry for read-only statistics accounts only; distinct icons for the AI assistant and AI instructions cards | ✅ |
+
 ## Still planned
 
-⬜ Apple Wallet pass (needs an Apple Developer account) · ⬜ wallet pass updates after issue (status or date changes) · ⬜ TAT API / scheduled data feed
+⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders)

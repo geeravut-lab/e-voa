@@ -168,6 +168,34 @@ export const ART = {
       <Spark x={146} y={100} s={0.6} c={L} />
     </Svg>
   ),
+  ai: (
+    <Svg>
+      <rect x="40" y="30" width="64" height="64" rx="14" fill={B} />
+      <rect x="52" y="42" width="40" height="40" rx="8" fill={W} />
+      <path d="M62 72V54l10 12 10-12v18" stroke={N} strokeWidth="4.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      {[48, 62, 76, 90].map((x) => (<g key={x}><rect x={x - 2} y="20" width="4" height="10" rx="2" fill={T} /><rect x={x - 2} y="94" width="4" height="10" rx="2" fill={T} /></g>))}
+      {[44, 58, 72, 86].map((y) => (<g key={y}><rect x="30" y={y - 2} width="10" height="4" rx="2" fill={T} /><rect x="104" y={y - 2} width="10" height="4" rx="2" fill={T} /></g>))}
+      <circle cx="126" cy="38" r="14" fill={G} />
+      <path d="M126 29l2.6 6.4 6.4 2.6-6.4 2.6-2.6 6.4-2.6-6.4-6.4-2.6 6.4-2.6Z" fill={W} />
+      <Spark x={22} y={26} s={0.9} c={L} />
+      <Spark x={134} y={88} s={0.7} />
+    </Svg>
+  ),
+  prompts: (
+    <Svg>
+      <rect x="26" y="12" width="76" height="96" rx="9" fill={W} stroke={B} strokeWidth="3" />
+      <rect x="38" y="26" width="32" height="7" rx="3.5" fill={G} />
+      {[44, 58, 72, 86].map((y, i) => (<g key={y}><path d={`M40 ${y + 3}l4 4 7-8`} stroke={T} strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round" /><rect x="58" y={y} width={34 - i * 5} height="6" rx="3" fill={N} opacity="0.8" /></g>))}
+      <g transform="rotate(38 118 66)">
+        <rect x="108" y="30" width="16" height="64" rx="4" fill={L} />
+        <rect x="108" y="30" width="16" height="12" rx="4" fill={N} />
+        <path d="M108 94h16l-8 16Z" fill={GL} />
+        <path d="M114 106h4l-2 4Z" fill={N} />
+      </g>
+      <Spark x={134} y={26} s={0.9} />
+      <Spark x={16} y={96} s={0.7} c={L} />
+    </Svg>
+  ),
   fees: (
     <Svg>
       <path d="M32 14h60v86l-8-6-8 6-8-6-8 6-8-6-8 6-8-6-4 4Z" fill={W} stroke={B} strokeWidth="3" strokeLinejoin="round" />

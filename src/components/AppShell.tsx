@@ -42,7 +42,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     after(() => trackEvent(id, "active")); // once a day per person; never blocks the page
   }
 
-  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && n.area === (isAdmin ? "admin" : "traveler"));
+  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && (!n.viewerOnly || viewer.isReportViewer) && n.area === (isAdmin ? "admin" : "traveler"));
   const entry = (n: NavItem): NavEntry => ({
     key: n.key,
     label: t[n.label],

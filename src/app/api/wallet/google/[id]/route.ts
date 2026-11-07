@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params; if (!/^[0-9a-f-]{36}$/i.test(id)) return nope(404);
   const v = await getViewer(); if (!v.user) return nope(401);
   if (!(await rateLimit(`wallet:${v.user.id}`, 20, 3600))) return nope(429);
-  const { t, lang, brandName } = await getT();
-  const r = await googleWalletLink(v.user.id, id, { t, lang, brandName });
+  const { lang } = await getT();
+  const r = await googleWalletLink(v.user.id, id, { lang });
   return r.ok ? NextResponse.redirect(r.url, { status: 303, headers: { "Cache-Control": "no-store" } }) : nope(404);
 }

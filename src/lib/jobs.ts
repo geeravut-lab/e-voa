@@ -11,6 +11,7 @@ import { DEFAULT_RETENTION } from "@/config/defaults";
 import { reconcilePaid, expireUnpaid } from "@/lib/payments/service";
 import { recheckWaiting } from "@/lib/applications/service";
 import { processAddonQueue, syncPartnerPackages } from "@/lib/partners/service";
+import { syncWalletPasses } from "@/lib/wallet/service";
 import { runRules } from "@/lib/rules/service";
 
 const DEFAULT_BUDGET_MS = 20_000;
@@ -31,6 +32,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     ["pre_check", async () => recheckWaiting()],
     ["addons", async () => processAddonQueue()],
     ["rules", async () => runRules()],
+    ["wallet", async () => syncWalletPasses()],
     ["partner_packages", async () => {
       const { data } = await createAdminClient().from("partner_packages").select("synced_at").order("synced_at", { ascending: true }).limit(1);
       const last = data?.[0]?.synced_at ? Date.parse(data[0].synced_at) : 0;

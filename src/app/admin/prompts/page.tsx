@@ -26,7 +26,7 @@ export default async function AdminPrompts() {
     channels: [ch.website, ch.line && `LINE ${ch.line}`, ch.email, ch.phone, ch.hours].filter(Boolean).join("; ") });
   return (
     <div className="space-y-4">
-      <PageHead title={t.admin_prompts_title} hint={t.admin_prompts_hint} art="help" tone="gold" />
+      <PageHead title={t.admin_prompts_title} hint={t.admin_prompts_hint} art="prompts" tone="gold" />
       <ActionForm action={savePromptExtraAction} className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
         <div><h2 className="font-display text-lg font-bold">{t.prompts_extra}</h2><p className="text-xs text-muted">{t.prompts_extra_hint}</p></div>
         <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="enabled" defaultChecked={extra.chat.enabled} className="mt-1 h-5 w-5" /><span>{t.prompts_enabled}</span></label>
