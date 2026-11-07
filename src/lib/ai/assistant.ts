@@ -8,7 +8,7 @@ import { buildSystemPrompt } from "./prompt";
 import { TOOLS, runTool } from "./tools";
 import { loadAi, aiConfigured } from "./settings";
 import { runAi, loadExtra } from "./server";
-import { loadFaq } from "@/lib/content/server";
+import { loadFaq, loadNews, loadArticles } from "@/lib/content/server";
 import { screenPromptAddition, wrapAddition } from "./extra";
 import type { Turn } from "./types";
 import type { Lang } from "@/lib/i18n/langs";
@@ -39,8 +39,8 @@ export async function runAssistant(messages: ChatMessage[], ctx: { userId: strin
   const cfg = await loadAi();
   if (!cfg.enabled || !aiConfigured()) return { ok: false, error: "err_ai_unavailable" };
   if ((await todayTokens()) >= cfg.daily_token_budget) return { ok: false, error: "err_ai_budget" };
-  const [fees, policy, ch, extra, faq] = await Promise.all([loadFees(), getSetting<unknown>("refund_policy", DEFAULT_REFUND_POLICY).then(parseRefundPolicy), loadChannels(), loadExtra(), loadFaq("en")]);
-  const system = buildSystemPrompt({ faq, fees: { visa: fees.visa_thb, regular: fees.regular_service_thb, express: fees.express_service_thb }, refund: { visa: policy.visa_fee_refundable, addons: policy.unused_addons_refundable }, lang: ctx.lang,
+  const [fees, policy, ch, extra, faq, news, articles] = await Promise.all([loadFees(), getSetting<unknown>("refund_policy", DEFAULT_REFUND_POLICY).then(parseRefundPolicy), loadChannels(), loadExtra(), loadFaq("en"), loadNews("en", 5), loadArticles("en")]);
+  const system = buildSystemPrompt({ faq, news: news.map((n) => ({ title: n.title, body: n.body, date: n.publishedAt?.slice(0, 10) })), articles: articles.map((a) => ({ slug: a.slug, title: a.title, summary: a.summary, text: a.body.map((x) => `${x.h}. ${x.p.join(" ")}`).join(" ") })), fees: { visa: fees.visa_thb, regular: fees.regular_service_thb, express: fees.express_service_thb }, refund: { visa: policy.visa_fee_refundable, addons: policy.unused_addons_refundable }, lang: ctx.lang,
     channels: [ch.website, ch.line && `LINE ${ch.line}`, ch.email, ch.phone, ch.hours].filter(Boolean).join("; ") })
     + (extra.chat.enabled && screenPromptAddition(extra.chat.text).ok ? wrapAddition(extra.chat.text) : "");                    // saved text is screened again here: a row edited behind the app's back is not trusted
   const turns: Turn[] = messages.map((m): Turn => (m.role === "user" ? { role: "user", text: m.content } : { role: "assistant", text: m.content, calls: [] }));
