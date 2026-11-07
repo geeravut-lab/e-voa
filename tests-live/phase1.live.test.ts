@@ -304,7 +304,7 @@ describe("sending to Immigration (simulator)", () => {
     let row = await ob(); expect(row).toMatchObject({ status: "pending", attempts: 1 }); expect(Date.parse(row.next_attempt_at)).toBeGreaterThan(Date.now() + 30_000);
     expect(row.last_error).toContain("503");
     expect((await processOutbox(gw, 50)).retry).toBe(0);                                                  // not due yet: left alone
-    for (let i = 2; i <= 6; i++) { await sql(`update public.immigration_outbox set next_attempt_at = now() where application_id='${a.id}'`); await processOutbox(gw, 50); }
+    for (let i = 2; i <= 6; i++) { await sql(`update public.immigration_outbox set next_attempt_at = now() - interval '1 minute' where application_id='${a.id}'`); await processOutbox(gw, 50); }
     row = await ob(); expect(row.status).toBe("failed"); expect(row.attempts).toBe(6);
     expect(await statusOf(a.id)).toBe("submission_failed");
     expect(await notifCount(u.id, `app:${a.id}:submission_failed`)).toBe(1);
@@ -314,7 +314,7 @@ describe("sending to Immigration (simulator)", () => {
     const u = await makeUser("err"); const a = await makeApp(u, "ERR");
     await enqueueDocket(a.id);
     expect((await processOutbox(gw, 50)).retry).toBeGreaterThanOrEqual(1); expect(await statusOf(a.id)).toBe("pre_check");
-    await sql(`update public.immigration_outbox set next_attempt_at = now() where application_id='${a.id}'`);
+    await sql(`update public.immigration_outbox set next_attempt_at = now() - interval '1 minute' where application_id='${a.id}'`);
     expect((await processOutbox(gw, 50)).sent).toBeGreaterThanOrEqual(1);
     await waitFor(async () => (await statusOf(a.id)) === "approved").catch(async (e) => { await diag(a.id); throw e; });
   });
