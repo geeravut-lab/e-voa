@@ -15,7 +15,8 @@
     "e2e:phase1": "vitest run --config vitest.live.config.ts",
     "prebuild": "node scripts/copy-ocr-assets.mjs",
     "predev": "node scripts/copy-ocr-assets.mjs",
-    "vapid": "node scripts/gen-vapid.mjs"
+    "vapid": "node scripts/gen-vapid.mjs",
+    "a11y": "node scripts/a11y.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
@@ -54,6 +55,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/web-push": "^3.6.4",
+    "axe-core": "^4.14.0",
     "tailwindcss": "^4.3.4",
     "typescript": "^5.9.3",
     "vitest": "^5.1.0"

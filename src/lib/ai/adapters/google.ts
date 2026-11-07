@@ -48,11 +48,20 @@ export const googleAdapter: ProviderAdapter = {
     return { text, calls, raw: { provider: "google", value: cand.content }, provider: "google", model, stop: calls.length ? "tools" : cand.finishReason === "MAX_TOKENS" ? "length" : cand.finishReason === "SAFETY" ? "refusal" : "end",
       usage: { inputTokens: body?.usageMetadata?.promptTokenCount ?? 0, outputTokens: (body?.usageMetadata?.candidatesTokenCount ?? 0) + (body?.usageMetadata?.thoughtsTokenCount ?? 0) } };
   },
-  /** Only text models that can answer (not speech, image, embedding, live or robotics models). */
+  /** Only text models that can answer (not speech, image, embedding, live or robotics models). Every page of the provider's list is read. */
   async listModels(apiKey: string): Promise<string[]> {
-    const res = await fetch(`${base()}/v1beta/models?pageSize=100`, { headers: { "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(8_000), cache: "no-store" });
-    if (!res.ok) throw new AiError("provider_failed", `google ${res.status}`, res.status);
-    const j = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
-    return (j.models ?? []).filter((m) => m.supportedGenerationMethods?.includes("generateContent")).map((m) => m.name.replace(/^models\//, "")).filter((n) => /^gemini/.test(n) && !/tts|image|embed|live|audio|robotics|computer-use/i.test(n));
+    const out = new Set<string>();
+    let token = "";
+    for (let page = 0; page < 6; page++) {
+      const res = await fetch(`${base()}/v1beta/models?pageSize=100${token ? `&pageToken=${encodeURIComponent(token)}` : ""}`, { headers: { "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(8_000), cache: "no-store" });
+      if (!res.ok) throw new AiError("provider_failed", `google ${res.status}`, res.status);
+      const j = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[]; nextPageToken?: string };
+      for (const m of j.models ?? []) {
+        const n = m.name.replace(/^models\//, "");
+        if (m.supportedGenerationMethods?.includes("generateContent") && /^gemini/.test(n) && !/tts|image|embed|live|audio|robotics|computer-use/i.test(n)) out.add(n);
+      }
+      token = j.nextPageToken ?? ""; if (!token) break;
+    }
+    return [...out];
   },
 };

@@ -1388,6 +1388,10 @@ export const en = {
   tdac_beware: "Beware of look-alike sites",
   rc_title: "Rules check",
   rc_hint: "Things visitors often get wrong in Thailand.",
+  ai_model_for_other: "Other model name (optional, overrides the list)",
+  ai_model_for_missing: "{model} (current, not in the provider's list now)",
+  ai_model_for_count: "{n} models offered by the provider right now",
+  ai_model_for_none: "The provider's list could not be read, so type the model name.",
   // errors
   err_generic: "Something went wrong. Please try again.",
   err_not_signed_in: "Please sign in first.",

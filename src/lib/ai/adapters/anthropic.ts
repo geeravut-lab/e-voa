@@ -37,7 +37,7 @@ export const anthropicAdapter: ProviderAdapter = {
   },
   async listModels(apiKey: string): Promise<string[]> {
     const out: string[] = [];
-    for await (const m of client(apiKey).models.list({ limit: 100 })) { out.push(m.id); if (out.length >= 200) break; }
+    for await (const m of client(apiKey).models.list({ limit: 100 })) { if (/^claude/.test(m.id)) out.push(m.id); if (out.length >= 300) break; }
     return out;
   },
 };

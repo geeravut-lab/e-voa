@@ -346,7 +346,7 @@ export async function saveAiRoutingAction(_p: ActionResult, fd: FormData): Promi
     if (primary && !keyFor(primary as never)) return { ok: false, error: "err_ai_nokey" };          // a provider without a key cannot be chosen
     routes[t] = { primary, fallback };
     for (const p of PROVIDER_IDS) {
-      const m = String(fd.get(`model_${p}_${t}`) ?? "").trim();
+      const m = (String(fd.get(`model_${p}_${t}__custom`) ?? "").trim() || String(fd.get(`model_${p}_${t}`) ?? "").trim());          // a typed name wins over the list
       if (m && m !== PROVIDERS[p].models[t]) { if (!MODEL_RE.test(m)) return { ok: false, error: "err_ai_model" }; (models[p] ??= {})[t] = m; }      // only a changed name is stored; the default stays in code
     }
   }

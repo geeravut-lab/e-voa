@@ -90,7 +90,7 @@ export function LoginForm({ next, google, line, email: emailOn, hubUrl, appSlug 
           href={lineHref}
           onClick={(ev) => { if (lineBusy) ev.preventDefault(); setLineBusy(true); }}
           aria-busy={lineBusy}
-          className="pressable inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control bg-[#06C755] px-5 text-[15px] font-bold text-white hover:brightness-95"
+          className="pressable inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control bg-[#06C755] px-5 text-[15px] font-bold text-ink hover:brightness-95"
         >
           {lineBusy ? <Spinner /> : <span aria-hidden="true" className="grid h-5 w-5 place-items-center rounded bg-white text-[11px] font-black text-[#06C755]">L</span>}
           {t.login_line}

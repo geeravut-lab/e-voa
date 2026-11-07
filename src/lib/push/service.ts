@@ -1,5 +1,5 @@
 import "server-only";
-import webpush from "web-push";
+import * as webpush from "web-push";
 import { envValue, SITE_URL } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildPayload, isGone, parseSubscription, type PushSub } from "./rules";

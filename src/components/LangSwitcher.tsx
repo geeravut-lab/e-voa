@@ -12,7 +12,8 @@ import { Spinner } from "./Spinner";
  * The chosen language shows a spinner until the page has re-rendered in it.
  */
 export function LangSwitcher({ compact = false, up = false }: { compact?: boolean; up?: boolean }) {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
+  const shown = compact ? LANGS[lang].short : LANGS[lang].native;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -45,17 +46,17 @@ export function LangSwitcher({ compact = false, up = false }: { compact?: boolea
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        aria-label="Language"
+        aria-label={`${t.nav_language}: ${shown}`}                    // the name must contain the visible text
         aria-busy={pending}
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex min-h-11 items-center justify-between gap-2 rounded-full border border-line bg-surface px-4 text-[15px] font-bold text-ink shadow-sm transition hover:bg-sky ${compact ? "" : "w-full"}`}
         lang={LANGS[lang].htmlLang}
       >
-        <span>{compact ? LANGS[lang].short : LANGS[lang].native}</span>
+        <span>{shown}</span>
         {pending ? <Spinner size={14} /> : <ChevronDown size={16} aria-hidden="true" className={`transition ${open ? "rotate-180" : ""}`} />}
       </button>
       {open && (
-        <ul id={listId} role="listbox" aria-label="Language" className={`absolute z-50 min-w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-card ${compact ? "end-0" : "start-0 w-full"} ${up ? "bottom-full mb-2" : "top-full mt-2"}`}>
+        <ul id={listId} role="listbox" aria-label={t.nav_language} className={`absolute z-50 min-w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-card ${compact ? "end-0" : "start-0 w-full"} ${up ? "bottom-full mb-2" : "top-full mt-2"}`}>
           {LANG_CODES.map((code) => {
             const active = code === lang;
             return (

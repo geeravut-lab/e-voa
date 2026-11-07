@@ -17,7 +17,7 @@ export default async function NewsPage() {
       {items.length === 0 ? <p className="rounded-card border border-line bg-surface p-5 text-center text-muted shadow-card">{t.news_none}</p> : (
         <ul className="space-y-3">
           {items.map((n) => (
-            <li key={n.id} className="tone-green space-y-2 rounded-card border p-5 shadow-card">
+            <li key={n.id} className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
               <h2 className="font-display text-lg font-bold">{n.title}</h2>
               {n.publishedAt && <p className="text-xs text-muted tabular">{fmt.format(new Date(n.publishedAt))}</p>}
               <p className="whitespace-pre-line break-words text-sm">{n.body}</p>

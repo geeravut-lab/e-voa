@@ -6,6 +6,7 @@ import { saveAiAction, saveAiRoutingAction } from "@/app/actions/admin";
 import { AiTestButton } from "@/components/AiTestButton";
 import { PROVIDERS } from "@/lib/ai/registry";
 import { modelFor } from "@/lib/ai/route";
+import { ModelPicker } from "@/components/ModelPicker";
 import { keyStatus, listModelsFor, loadRouting } from "@/lib/ai/server";
 import { PROVIDER_IDS, TASK_KINDS } from "@/lib/ai/types";
 import { ActionForm } from "@/components/ActionForm";
@@ -52,18 +53,11 @@ export default async function AdminAi() {
               </div>
               {PROVIDER_IDS.map((p) => {
                 const field = `model_${p}_${task}`, current = modelFor(p, task, routing);
-                return (
-                  <div key={p} className="flex flex-wrap items-end gap-2">
-                    <label className="block w-full min-w-0 flex-1 space-y-1 sm:w-auto"><span className="text-xs font-semibold text-muted">{PROVIDERS[p].label} · {t.ai_model_for}</span>
-                      <input name={field} defaultValue={current} list={`models_${p}`} className={`${inputCls} font-mono`} autoComplete="off" spellCheck={false} /></label>
-                    <AiTestButton provider={p} field={field} fallbackModel={current} />
-                  </div>
-                );
+                return <ModelPicker key={p} provider={p} label={`${PROVIDERS[p].label} · ${t.ai_model_for}`} field={field} current={current} models={lists[p] ?? null} />;
               })}
             </fieldset>
           );
         })}
-        {PROVIDER_IDS.map((p) => <datalist key={p} id={`models_${p}`}>{(lists[p] ?? []).map((m) => <option key={m} value={m} />)}</datalist>)}
         <ul className="list-disc space-y-1 ps-5 text-xs text-muted">{PROVIDER_IDS.map((p) => <li key={p}>{PROVIDERS[p].label}: {PROVIDERS[p].hint}</li>)}</ul>
         <SubmitButton>{t.save}</SubmitButton>
       </ActionForm>
