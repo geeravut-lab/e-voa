@@ -26,7 +26,7 @@ export function TourismReport({ r, t, base, range }: { r: Report; t: Dict; base:
         {r.daily.length === 0 ? <p className="text-muted">{t.tourism_none}</p> : (
           <>
             <div className="flex h-36 items-end gap-0.5" role="img" aria-label={t.tourism_daily}>
-              {r.daily.map((d) => <div key={d.k} title={`${d.k}: ${d.n}`} className="min-w-px flex-1 rounded-t bg-primary" style={{ height: `${Math.max(3, (d.n / max) * 100)}%` }} />)}
+              {r.daily.map((d) => <div key={d.k} title={`${d.k}: ${d.n}`} className="min-w-px max-w-6 flex-1 rounded-t bg-primary" style={{ height: `${Math.max(3, (d.n / max) * 100)}%` }} />)}
             </div>
             <p className="flex justify-between text-xs text-muted tabular"><span>{r.daily[0].k}</span><span>{r.daily[r.daily.length - 1].k}</span></p>
           </>
@@ -52,7 +52,7 @@ export function TourismReport({ r, t, base, range }: { r: Report; t: Dict; base:
           );
         })}
       </div>
-      <p className="px-1 text-xs text-muted">{t.tourism_note.replace("{n}", String(MIN_CELL))}</p>
+      <p className="px-1 text-xs text-muted">{t.tourism_note.replaceAll("{n}", String(MIN_CELL))}</p>
     </div>
   );
 }
