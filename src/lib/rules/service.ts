@@ -4,9 +4,9 @@ import { getSetting, putSetting } from "@/lib/settings";
 import { notifyUser } from "@/lib/notify";
 import { DICTS, fmt } from "@/lib/i18n/dict";
 import { isLang, type Lang } from "@/lib/i18n/langs";
-import { DEFAULT_RULES, hoursLeft, needsFixReminder, needsPaymentReminder, parseRules, shouldExpire, slaLevel, type RulesConfig } from "./rules";
+import { DEFAULT_RULES, daysLeft, expiresAt, flightLevel, hoursLeft, hoursUntil, needsExpiryWarning, needsFixReminder, needsPaymentReminder, parseRules, shouldExpire, slaLevel, stayEnd, stayMark, type RulesConfig } from "./rules";
 
-export type RulesRun = { at: string; payment_reminders: number; expired: number; fix_reminders: number; sla_warnings: number; sla_overdue: number };
+export type RulesRun = { at: string; payment_reminders: number; expired: number; fix_reminders: number; sla_warnings: number; sla_overdue: number; expiry_warnings?: number; flight_reminders?: number; stay_reminders?: number };
 const db = () => createAdminClient();
 const LIMIT = 100;
 
@@ -28,7 +28,7 @@ const arrivalOf = (a: { trips: unknown }) => { const t = a.trips as { arrival_da
  */
 export async function runRules(now = new Date(), opts: { onlyOwners?: string[]; adminIds?: string[] } = {}): Promise<RulesRun> {
   const cfg = await loadRules();
-  const out: RulesRun = { at: now.toISOString(), payment_reminders: 0, expired: 0, fix_reminders: 0, sla_warnings: 0, sla_overdue: 0 };
+  const out: RulesRun = { at: now.toISOString(), payment_reminders: 0, expired: 0, fix_reminders: 0, sla_warnings: 0, sla_overdue: 0, expiry_warnings: 0, flight_reminders: 0, stay_reminders: 0 };
   const step = async (name: string, fn: () => Promise<void>) => { try { await fn(); } catch (e) { console.error(`[rules] ${name} failed`, (e as Error).message); } };
 
   await step("unpaid", async () => {
@@ -46,10 +46,17 @@ export async function runRules(now = new Date(), opts: { onlyOwners?: string[]; 
           const t = DICTS[await langOf(a.owner_id)];
           await sendOnce({ userId: a.owner_id, title: t.rule_expired_title, body: fmt(t.rule_expired_body, { ref: a.ref_no }), link: "/trips", kind: "rule.expired", dedupeKey: `rule:expired:${a.id}` , fields: [[t.flex_ref, a.ref_no]] });
         }
-      } else if (needsPaymentReminder(a, arrival, cfg, now)) {
-        const t = DICTS[await langOf(a.owner_id)];
-        const ok = await sendOnce({ userId: a.owner_id, title: t.rule_payrem_title, body: fmt(t.rule_payrem_body, { ref: a.ref_no }), link: "/apply", kind: "rule.payment_reminder", dedupeKey: `rule:payrem:${a.id}` , fields: [[t.flex_ref, a.ref_no]] });
-        if (ok) out.payment_reminders++;
+      } else {
+        if (needsPaymentReminder(a, arrival, cfg, now)) {
+          const t = DICTS[await langOf(a.owner_id)];
+          const ok = await sendOnce({ userId: a.owner_id, title: t.rule_payrem_title, body: fmt(t.rule_payrem_body, { ref: a.ref_no }), link: "/apply", kind: "rule.payment_reminder", dedupeKey: `rule:payrem:${a.id}` , fields: [[t.flex_ref, a.ref_no]] });
+          if (ok) out.payment_reminders++;
+        }
+        if (needsExpiryWarning(a, arrival, cfg, now)) {                                          // "this will be closed soon": once per application
+          const t = DICTS[await langOf(a.owner_id)];
+          const ok = await sendOnce({ userId: a.owner_id, title: t.rule_expwarn_title, body: fmt(t.rule_expwarn_body, { ref: a.ref_no, hours: hoursUntil(expiresAt(a.created_at, arrival, cfg), now) }), link: "/trips", kind: "rule.expiry_warning", dedupeKey: `rule:expwarn:${a.id}`, fields: [[t.flex_ref, a.ref_no]] });
+          if (ok) out.expiry_warnings = (out.expiry_warnings ?? 0) + 1;
+        }
       }
     }
   });
@@ -62,6 +69,37 @@ export async function runRules(now = new Date(), opts: { onlyOwners?: string[]; 
     for (const a of data ?? []) if (needsFixReminder(a, cfg, now)) {
       const t = DICTS[await langOf(a.owner_id)];
       if (await sendOnce({ userId: a.owner_id, title: t.rule_fix_title, body: fmt(t.rule_fix_body, { ref: a.ref_no }), link: `/trips/${a.id}`, kind: "rule.fix_reminder", dedupeKey: `rule:fix:${a.id}`, fields: [[t.flex_ref, a.ref_no]] })) out.fix_reminders++;
+    }
+  });
+
+  await step("flight", async () => {
+    if (!cfg.flight_reminder.enabled) return;
+    const today = new Date(now.getTime() + 7 * 3_600_000).toISOString().slice(0, 10), last = new Date(now.getTime() + 7 * 3_600_000 + (Math.ceil(cfg.flight_reminder.before_hours / 24) + 1) * 86_400_000).toISOString().slice(0, 10);
+    let q = db().from("applications").select("id, ref_no, owner_id, status, trips!inner(arrival_date, arrival_time)").in("status", ["approved", "paid", "pre_check", "submitted", "under_review", "action_required", "submission_failed"]).gte("trips.arrival_date", today).lte("trips.arrival_date", last).limit(LIMIT);
+    if (opts.onlyOwners) q = q.in("owner_id", opts.onlyOwners);
+    const { data } = await q;
+    for (const a of data ?? []) {
+      const trip = (Array.isArray(a.trips) ? a.trips[0] : a.trips) as { arrival_date: string; arrival_time: string | null } | null; if (!trip) continue;
+      const lv = flightLevel(a.status, trip, cfg, now); if (!lv) continue;
+      const t = DICTS[await langOf(a.owner_id)];
+      const approved = lv.level === "approved";
+      const ok = await sendOnce({ userId: a.owner_id, title: approved ? t.rule_flight_title : t.rule_flightpend_title, body: fmt(approved ? t.rule_flight_body : t.rule_flightpend_body, { ref: a.ref_no, hours: lv.hours }), link: approved ? "/pass" : `/trips/${a.id}`, kind: "rule.flight_reminder", dedupeKey: `rule:flight:${a.id}:${lv.level}`, fields: [[t.flex_ref, a.ref_no]] });
+      if (ok) out.flight_reminders = (out.flight_reminders ?? 0) + 1;
+    }
+  });
+
+  await step("stay", async () => {
+    if (!cfg.stay_guard.enabled) return;
+    const today = new Date(now.getTime() + 7 * 3_600_000).toISOString().slice(0, 10), first = new Date(now.getTime() + 7 * 3_600_000 - cfg.stay_guard.stay_days * 86_400_000).toISOString().slice(0, 10);
+    let q = db().from("applications").select("id, ref_no, owner_id, trips!inner(arrival_date)").in("status", ["approved", "used"]).gte("trips.arrival_date", first).lte("trips.arrival_date", today).limit(LIMIT * 5);
+    if (opts.onlyOwners) q = q.in("owner_id", opts.onlyOwners);
+    const { data } = await q;
+    for (const a of data ?? []) {
+      const trip = (Array.isArray(a.trips) ? a.trips[0] : a.trips) as { arrival_date: string } | null; if (!trip) continue;
+      const end = stayEnd(trip.arrival_date, cfg.stay_guard.stay_days), mark = stayMark(end, now); if (!mark) continue;
+      const t = DICTS[await langOf(a.owner_id)];
+      const ok = await sendOnce({ userId: a.owner_id, title: t.rule_stay_title, body: fmt(t.rule_stay_body, { days: mark, date: end }), link: "/stay", kind: "rule.stay_guard", dedupeKey: `rule:stay:${a.id}:${mark}`, fields: [[t.flex_ref, a.ref_no]] });
+      if (ok) out.stay_reminders = (out.stay_reminders ?? 0) + 1;
     }
   });
 

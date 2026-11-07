@@ -21,3 +21,21 @@ self.addEventListener("fetch", (e) => {
   }
   if (ASSETS.includes(new URL(req.url).pathname)) e.respondWith(caches.match(req).then((r) => r || fetch(req)));
 });
+
+// ---- Web Push: show the notice the server sent, and open the right page when it is tapped.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = {}; }
+  const title = typeof d.title === "string" && d.title ? d.title : "ThaiPass e-VOA";
+  e.waitUntil(self.registration.showNotification(title, { body: typeof d.body === "string" ? d.body : "", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: typeof d.tag === "string" ? d.tag : undefined, data: { url: typeof d.url === "string" ? d.url : "/notifications" } }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const raw = (e.notification.data && e.notification.data.url) || "/notifications";
+  const path = typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/notifications";          // only pages of this site
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of all) { if ("focus" in c) { await c.focus(); if ("navigate" in c) { try { await c.navigate(path); } catch {} } return; } }
+    await self.clients.openWindow(path);
+  })());
+});

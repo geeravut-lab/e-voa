@@ -28,6 +28,9 @@ export default async function RulesPage() {
         {row(t.rules_pr_title, t.rules_pr_hint, "pr_on", c.payment_reminder.enabled, { name: "pr_h", value: c.payment_reminder.after_hours, unit: t.rules_unit_hours, min: 1, max: 720 })}
         {row(t.rules_ue_title, t.rules_ue_hint, "ue_on", c.unpaid_expire.enabled, { name: "ue_d", value: c.unpaid_expire.after_days, unit: t.rules_unit_days, min: 1, max: 180 })}
         {row(t.rules_fr_title, t.rules_fr_hint, "fr_on", c.fix_reminder.enabled, { name: "fr_h", value: c.fix_reminder.after_hours, unit: t.rules_unit_hours, min: 1, max: 720 })}
+        {row(t.rules_ew_title, t.rules_ew_hint, "ew_on", c.expiry_warning.enabled, { name: "ew_h", value: c.expiry_warning.before_hours, unit: t.rules_unit_hours, min: 1, max: 168 })}
+        {row(t.rules_fl_title, t.rules_fl_hint, "fl_on", c.flight_reminder.enabled, { name: "fl_h", value: c.flight_reminder.before_hours, unit: t.rules_unit_hours, min: 1, max: 168 })}
+        {row(t.rules_sg_title, t.rules_sg_hint, "sg_on", c.stay_guard.enabled, { name: "sg_d", value: c.stay_guard.stay_days, unit: t.rules_unit_days, min: 1, max: 90 })}
         <h2 className="pt-2 font-display text-lg font-bold">{t.rules_staff}</h2>
         {row(t.rules_sw_title, t.rules_sw_hint, "sw_on", c.sla_warning.enabled, { name: "sw_h", value: c.sla_warning.before_hours, unit: t.rules_unit_hours, min: 1, max: 72 })}
         {row(t.rules_so_title, t.rules_so_hint, "so_on", c.sla_overdue.enabled)}

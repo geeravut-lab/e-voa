@@ -12,6 +12,8 @@ import { createClient } from "@/lib/supabase/server";
 import { saveEmailNoticesAction } from "@/app/actions/account";
 import { fmt } from "@/lib/i18n/dict";
 import { inputCls } from "@/components/inputStyles";
+import { PushToggle } from "@/components/PushToggle";
+import { pushConfigured, pushPublicKey } from "@/lib/push/service";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,13 @@ export default async function NoticeChannels() {
             <p className="break-all text-xs text-muted">{fmt(t.email_notices_to, { email: prof.email })}</p>
             <SubmitButton>{t.save}</SubmitButton>
           </ActionForm>
+        </section>
+      )}
+      {pushConfigured() && (
+        <section className={box}>
+          <h2 className="font-display text-lg font-bold">{t.push_title}</h2>
+          <p className="text-sm text-muted">{t.push_hint}</p>
+          <PushToggle publicKey={pushPublicKey()} />
         </section>
       )}
       <section className={box}>

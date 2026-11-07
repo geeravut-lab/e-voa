@@ -6,6 +6,7 @@ import { DICTS } from "@/lib/i18n/dict";
 import { isLang } from "@/lib/i18n/langs";
 import { loadBrand } from "@/lib/brand/server";
 import { sendToChannels } from "@/lib/messaging/service";
+import { pushToUser } from "@/lib/push/service";
 
 /**
  * The only writer of in-app notifications. Inserting a row also wakes the user's open pages (database trigger → live ping).
@@ -38,6 +39,7 @@ export async function notifyUser(n: {
     }
     if (!error && n.kind !== "test" && n.mail !== false) await mailToo(n);          // a repeated event (duplicate) is not mailed twice
     if (!error) await chatToo(n);                                                    // same for LINE / WhatsApp (only users who linked an account)
+    if (!error && n.kind !== "test") await pushToo(n);                               // and phone notifications for the browsers the person switched on
     return true;
   } catch (e) {
     console.error("[notify] insert failed", (e as Error).message);
@@ -60,4 +62,8 @@ async function mailToo(n: { userId: string; title: string; body?: string; link?:
 
 async function chatToo(n: { userId: string; title: string; body?: string; link?: string; kind?: string; fields?: [string, string][]; note?: string }) {
   try { await sendToChannels(n); } catch (e) { console.error("[notify] chat failed", (e as Error).message); }
+}
+
+async function pushToo(n: { userId: string; title: string; body?: string; link?: string; kind?: string; dedupeKey?: string }) {
+  try { await pushToUser(n.userId, n); } catch (e) { console.error("[notify] push failed", (e as Error).message); }
 }

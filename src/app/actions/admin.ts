@@ -454,6 +454,7 @@ export async function saveRulesAction(_p: ActionResult, fd: FormData): Promise<A
   const cfg = parseRules({
     payment_reminder: { enabled: on("pr_on"), after_hours: n("pr_h") }, unpaid_expire: { enabled: on("ue_on"), after_days: n("ue_d") }, fix_reminder: { enabled: on("fr_on"), after_hours: n("fr_h") },
     sla_warning: { enabled: on("sw_on"), before_hours: n("sw_h") }, sla_overdue: { enabled: on("so_on") },
+    expiry_warning: { enabled: on("ew_on"), before_hours: n("ew_h") }, flight_reminder: { enabled: on("fl_on"), before_hours: n("fl_h") }, stay_guard: { enabled: on("sg_on"), stay_days: n("sg_d") },
   });
   if (!(await putSetting("automation_rules", cfg, a.viewer.user.id))) return { ok: false, error: "err_generic" };
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.rules", entity: "automation_rules", detail: { pr: cfg.payment_reminder.enabled, ue: cfg.unpaid_expire.enabled, fr: cfg.fix_reminder.enabled, sw: cfg.sla_warning.enabled, so: cfg.sla_overdue.enabled } });
