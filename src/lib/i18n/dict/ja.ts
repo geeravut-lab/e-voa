@@ -829,4 +829,6 @@ export const ja: Partial<Dict> = {
   cond_watch_signin: "ログインすると、ここで公式警報が出たときに通知されます。",
   cond_watch_list: "警報を受け取る場所",
   err_watch_limit: "最大5か所まで設定できます。先に1つ解除してください。",
+  tk_vault: "オフライン金庫とヘルスカード",
+  tk_vault_sub: "書類と健康情報をスマホに保存、ロック付き、ネット不要",
 };

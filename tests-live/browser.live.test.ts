@@ -16,7 +16,7 @@ import { syncFlatLists, syncChildLists } from "@/lib/immigration/sync";
 import { syncPartnerPackages, handlePartnerCallback } from "@/lib/partners/service";
 import { afterPayment } from "@/lib/payments/service";
 import { checkDigit } from "@/lib/mrz";
-import { cleanupUsers, makeDraft } from "./helpers";
+import { cleanupUsers, makeDraft, picture } from "./helpers";
 import { applyForPartner, savePackage } from "@/lib/partner-portal/service";
 import { applyForAgency } from "@/lib/agency/service";
 
@@ -650,6 +650,32 @@ describe("partner and agency pages", () => {
     } finally {
       await admin.from("partner_packages").delete().eq("partner_id", a.id); await admin.from("partners").delete().eq("id", a.id); await admin.from("agencies").delete().eq("id", ag1.id);
     }
+  }, 240_000);
+});
+describe("offline vault and health card", () => {
+  it("locks documents with a passcode, keeps them encrypted, shows the bilingual health card, and opens again with no network", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US", acceptDownloads: true }); const p = await ctx.newPage();
+    const errs: string[] = []; p.on("pageerror", (e: unknown) => errs.push(String(e))); p.on("dialog", (d: { accept(): Promise<void> }) => d.accept());
+    await p.goto(`${APP}/`, { waitUntil: "networkidle" }); await p.evaluate(async () => { await navigator.serviceWorker.ready; });                // the service worker keeps the page
+    await p.goto(`${APP}/offline-vault.html`, { waitUntil: "networkidle" });
+    expect(await p.locator("#lock_title").innerText()).toBe("Create a passcode");
+    await p.fill("#pass", "abc"); await p.fill("#pass2", "abc"); await p.click("#lock_btn"); expect(await p.locator("#lockmsg").innerText()).toContain("at least 6");
+    await p.fill("#pass", "long-secret-1"); await p.fill("#pass2", "long-secret-1"); await p.click("#lock_btn"); await p.locator("#home").waitFor({ state: "visible", timeout: 30_000 });
+    await p.fill("#doc_title", "My passport"); await p.fill("#doc_note", "Valid <b>2030</b>"); await p.setInputFiles("#doc_file", { name: "p.jpg", mimeType: "image/jpeg", buffer: await picture() }); await p.click("#doc_btn");
+    await p.getByRole("button", { name: /My passport/ }).waitFor({ timeout: 30_000 });
+    const stored = await p.evaluate(() => new Promise<string>((res) => { const r = indexedDB.open("evoa-vault"); r.onsuccess = () => { const q = r.result.transaction("items").objectStore("items").getAll(); q.onsuccess = () => res(JSON.stringify(q.result.map((x: { ct: Uint8Array }) => Array.from(x.ct)))); }; }));
+    expect(stored).not.toContain("My passport");
+    await p.getByRole("button", { name: /My passport/ }).click(); await p.locator("#viewer img").waitFor({ timeout: 20_000 }); expect(await p.locator("#viewer .note").innerText()).toContain("<b>2030</b>");     // text, never HTML
+    await p.click("#tab_health"); await p.fill("#h_name", "Anna K"); await p.check("input[name=h_allergies][value=penicillin]"); await p.check("input[name=h_conditions][value=asthma]"); await p.click("#health_btn");
+    await p.locator("#cardwrap").waitFor({ state: "visible", timeout: 20_000 }); const card = await p.locator("#cardbox").innerText();
+    for (const w of ["Penicillin", "เพนิซิลลิน", "Asthma", "หอบหืด", "Emergency health information", "ข้อมูลสุขภาพฉุกเฉิน"]) expect(card, w).toContain(w);
+    await p.click("#cardclose"); await p.click("#lock_btn2"); await p.locator("#lock").waitFor({ state: "visible" });
+    await p.fill("#pass", "wrong-pass-1"); await p.click("#lock_btn"); await p.waitForFunction(() => document.querySelector("#lockmsg")?.textContent?.includes("wrong"), null, { timeout: 20_000 });
+    await p.reload({ waitUntil: "networkidle" }); await ctx.setOffline(true);
+    await p.goto(`${APP}/offline-vault.html`).catch(() => undefined); await p.locator("#lockform").waitFor({ state: "visible", timeout: 20_000 });
+    await p.fill("#pass", "long-secret-1"); await p.click("#lock_btn"); await p.locator("#home").waitFor({ state: "visible", timeout: 30_000 });
+    expect(await p.getByText("My passport").count(), "the saved document is there without a network").toBeGreaterThan(0);
+    await ctx.setOffline(false); expect(errs).toEqual([]); await ctx.close();
   }, 240_000);
 });
 function traveler_client() { return createClient(SB_URL, SB_ANON, noAuth); }

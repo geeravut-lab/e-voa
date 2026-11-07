@@ -1493,6 +1493,8 @@ export const en = {
   cond_watch_signin: "Sign in to get a notice when an official warning is issued here.",
   cond_watch_list: "Places you get warnings for",
   err_watch_limit: "You can follow up to 5 places. Stop one first.",
+  tk_vault: "Offline vault and health card",
+  tk_vault_sub: "Papers and health info on your phone, locked, no internet needed",
   // errors
   err_generic: "Something went wrong. Please try again.",
   err_not_signed_in: "Please sign in first.",

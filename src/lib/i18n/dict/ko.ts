@@ -829,4 +829,6 @@ export const ko: Partial<Dict> = {
   cond_watch_signin: "로그인하면 이곳에 공식 경보가 발령될 때 알림을 받습니다.",
   cond_watch_list: "경보를 받는 지역",
   err_watch_limit: "최대 5곳까지 설정할 수 있습니다. 먼저 하나를 해제하세요.",
+  tk_vault: "오프라인 보관함과 건강 카드",
+  tk_vault_sub: "휴대폰에 서류와 건강 정보를 잠가 보관, 인터넷 불필요",
 };

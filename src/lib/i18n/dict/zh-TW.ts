@@ -829,4 +829,6 @@ export const zhTW: Partial<Dict> = {
   cond_watch_signin: "登入後，此處發布官方預警時您會收到通知。",
   cond_watch_list: "您接收預警的地點",
   err_watch_limit: "最多可關注 5 個地點，請先取消一個。",
+  tk_vault: "離線保險箱與健康卡",
+  tk_vault_sub: "證件和健康資訊保存在手機上，加鎖，無需網路",
 };

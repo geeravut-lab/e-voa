@@ -1,9 +1,9 @@
 // Minimal service worker: it makes the app installable and shows a friendly page when offline.
 // It caches ONLY the offline page and the icon. Pages with a signed-in user's data are never cached
 // (a shared or signed-out device must not be able to show them).
-const CACHE = "evoa-offline-v3";
+const CACHE = "evoa-offline-v4";
 // The offline page, the icon and the emergency numbers (a static page without any personal data) are the only things kept.
-const ASSETS = ["/offline.html", "/offline-emergency.html", "/icons/icon-192.png"];       // the emergency page is built by the server from the current numbers; a copy is kept and refreshed on every visit
+const ASSETS = ["/offline.html", "/offline-emergency.html", "/offline-vault.html", "/icons/icon-192.png"];       // the emergency page is built by the server from the current numbers; a copy is kept and refreshed on every visit
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -17,10 +17,11 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   if (req.mode === "navigate") {
-    if (new URL(req.url).pathname === "/offline-emergency.html") {                                                                    // the emergency numbers open even without a signal; online, the copy is refreshed
+    var path = new URL(req.url).pathname;
+    if (path === "/offline-emergency.html" || path === "/offline-vault.html") {                                                    // pages that must open without a signal; online, the copy is refreshed
       e.respondWith(caches.open(CACHE).then(async (c) => {
-        const net = fetch(req).then((r) => { if (r.ok) c.put("/offline-emergency.html", r.clone()); return r; });
-        const hit = await c.match("/offline-emergency.html");
+        const net = fetch(req).then((r) => { if (r.ok) c.put(path, r.clone()); return r; });
+        const hit = await c.match(path);
         return hit ? (net.catch(() => undefined), hit) : net.catch(() => caches.match("/offline.html"));
       }));
       return;

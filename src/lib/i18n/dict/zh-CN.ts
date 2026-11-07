@@ -1476,6 +1476,8 @@ export const zhCN = {
   cond_watch_signin: "登录后，此处发布官方预警时您会收到通知。",
   cond_watch_list: "您接收预警的地点",
   err_watch_limit: "最多可关注 5 个地点，请先取消一个。",
+  tk_vault: "离线保险箱与健康卡",
+  tk_vault_sub: "证件和健康信息保存在手机上，加锁，无需网络",
   err_generic: "出错了，请重试。",
   err_not_signed_in: "请先登录。",
   err_forbidden: "您无权访问此内容。",
