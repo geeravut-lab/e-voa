@@ -108,6 +108,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **Apple Wallet pass**: "Add to Apple Wallet" on the E-VOA pass (signed `.pkpass`: QR, reference, arrival, flight, last four passport characters, notice; shows on the lock screen near the arrival day); Apple's PassKit web service (`/api/wallet/apple`) so phones fetch newer versions | ✅ file, signature (checked with openssl), web service and push tested with throw-away certificates · ⬜ real Apple certificates, a real install on an iPhone, a real push through Apple |
 | **Updates after issue**: the daily tick compares what each handed-out pass shows with the application now; a change is sent to Google (PATCH: shown as not valid when the application is no longer approved) or announced to Apple phones (push) | ✅ against the simulator · ⬜ against real Google / Apple |
 | **Connect LINE in numbered steps**: one-time code with **Copy**, **Add friend on LINE** (official add-friend link), **Send the code in LINE** (opens our chat with the code typed), page turns to "Connected" by itself | ✅ tested in the browser with a signed webhook · ⬜ with the real LINE account |
+| **Home grids without holes**: a half-width card that would stand alone in a row (before a wide card, or last) becomes full width; order and colours unchanged (admin home and traveler home) | ✅ |
 | **/gov shortcut**: a card and menu entry for read-only statistics accounts only; distinct icons for the AI assistant and AI instructions cards | ✅ |
 
 ## Still planned

@@ -124,3 +124,19 @@ export function spreadTones(items: { key: string; size: "wide" | "half" }[]): Ma
   });
   return out;
 }
+
+/**
+ * Packs cards into the 2-column grid without holes: a half-width card that would stand alone in its row (the next card is wide, or it is the last one)
+ * becomes full width. The order never changes. Call it on the cards that are really shown (after menus are filtered by role and feature switches).
+ */
+export function packCards<T extends { size: "wide" | "half" }>(items: T[]): T[] {
+  const out: T[] = []; let col = 0;
+  items.forEach((it, i) => {
+    if (it.size === "wide") { out.push(it); col = 0; return; }
+    const next = items[i + 1];
+    if (col === 0 && (!next || next.size === "wide")) { out.push({ ...it, size: "wide" }); return; }
+    out.push(it); col = col === 0 ? 1 : 0;
+  });
+  return out;
+}
+

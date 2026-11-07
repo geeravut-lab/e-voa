@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { alternatesOf } from "@/lib/seo";
 import { getLang } from "@/lib/i18n/server";
-import { NAV, resolveHref, spreadTones } from "@/config/nav";
+import { NAV, packCards, resolveHref, spreadTones } from "@/config/nav";
 import { getViewer, displayNameOf } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { loadFlags } from "@/lib/flags";
@@ -21,7 +21,8 @@ export default async function HomePage() {
   const traveler = cards.filter((n) => n.area === "traveler" && (signedIn || !["notifications", "account"].includes(n.key)));
   const admin = cards.filter((n) => n.area === "admin");
 
-  const render = (list: typeof cards) => {
+  const render = (raw: typeof cards) => {
+    const list = packCards(raw);                    // no half-width card is left alone in a row
     const tones = spreadTones(list);
     return list.map((n) => (
       <HomeCard

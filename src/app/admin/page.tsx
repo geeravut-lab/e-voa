@@ -1,4 +1,4 @@
-import { NAV, resolveHref, spreadTones } from "@/config/nav";
+import { NAV, packCards, resolveHref, spreadTones } from "@/config/nav";
 import { requireAdminPage } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { HomeCard } from "@/components/HomeCard";
@@ -10,7 +10,7 @@ export default async function AdminHome() {
   await requireAdminPage();
   const { t } = await getT();
   const viewer = await getViewer(); const name = displayNameOf(viewer);
-  const items = NAV.filter((n) => n.area === "admin" && n.home);
+  const items = packCards(NAV.filter((n) => n.area === "admin" && n.home));            // no half-width card is left alone in a row
   const tones = spreadTones(items);
   return (
     <div>
