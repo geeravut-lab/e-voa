@@ -6,6 +6,7 @@ import { notifyUser } from "@/lib/notify";
 import { DICTS, fmt } from "@/lib/i18n/dict";
 import { isLang } from "@/lib/i18n/langs";
 import { PartnerError } from "@/lib/partners/client";
+import { stockLeft } from "@/lib/partners/service";
 import { CATEGORIES_OF, PRICE_MAX, PRICE_MIN, categoryAllowed, isPartnerKind, newVoucherCode, normalizeVoucher, partnerShare, periodRange, type PartnerKind, type SettlementLine } from "./rules";
 
 const db = () => createAdminClient();
@@ -62,6 +63,7 @@ const Pkg = z.object({
   category: z.string(), name: z.string().trim().min(2).max(120), detail: z.string().trim().max(600).default(""), terms: z.string().trim().max(600).default(""),
   price_thb: z.coerce.number().int().min(PRICE_MIN).max(PRICE_MAX), price_usd: z.coerce.number().min(0).max(5000).optional(), price_cny: z.coerce.number().min(0).max(40000).optional(),
   active: z.boolean().default(true),
+  stock_total: z.union([z.literal(""), z.coerce.number().int().min(0).max(100000)]).optional().transform((v) => (v === "" || v === undefined ? null : v)),
 });
 
 /** The owner of an active partner creates (no code) or edits (code) a package. Prices of orders already placed never change: an order keeps the price it was bought at. */
@@ -71,7 +73,7 @@ export async function savePackage(userId: string, input: unknown, code?: string)
   if (m.partner.status !== "active" || !m.partner.portal_managed) return { ok: false, error: "err_forbidden" };
   const p = Pkg.safeParse(input); if (!p.success) return { ok: false, error: "err_form_incomplete" };
   if (!categoryAllowed(m.partner.provider, p.data.category)) return { ok: false, error: "err_generic" };
-  const row = { category: p.data.category, name: p.data.name, detail: p.data.detail || null, terms: p.data.terms || null, price_thb: p.data.price_thb, price_usd: p.data.price_usd ?? null, price_cny: p.data.price_cny ?? null, active: p.data.active, synced_at: new Date().toISOString() };
+  const row = { category: p.data.category, name: p.data.name, detail: p.data.detail || null, terms: p.data.terms || null, price_thb: p.data.price_thb, price_usd: p.data.price_usd ?? null, price_cny: p.data.price_cny ?? null, active: p.data.active, stock_total: p.data.stock_total ?? null, synced_at: new Date().toISOString() };
   if (code) {
     const upd = await db().from("partner_packages").update(row).eq("provider", m.partner.provider).eq("package_code", code).eq("partner_id", m.partner.id).eq("source", "portal").select("package_code");
     if (upd.data?.length !== 1) return { ok: false, error: "err_not_found" };
@@ -85,24 +87,55 @@ export async function savePackage(userId: string, input: unknown, code?: string)
   return { ok: true, code: newCode };
 }
 export async function packagesOf(partnerId: string) {
-  const { data } = await db().from("partner_packages").select("package_code, category, name, detail, terms, price_thb, price_usd, price_cny, active").eq("partner_id", partnerId).eq("source", "portal").order("synced_at", { ascending: false });
-  return (data ?? []).map((x) => ({ ...x, price_thb: Number(x.price_thb) }));
+  const { data } = await db().from("partner_packages").select("package_code, category, name, detail, terms, price_thb, price_usd, price_cny, active, stock_total").eq("partner_id", partnerId).eq("source", "portal").order("synced_at", { ascending: false });
+  const left = await stockLeft((data ?? []).filter((x) => x.stock_total !== null).map((x) => ({ package_code: x.package_code, stock_total: x.stock_total as number })));
+  return (data ?? []).map((x) => ({ ...x, price_thb: Number(x.price_thb), stock_left: x.stock_total === null ? null : left.get(x.package_code) ?? 0 }));
+}
+
+// ------------------------------------------------------------------ notices to the partner's people
+/** Tells every person of the partner company (in the app, and by e-mail where mail is set up), once per dedupe key, in each person's language. */
+export async function notifyPartner(partnerId: string, n: { title: keyof typeof DICTS.en; body: keyof typeof DICTS.en; vars: Record<string, string | number>; kind: string; dedupeKey: string }): Promise<void> {
+  const { data: mem } = await db().from("partner_members").select("user_id").eq("partner_id", partnerId);
+  for (const m of mem ?? []) {
+    const { data: prof } = await db().from("profiles").select("lang").eq("id", m.user_id).maybeSingle();
+    const t = DICTS[isLang(prof?.lang) ? prof.lang : "en"] as Record<string, string>;
+    await notifyUser({ userId: m.user_id, title: t[n.title as string], body: fmt(t[n.body as string], n.vars), link: "/partner", kind: n.kind, dedupeKey: `${n.dedupeKey}:${m.user_id}` });
+  }
 }
 
 // ------------------------------------------------------------------ fulfilment (called by issueAddon)
 /** If the package belongs to a portal-managed partner, "issue" it here: a voucher code the traveler shows at the counter. Returns null for packages bought through a partner API. */
 export async function issueViaPortal(order: { id: string; category: string; package_code: string }): Promise<{ partner_id: string; partner_ref: Record<string, unknown>; delivery: Record<string, unknown> } | null> {
   const provider = order.category === "insurance" ? "insurance" : order.category === "sim" || order.category === "esim" ? "sim" : order.category === "vip" ? "vip" : "bhs";
-  const { data: pk } = await db().from("partner_packages").select("partner_id, source, partners(status, portal_managed)").eq("provider", provider).eq("package_code", order.package_code).maybeSingle();
+  const { data: pk } = await db().from("partner_packages").select("partner_id, source, stock_total, name, partners(status, portal_managed)").eq("provider", provider).eq("package_code", order.package_code).maybeSingle();
   if (!pk || pk.source !== "portal" || !pk.partner_id) return null;
   const pt = pk.partners as unknown as { status: string; portal_managed: boolean } | null;
   if (!pt || pt.status !== "active" || !pt.portal_managed) throw new PartnerError("refused", "the partner is not active");        // refused → failed → refunded automatically
+  if (pk.stock_total !== null) {          // limited stock: this order must be inside the limit (units are counted in the order they were paid)
+    const { data: live } = await db().from("addon_orders").select("id, created_at").eq("package_code", order.package_code).in("status", ["paid", "issuing", "issued", "used"]).order("created_at").order("id");
+    const place = (live ?? []).findIndex((o) => o.id === order.id);
+    if (place >= pk.stock_total || (place < 0 && (live ?? []).length >= pk.stock_total)) throw new PartnerError("refused", "sold out");          // refused → failed → refunded automatically
+  }
   for (let i = 0; i < 5; i++) {
     const code = newVoucherCode();
     const { count } = await db().from("addon_orders").select("id", { count: "exact", head: true }).eq("partner_ref->>portal_code", code);
-    if (!count) return { partner_id: pk.partner_id, partner_ref: { portal_code: code }, delivery: { voucher_code: code, pickup: "show the code and your passport to the partner" } };
+    if (!count) {
+      void announceSale(pk.partner_id, order.id, pk.name, pk.stock_total, order.package_code);
+      return { partner_id: pk.partner_id, partner_ref: { portal_code: code }, delivery: { voucher_code: code, pickup: "show the code and your passport to the partner" } };
+    }
   }
   throw new PartnerError("unavailable", "could not make a unique voucher code");        // retried later
+}
+
+/** The partner hears about every sale, and about stock running low or out. Never throws (a notice must not undo a sale). */
+async function announceSale(partnerId: string, orderId: string, item: string, stockTotal: number | null, packageCode: string): Promise<void> {
+  try {
+    await notifyPartner(partnerId, { title: "partner_n_sale_title", body: "partner_n_sale_body", vars: { item }, kind: "partner.sale", dedupeKey: `partner:sale:${orderId}` });
+    if (stockTotal !== null) {
+      const left = (await stockLeft([{ package_code: packageCode, stock_total: stockTotal }])).get(packageCode) ?? 0;
+      if (left <= 3) await notifyPartner(partnerId, left <= 0 ? { title: "partner_n_out_title", body: "partner_n_out_body", vars: { item }, kind: "partner.stock", dedupeKey: `partner:stock:${packageCode}:0:${orderId}` } : { title: "partner_n_low_title", body: "partner_n_low_body", vars: { item, left }, kind: "partner.stock", dedupeKey: `partner:stock:${packageCode}:${left}:${orderId}` });
+    }
+  } catch (e) { console.error("[partner] sale notice failed", (e as Error).message); }
 }
 
 // ------------------------------------------------------------------ redeeming
@@ -122,6 +155,26 @@ export async function redeemVoucher(userId: string, raw: string): Promise<{ ok: 
   await notifyUser({ userId: o.owner_id, title: t.notif_addon_used_title, body: fmt(t.notif_addon_used_body, { item: o.package_name }), link: `/trips/${o.application_id}`, kind: "addon.used", dedupeKey: `addon:${o.id}:used` });
   await audit({ actorId: userId, action: "partner.redeem", entity: "addon_order", entityId: o.id, detail: { partner: m.partner.id } });
   return { ok: true, item: o.package_name };
+}
+
+/**
+ * The partner cancels a sold voucher that has not been used (it cannot deliver, for example): the traveler is refunded in full, automatically, and both sides are told.
+ * Only an "issued" order of THIS partner; a used voucher cannot be voided.
+ */
+export async function voidOrder(userId: string, orderId: string, reason: string): Promise<{ ok: true; amountThb: number } | { ok: false; error: string }> {
+  const m = await membershipOf(userId);
+  if (!m || m.partner.status !== "active") return { ok: false, error: "err_forbidden" };
+  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return { ok: false, error: "err_not_found" };
+  const { data: o } = await db().from("addon_orders").select("id, status, partner_id, package_name").eq("id", orderId).maybeSingle();
+  if (!o || o.partner_id !== m.partner.id) return { ok: false, error: "err_not_found" };
+  if (o.status === "used") return { ok: false, error: "err_voucher_used" };
+  if (o.status !== "issued") return { ok: false, error: "err_voucher_invalid" };
+  const { refundAddon } = await import("@/lib/payments/service");
+  const r = await refundAddon(orderId, `voided by partner: ${reason.trim().slice(0, 120) || "no reason given"}`, userId);
+  if (!r.ok) return r;
+  await audit({ actorId: userId, action: "partner.void", entity: "addon_order", entityId: orderId, detail: { partner: m.partner.id, amount_thb: r.amountThb } });
+  await notifyPartner(m.partner.id, { title: "partner_n_void_title", body: "partner_n_void_body", vars: { item: o.package_name, amount: r.amountThb.toLocaleString("en-US") }, kind: "partner.void", dedupeKey: `partner:void:${orderId}` });
+  return { ok: true, amountThb: r.amountThb };
 }
 
 // ------------------------------------------------------------------ money
@@ -157,6 +210,7 @@ export async function closeSettlement(adminId: string, partnerId: string, period
     await db().from("partner_settlements").delete().eq("id", ins.data[0].id);
     return { ok: false, error: "err_conflict" };
   }
+  await notifyPartner(partnerId, { title: "partner_n_settled_title", body: "partner_n_settled_body", vars: { period, amount: share.toLocaleString("en-US"), orders: lines.length }, kind: "partner.settled", dedupeKey: `partner:settled:${ins.data[0].id}` }).catch(() => {});
   await audit({ actorId: adminId, actorRole: "admin", action: "partner.settle", entity: "partner", entityId: partnerId, detail: { period, orders: lines.length, partnerThb: share } });
   return { ok: true, orders: lines.length, partnerThb: share };
 }

@@ -75,7 +75,7 @@ export async function startCheckout(userId: string, email: string | null, tripId
     const s = await createCheckoutSession({
       paymentId, items: items.map((i) => ({ label: i.label, amountSatang: toSatang(i.amountThb) })), email,
       successUrl: `${SITE_URL}/pay/return?payment=${paymentId}&session_id={CHECKOUT_SESSION_ID}`, cancelUrl: `${SITE_URL}/pay/return?payment=${paymentId}&cancelled=1`,
-      locale: lang === "zh-CN" ? "zh" : lang === "th" ? "th" : "en",
+      locale: ({ "zh-CN": "zh", "zh-TW": "zh-TW", th: "th", ja: "ja", ko: "ko", ru: "ru", hi: "auto", ar: "auto", en: "en" } as Record<string, string>)[lang] ?? "en",          // Stripe Checkout has no Hindi or Arabic page: it follows the browser
     });
     const upd = await db.from("payments").update({ provider_ref: s.id }).eq("id", paymentId).select("id");
     if (upd.data?.length !== 1 || !s.url) throw new Error("could not save the session");

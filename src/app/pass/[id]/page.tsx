@@ -35,7 +35,7 @@ export default async function PassPage({ params }: { params: Promise<{ id: strin
         <p className="text-xs font-extrabold uppercase tracking-widest text-primary">{t.pass_title}</p>
         <p className="font-display text-2xl font-extrabold">{tr ? `${tr.given_name} ${tr.surname}` : a.ref_no}</p>
         <div className="mx-auto w-56 rounded-control bg-white p-1" role="img" aria-label={t.pass_qr_label} dangerouslySetInnerHTML={{ __html: svg }} />
-        <dl className="grid grid-cols-2 gap-2 text-left text-sm">
+        <dl className="grid grid-cols-2 gap-2 text-start text-sm">
           <div><dt className="text-xs text-muted">{t.pass_ref}</dt><dd className="font-mono font-bold">{a.ref_no}</dd></div>
           {a.immigration_ref && <div><dt className="text-xs text-muted">{t.pass_gov_ref}</dt><dd className="font-mono font-bold">{a.immigration_ref}</dd></div>}
           {trip && <div><dt className="text-xs text-muted">{t.apply_arrival_date}</dt><dd className="font-bold">{fmt.format(new Date(trip.arrival_date))}</dd></div>}

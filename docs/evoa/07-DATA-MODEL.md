@@ -75,3 +75,6 @@ Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insura
 | `addon_orders.partner_id/settlement_id` | Who delivers an order and which payout covered it; `partner_ref.portal_code` is the unique voucher code | owner, admin |
 | `admin_alert_seen` (migration `20261113…`) | Which back-office alerts each administrator has opened (by alert key and signature) | that administrator |
 | `platform_settings.audit_config` | `{ enabled, disabled[] }`: whether and which groups of events the audit trail records | admin |
+| `partner_packages.stock_total` (migration `20261114…`) | Quantity limit of a portal package (null = unlimited); column not readable by travelers or visitors | partner, admin |
+| `agency_payouts` (migration `20261115…`) | One commission payout per agency and month (frozen numbers, statement number) | the agency, admin |
+| `platform_settings.automation_rules`, `automation_last_run` | Rules engine settings and the last run | admin |

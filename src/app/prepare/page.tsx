@@ -1,6 +1,7 @@
 import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { PREPARE } from "@/lib/content/guide";
+import { forLang } from "@/lib/content/types";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
@@ -9,7 +10,7 @@ export const generateMetadata = () => pageMeta({ path: "/prepare", title: "prepa
 
 export default async function PreparePage() {
   const { t, lang } = await getT();
-  const c = PREPARE[lang];
+  const c = forLang(PREPARE, lang);
   return (
     <div className="space-y-4">
       <PageHead title={t.prepare_title} hint={c.intro} art="check" tone="mint" />

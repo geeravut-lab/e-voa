@@ -29,8 +29,8 @@ function Row({ e, active, onNavigate }: { e: NavEntry; active: boolean; onNaviga
     >
       <NavIcon name={e.icon} size={20} />
       <span className="truncate">{e.label}</span>
-      {!!e.badge && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-lotus px-1.5 text-[11px] font-bold leading-5 text-white">{e.badge > 99 ? "99+" : e.badge}</span>}
-      {e.locked && <Lock size={14} className="ml-auto text-muted" aria-hidden="true" />}
+      {!!e.badge && <span className="ms-auto grid min-w-5 place-items-center rounded-full bg-lotus px-1.5 text-[11px] font-bold leading-5 text-white">{e.badge > 99 ? "99+" : e.badge}</span>}
+      {e.locked && <Lock size={14} className="ms-auto text-muted" aria-hidden="true" />}
     </NavRowLink>
   );
 }
@@ -93,7 +93,7 @@ export function BottomBar({ left, right, apply, more, unread, centerIcon, childr
     return (
       <NavRowLink key={e.key} href={e.href} aria-current={active ? "page" : undefined}
         className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${active ? "text-primary" : "text-muted"}`}>
-        <span className="relative"><NavIcon name={e.icon} size={22} />{!!e.badge && <span className="absolute -right-2.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-lotus px-1 text-[10px] font-bold leading-4 text-white">{e.badge > 9 ? "9+" : e.badge}</span>}</span>
+        <span className="relative"><NavIcon name={e.icon} size={22} />{!!e.badge && <span className="absolute -end-2.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-lotus px-1 text-[10px] font-bold leading-4 text-white">{e.badge > 9 ? "9+" : e.badge}</span>}</span>
         <span className="max-w-full truncate px-1">{e.short ?? e.label}</span>
       </NavRowLink>
     );
@@ -117,7 +117,7 @@ export function BottomBar({ left, right, apply, more, unread, centerIcon, childr
             className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${moreActive ? "text-primary" : "text-muted"}`}>
             <MoreHorizontal size={22} aria-hidden="true" />
             <span>{t.nav_more}</span>
-            {unread > 0 && <span className="absolute right-[22%] top-1.5 h-2.5 w-2.5 rounded-full bg-lotus ring-2 ring-surface" />}
+            {unread > 0 && <span className="absolute end-[22%] top-1.5 h-2.5 w-2.5 rounded-full bg-lotus ring-2 ring-surface" />}
           </button>
         </div>
       </nav>
@@ -167,11 +167,11 @@ function MoreSheet({ entries, onClose, onGo, navTo, children }: { entries: NavEn
               return (
                 <button key={e.key} type="button" disabled={!!navTo} aria-current={active ? "page" : undefined} aria-busy={loading} onClick={() => onGo(e.href)}
                   className={e.groupHead
-                    ? `mt-3 flex min-h-11 w-full items-center gap-3 rounded-control border px-3 text-left text-[13px] font-extrabold uppercase tracking-wider transition ${active ? "border-primary bg-sky text-primary" : "border-gold bg-gold-soft text-gold-deep"}`
-                    : `flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-[15px] font-semibold transition ${e.section === "admin" ? "ml-3 w-[calc(100%-0.75rem)] rounded-l-none border-l-2 border-gold" : ""} ${active ? "bg-sky text-primary" : "text-ink hover:bg-sky/70"}`}>
+                    ? `mt-3 flex min-h-11 w-full items-center gap-3 rounded-control border px-3 text-start text-[13px] font-extrabold uppercase tracking-wider transition ${active ? "border-primary bg-sky text-primary" : "border-gold bg-gold-soft text-gold-deep"}`
+                    : `flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-start text-[15px] font-semibold transition ${e.section === "admin" ? "ms-3 w-[calc(100%-0.75rem)] rounded-l-none border-l-2 border-gold" : ""} ${active ? "bg-sky text-primary" : "text-ink hover:bg-sky/70"}`}>
                   <NavIcon name={e.icon} size={20} />
                   <span className="truncate">{e.label}</span>
-                  {loading ? <Spinner size={16} className="ml-auto text-primary" /> : e.locked ? <Lock size={14} className="ml-auto text-muted" aria-hidden="true" /> : null}
+                  {loading ? <Spinner size={16} className="ms-auto text-primary" /> : e.locked ? <Lock size={14} className="ms-auto text-muted" aria-hidden="true" /> : null}
                 </button>
               );
             })}
@@ -180,8 +180,8 @@ function MoreSheet({ entries, onClose, onGo, navTo, children }: { entries: NavEn
               {children}
             </div>
           </div>
-          {canUp && <button type="button" data-nobusy aria-label={t.nav_scroll_up} onClick={() => scrollBy(-1)} className="absolute right-3 top-1 grid h-9 w-9 place-items-center rounded-full bg-surface text-primary shadow ring-1 ring-line"><ChevronUp size={20} /></button>}
-          {canDown && <button type="button" data-nobusy aria-label={t.nav_scroll_down} onClick={() => scrollBy(1)} className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-full bg-surface text-primary shadow ring-1 ring-line"><ChevronDown size={20} /></button>}
+          {canUp && <button type="button" data-nobusy aria-label={t.nav_scroll_up} onClick={() => scrollBy(-1)} className="absolute end-3 top-1 grid h-9 w-9 place-items-center rounded-full bg-surface text-primary shadow ring-1 ring-line"><ChevronUp size={20} /></button>}
+          {canDown && <button type="button" data-nobusy aria-label={t.nav_scroll_down} onClick={() => scrollBy(1)} className="absolute bottom-3 end-3 grid h-9 w-9 place-items-center rounded-full bg-surface text-primary shadow ring-1 ring-line"><ChevronDown size={20} /></button>}
         </div>
       </div>
     </div>

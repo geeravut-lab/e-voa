@@ -443,6 +443,27 @@ describe("menus, language, notifications", () => {
     await ctx.close();
   });
 
+  it("agency page: statements for six months with PDF and CSV; the statement file opens for the agency and for staff, and for nobody else; partner packages have a quantity field", async () => {
+    const owner = await makeUser("st-own"), stranger = await makeUser("st-str"), staff = await makeUser("st-staff", true), pt = await makeUser("st-pt");
+    const ag = await applyForAgency(owner.id, { name: "Statement Test Agency", contact_name: "Stat Owner", contact_email: "s@example.com", contact_phone: "+66 2 000 0000", country: "Thailand", license_no: "" }); if (!ag.ok) throw new Error(ag.error);
+    const pa = await applyForPartner(pt.id, { name: "Stock Page Co", provider: "sim", contact_name: "Pim Partner", contact_email: "p@example.com", contact_phone: "+66 2 000 0000" }); if (!pa.ok) throw new Error(pa.error);
+    try {
+      await admin.from("agencies").update({ status: "active", commission_pct: 10 }).eq("id", ag.id); await admin.from("partners").update({ status: "active" }).eq("id", pa.id);
+      await savePackage(pt.id, { category: "esim", name: "Qty eSIM", detail: "", terms: "", price_thb: 300, active: true, stock_total: 5 });
+      const c = await ctxFor(owner); const p = await c.newPage();
+      await p.goto(`${APP}/agency`); await p.getByText("Statements and commission", { exact: true }).waitFor({ timeout: 20_000 });
+      expect(await p.getByText("No applications", { exact: true }).count()).toBe(6); expect(await overflowX(p)).toBe(false); await shot(p, "agency-statements-390");
+      const month = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 7);
+      const pdf = await c.request.get(`${APP}/agency/statement?month=${month}&format=pdf`); expect(pdf.status()).toBe(200); expect(pdf.headers()["content-type"]).toContain("application/pdf"); expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
+      const csv = await c.request.get(`${APP}/agency/statement?month=${month}&format=csv`); expect(csv.status()).toBe(200); expect(await csv.text()).toContain("TOTAL,AGS-");
+      const cs = await ctxFor(stranger); expect((await cs.request.get(`${APP}/agency/statement?month=${month}&format=csv`)).status(), "not a member").toBe(404); await cs.close();
+      const cadm = await ctxFor(staff, 1280, 800); expect((await cadm.request.get(`${APP}/agency/statement?agency=${ag.id}&month=${month}&format=csv`)).status(), "staff can open any agency").toBe(200);
+      const pa2 = await cadm.newPage(); await pa2.goto(`${APP}/admin/agencies`); await pa2.getByText("Statement Test Agency").waitFor({ timeout: 20_000 }); expect(await overflowX(pa2)).toBe(false); await cadm.close();
+      const cp = await ctxFor(pt); const pp = await cp.newPage(); await pp.goto(`${APP}/partner`); await pp.getByText("Quantity available", { exact: false }).first().waitFor({ timeout: 20_000 });
+      expect(await pp.getByText("5 of 5 left").count()).toBe(1); expect(await overflowX(pp)).toBe(false); await cp.close(); await c.close();
+    } finally { await admin.from("partner_packages").delete().eq("partner_id", pa.id); await admin.from("partners").delete().eq("id", pa.id); await admin.from("agencies").delete().eq("id", ag.id); }
+  });
+
   it("automation rules page shows each rule with its switch and number", async () => {
     const staff = await makeUser("rules-s", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
     await p.goto(`${APP}/admin/rules`); await p.getByText("Payment reminder", { exact: true }).waitFor({ timeout: 20_000 });
@@ -450,11 +471,31 @@ describe("menus, language, notifications", () => {
     expect(await p.getByRole("button", { name: "Run the rules now" }).count()).toBe(1); expect(await overflowX(p)).toBe(false); await shot(p, "rules-390"); await ctx.close();
   });
 
+  it("the six new languages: page language, direction, translated text, own fonts, no sideways scrolling, and hreflang for all nine", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US" }); const p = await ctx.newPage();
+    const expectations: [string, string, string, string][] = [["hi", "ltr", "मेरी यात्राएँ", "भाषा"], ["ar", "rtl", "رحلاتي", "اللغة"], ["ru", "ltr", "Мои поездки", "Язык"], ["ko", "ltr", "내 여행", "언어"], ["ja", "ltr", "マイ旅行", "言語"], ["zh-TW", "ltr", "我的行程", "語言"]];
+    for (const [code, dir, trips] of expectations.map((e) => [e[0], e[1], e[2]])) {
+      await p.goto(`${APP}/?lang=${code}`); await p.waitForSelector("main h3", { timeout: 20_000 });
+      expect(await p.evaluate(() => document.documentElement.lang)).toBe(code); expect(await p.evaluate(() => document.documentElement.dir)).toBe(dir);
+      expect(await p.locator("nav[aria-label=Main]").last().innerText(), code).toContain(trips);
+      expect(await overflowX(p), `${code} home overflows`).toBe(false);
+      for (const path of ["/login", "/fees", "/eligibility"]) { await p.goto(`${APP}${path}?lang=${code}`); await p.waitForTimeout(500); expect(await overflowX(p), `${code} ${path} overflows`).toBe(false); }
+      await p.goto(`${APP}/?lang=${code}`); await p.waitForSelector("main h3"); await shot(p, `home-${code}`);
+      const fonts = await p.evaluate(() => getComputedStyle(document.body).fontFamily); expect(fonts.length).toBeGreaterThan(10);
+    }
+    // the choice sticks, and the legal pages show English until they are written in the language
+    await p.goto(`${APP}/privacy?lang=ja`); await p.waitForSelector("main h1"); expect((await p.locator("main").innerText()).length).toBeGreaterThan(500);
+    const html = await (await ctx.request.get(`${APP}/fees`)).text();
+    for (const c of ["en", "th", "zh-CN", "hi", "ar", "ru", "ko", "ja", "zh-TW"]) expect(html.toLowerCase(), `hreflang ${c}`).toContain(`hreflang="${c.toLowerCase()}"`);
+    const sm = await (await ctx.request.get(`${APP}/sitemap.xml`)).text(); expect(sm).toContain("lang=ar"); expect(sm).toContain("lang=zh-TW");
+    await ctx.close();
+  });
+
   it("the language is a drop-down; choosing one changes the page language", async () => {
     const u = await makeUser("lang"); const ctx = await ctxFor(u); const p = await ctx.newPage();
     await p.goto(`${APP}/`); await p.waitForTimeout(800);
     const btn = p.locator("header button[aria-haspopup=listbox]"); expect(await btn.innerText()).toBe("EN");
-    await btn.click(); expect(await p.getByRole("option").allInnerTexts()).toEqual(["English", "ไทย", "简体中文"]);
+    await btn.click(); expect(await p.getByRole("option").allInnerTexts()).toEqual(["English", "ไทย", "简体中文", "हिन्दी", "العربية", "Русский", "한국어", "日本語", "繁體中文"]);
     await p.getByRole("option", { name: "ไทย" }).click(); await p.waitForFunction(() => document.documentElement.lang === "th" || document.querySelector("header button[aria-haspopup=listbox]")?.textContent?.trim() === "TH", null, { timeout: 15_000 });
     expect((await btn.innerText()).trim()).toBe("TH");
     await btn.click(); await p.keyboard.press("Escape"); expect(await p.getByRole("option").count()).toBe(0);          // Escape closes it

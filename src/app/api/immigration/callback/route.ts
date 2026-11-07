@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { hasServiceRole, envValue } from "@/lib/env";
 import { StatusCallback } from "@/lib/immigration/schema";
-import { gatewayFromEnv } from "@/lib/immigration/gateway";
+import { resolveGateway } from "@/lib/immigration/resolve";
 import { handleStatusCallback } from "@/lib/immigration/pipeline";
 import { audit } from "@/lib/audit";
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const parsed = StatusCallback.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ isSuccess: false, errorDesc: "Incorrect data format" }, { status: 400 });
   try {
-    const result = await handleStatusCallback(parsed.data, gatewayFromEnv());
+    const result = await handleStatusCallback(parsed.data, await resolveGateway());
     if (!result.isSuccess) await audit({ actorId: null, actorRole: "immigration", action: "immigration.callback.rejected", entity: "application", detail: { reason: (result.errorDesc ?? "").slice(0, 70) } });
     return NextResponse.json({ isSuccess: result.isSuccess, errorDesc: result.errorDesc }, { status: result.retryLater ? 503 : 200 });   // 503: please send it again
   } catch (e) {

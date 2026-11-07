@@ -65,5 +65,6 @@ partner outage → retries → failed → refunded, unpaid order expiry. It remo
 ## Phase 4 endpoints (`tests-live/phase4.live.test.ts`)
 
 - `POST /ai/v1/messages`: Anthropic Messages API (accepts `x-api-key` and `Bearer`), answers with tool calls then text so the assistant loop is exercised; state `aiRequests` records model, system prompt, tools and `output_config`.
+- `GET /ai/v1/models`, `POST /ai/v1beta/models/<model>:generateContent`, `GET /ai/v1beta/models`: Gemini (function calls with a thought signature, JSON mode) and the model lists; `POST /__admin/ai-break {provider, status}` forces a provider to fail (empty body clears it) to test the fallback. A system prompt that starts the instruction checker is answered with a JSON verdict (`REJECT-ME`, `ignore`, `reveal`, `password` are rejected).
 - `/line/v2/bot/message/push|reply`, `/whatsapp/v<version>/<phone>/messages`: record what would be sent in `messagesSent`; a LINE user id ending in `BLOCKED` answers 400 (the user blocked us) to test the "stop trying" path.
 - The partner portal needs no simulator: portal-managed partners are not called (the voucher is issued inside ThaiPass).

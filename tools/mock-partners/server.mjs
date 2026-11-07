@@ -87,7 +87,7 @@ export function createMockServer(opts = {}) {
     },
     log: opts.log ?? (process.env.MOCK_QUIET === "1" ? () => {} : (m) => console.log(`[mock] ${m}`)),
   };
-  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], messagesSent: [], seq: 0, errOnce: new Set() };
+  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, messagesSent: [], seq: 0, errOnce: new Set() };
   const timers = new Set();
 
   const send = (res, code, body, headers = {}) => { const s = JSON.stringify(body); res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(s), ...headers }); res.end(s); };
@@ -177,11 +177,36 @@ export function createMockServer(opts = {}) {
 
   // ------------------------------------------------------------------ Anthropic Messages API (help assistant)
   // Enough of the real shape for the app's loop: the answer is picked from the last user text; tool questions get a tool_use first, then text built from the tool results.
+  /** The "instruction checker" of the simulator: rejects the obvious, accepts plain guidance (a stand-in for a small model). */
+  const reviewVerdict = (text) => (/REJECT-ME|ignore|reveal|password/i.test(text) ? { verdict: "reject", reason: "tries to change the rules" } : { verdict: "ok", reason: "" });
+  /** Gemini generateContent + model list, in the real shapes. The key travels in x-goog-api-key. */
+  async function googleMock(req, res, path) {
+    if (!req.headers["x-goog-api-key"]) return send(res, 403, { error: { code: 403, message: "API key not valid", status: "PERMISSION_DENIED" } });
+    if (path === "/ai/v1beta/models" && req.method === "GET") return send(res, 200, { models: [{ name: "models/gemini-3-flash-preview", supportedGenerationMethods: ["generateContent"] }, { name: "models/gemini-flash-lite-latest", supportedGenerationMethods: ["generateContent"] }, { name: "models/gemini-embedding-001", supportedGenerationMethods: ["embedContent"] }, { name: "models/gemini-2.5-flash-preview-tts", supportedGenerationMethods: ["generateContent"] }] });
+    const m = path.match(/^\/ai\/v1beta\/models\/([^:]+):generateContent$/); if (!m || req.method !== "POST") return send(res, 404, { error: { code: 404, message: "not found", status: "NOT_FOUND" } });
+    const model = decodeURIComponent(m[1]), body = await readBody(req);
+    if (!Array.isArray(body?.contents)) return send(res, 400, { error: { code: 400, message: "bad request", status: "INVALID_ARGUMENT" } });
+    if (!/^gemini-/.test(model) || /unknown/.test(model)) return send(res, 404, { error: { code: 404, message: `models/${model} is not found`, status: "NOT_FOUND" } });
+    const system = body.systemInstruction?.parts?.map((p) => p.text).join("\n") ?? "";
+    state.aiRequests.push({ provider: "google", model, system, tools: (body.tools?.[0]?.functionDeclarations ?? []).map((t) => t.name), generationConfig: body.generationConfig, messages: body.contents });
+    if (state.aiBreak.google) return send(res, state.aiBreak.google, { error: { code: state.aiBreak.google, message: "Forced failure", status: "UNAVAILABLE" } });
+    const usageMetadata = { promptTokenCount: 300, candidatesTokenCount: 50, thoughtsTokenCount: 10 };
+    const reply = (parts, finishReason = "STOP") => send(res, 200, { candidates: [{ content: { role: "model", parts }, finishReason }], usageMetadata });
+    const last = body.contents[body.contents.length - 1], lastParts = last.parts ?? [];
+    if (lastParts.some((p) => p.functionResponse)) return reply([{ text: `Mock Gemini reply from tools: ${lastParts.map((p) => JSON.stringify(p.functionResponse.response)).join(" | ").slice(0, 600)}` }]);
+    const text = lastParts.map((p) => p.text ?? "").join(" ");
+    if (/You check text that an administrator/.test(system)) return reply([{ text: JSON.stringify(reviewVerdict(text)) }]);
+    const call = (name, args = {}) => reply([{ functionCall: { name, args }, thoughtSignature: "mock-signature" }]);
+    if (/application|status|สถานะ/i.test(text)) return call("get_my_applications");
+    if (/fee|price|cost|ราคา/i.test(text)) return call("get_fees");
+    return reply([{ text: `Mock Gemini answer: ${text.slice(0, 200)}` }]);
+  }
+
   async function anthropicMock(req, res) {
     const key = req.headers["x-api-key"] ?? String(req.headers.authorization ?? "").replace(/^Bearer\s+/i, ""), body = await readBody(req);      // the current SDK sends the key as a Bearer token; older ones as x-api-key
     if (!key) return send(res, 401, { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } });
     if (!body || !Array.isArray(body.messages) || typeof body.model !== "string") return send(res, 400, { type: "error", error: { type: "invalid_request_error", message: "bad request" } });
-    state.aiRequests.push({ model: body.model, system: body.system, tools: (body.tools ?? []).map((t) => t.name), output_config: body.output_config, messages: body.messages });
+    state.aiRequests.push({ provider: "anthropic", model: body.model, system: body.system, tools: (body.tools ?? []).map((t) => t.name), output_config: body.output_config, messages: body.messages });
     const last = body.messages[body.messages.length - 1];
     const usage = { input_tokens: 400, output_tokens: 60, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
     const reply = (content, stop_reason) => send(res, 200, { id: `msg_mock_${++state.seq}`, type: "message", role: "assistant", model: body.model, content, stop_reason, stop_sequence: null, usage });
@@ -191,6 +216,8 @@ export function createMockServer(opts = {}) {
     }
     const text = typeof last.content === "string" ? last.content : (last.content ?? []).map((c) => c.text ?? "").join(" ");
     const use = (name, input = {}) => reply([{ type: "text", text: "Let me check." }, { type: "tool_use", id: `toolu_mock_${++state.seq}`, name, input }], "tool_use");
+    if (state.aiBreak.anthropic) return send(res, state.aiBreak.anthropic, { type: "error", error: { type: "api_error", message: "Forced failure" } });
+    if (/You check text that an administrator/.test(String(body.system))) return reply([{ type: "text", text: JSON.stringify(reviewVerdict(text)) }], "end_turn");
     if (/BREAK-API/.test(text)) return send(res, 529, { type: "error", error: { type: "overloaded_error", message: "Overloaded" } });
     if (/application|status|สถานะ/i.test(text)) return use("get_my_applications");
     if (/fee|price|cost|ราคา/i.test(text)) return use("get_fees");
@@ -318,7 +345,8 @@ export function createMockServer(opts = {}) {
     if (path === "/__admin/state") return send(res, 200, { config: { ...cfg, partnerSecret: "***", callbackSecret: "***" }, applications: [...state.applications.values()], insurance: [...state.insurance.values()], sim: [...state.sim.values()], vip: [...state.vip.values()], bhs: [...state.bhs.values()], callbacksSent: state.callbacksSent, aiRequests: state.aiRequests, messagesSent: state.messagesSent });
     if (path === "/__admin/decide" && req.method === "POST") { const app = state.applications.get(b.webReferenceNumber); if (!app) return send(res, 404, { error: "unknown application" }); await decide(app, Number(b.statusId), b.statusDesc); return send(res, 200, { ok: true, status: app.status }); }
     if (path === "/__admin/config" && req.method === "POST") { for (const k of ["decisionDelayMs", "duplicateMode"]) if (b[k] !== undefined) cfg[k] = b[k]; for (const k of Object.keys(cfg.callbacks)) if (b.callbacks?.[k] !== undefined) cfg.callbacks[k] = b.callbacks[k]; return send(res, 200, { ok: true }); }
-    if (path === "/__admin/reset" && req.method === "POST") { for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
+    if (path === "/__admin/ai-break" && req.method === "POST") { state.aiBreak = b?.provider ? { ...state.aiBreak, [b.provider]: b.status || 0 } : {}; return send(res, 200, { ok: true, aiBreak: state.aiBreak }); }
+    if (path === "/__admin/reset" && req.method === "POST") { state.aiBreak = {}; for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
     // partner-side events: the partner tells ThaiPass that something happened (SIM picked up, VIP used, voucher used, lab result)
     if (path === "/__admin/partner/sim-confirm" && req.method === "POST") { const r = state.sim.get(b.TransactionID); if (!r) return send(res, 404, { error: "unknown TransactionID" }); r.used = true; await callback("sim", "/SIM/TRUE/sim_confirm", { PassportNumber: r.PassportNumber, TransactionID: r.TransactionID, ConfirmBy: b.ConfirmBy ?? "airport-counter-1", Remark: b.Remark ?? "" }); return send(res, 200, { ok: true }); }
     if (path === "/__admin/partner/vip-confirm" && req.method === "POST") { const r = state.vip.get(b.TransactionID); if (!r) return send(res, 404, { error: "unknown TransactionID" }); r.used = true; await callback("vip", "/Services/VIP/vip_confirm", { PassportNumber: r.PassportNumber, TransactionID: r.TransactionID, ConfirmBy: b.ConfirmBy ?? "vip-staff-1", Remark: b.Remark ?? "" }); return send(res, 200, { ok: true }); }
@@ -336,6 +364,8 @@ export function createMockServer(opts = {}) {
       if (path.startsWith("/immigration/th/v1/")) return await immigration(req, res, path, url);
       if (path === "/flights/lookup") return flights(req, res, url);
       if (path === "/ai/v1/messages" && req.method === "POST") return await anthropicMock(req, res);
+      if (path === "/ai/v1/models" && req.method === "GET") return send(res, 200, { data: [{ id: "claude-sonnet-5-5", type: "model" }, { id: "claude-haiku-5-5", type: "model" }, { id: "claude-opus-5-5", type: "model" }], has_more: false, first_id: "claude-sonnet-5-5", last_id: "claude-opus-5-5" });
+      if (path.startsWith("/ai/v1beta/")) return await googleMock(req, res, path);
       if (/^\/(line|whatsapp)\//.test(path)) return await messaging(req, res, path, url);
       if (/^\/(insurance|sim|vip|bhs)\//.test(path)) return await partner(req, res, path, url);
       return send(res, 404, { status: 404, message: "Incorrect Request" });

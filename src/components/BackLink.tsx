@@ -13,8 +13,8 @@ export function BackLink() {
   const p = parentOf(path);
   if (!p) return null;
   return (
-    <NavRowLink href={p.href} className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-control pr-3 text-sm font-semibold text-primary hover:underline">
-      <ArrowLeft size={18} aria-hidden="true" />
+    <NavRowLink href={p.href} className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-control pe-3 text-sm font-semibold text-primary hover:underline">
+      <ArrowLeft size={18} aria-hidden="true" className="rtl:rotate-180" />
       {fmt(t.nav_back_to, { page: t[p.label] })}
     </NavRowLink>
   );

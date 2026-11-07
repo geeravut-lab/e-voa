@@ -21,7 +21,7 @@ export default async function OfficialPage() {
       </section>
       <section className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
         <h2 className="font-display text-lg font-bold">{t.official_warn_title}</h2>
-        <ul className="list-disc space-y-1 pl-5 text-[15px]">{[t.official_warn_1, t.official_warn_2, t.official_warn_3, t.official_warn_4].map((x) => <li key={x}>{x}</li>)}</ul>
+        <ul className="list-disc space-y-1 ps-5 text-[15px]">{[t.official_warn_1, t.official_warn_2, t.official_warn_3, t.official_warn_4].map((x) => <li key={x}>{x}</li>)}</ul>
       </section>
     </div>
   );

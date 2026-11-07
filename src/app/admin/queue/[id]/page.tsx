@@ -5,6 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { reasonText, docLabel } from "@/lib/reasons";
 import { PageHead } from "@/components/PageHead";
 import { StatusBadge } from "@/components/StatusBadge";
+import { simulatorActive } from "@/lib/immigration/resolve";
+import { isSimulatedRef } from "@/lib/immigration/simulator";
+import { SimulateDecision } from "@/components/SimulateDecision";
 import { NoteForm, RequestFixForm, RetrySendForm, CancelForm, RefundExceptionForm, AddonOpsForms } from "@/components/OpsForms";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +35,7 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
   const when = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "short" });
   const box = "space-y-3 rounded-card border border-line bg-surface p-5 shadow-card";
   const st = a.status as string;
+  const canSimulate = ["submitted", "under_review"].includes(st) && isSimulatedRef(a.immigration_ref) && (await simulatorActive());
   const canFix = ["pre_check", "submitted", "under_review"].includes(st), canRetry = st === "submission_failed", canCancel = ["draft", "awaiting_payment", "paid", "pre_check", "action_required", "submission_failed"].includes(st);
   const refundable = pay && ["paid", "partially_refunded"].includes(pay.status) ? Number(pay.amount_thb) - Number(pay.refunded_thb) : 0;
   return (
@@ -48,6 +52,14 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
         </dl>
         {outbox?.[0] && <p className="text-xs text-muted">{t.ops_outbox}: {outbox[0].status} · {outbox[0].attempts}{outbox[0].last_error ? ` · ${outbox[0].last_error}` : ""}</p>}
       </section>
+
+      {canSimulate && (
+        <section className={`${box} border-gold`}>
+          <h2 className="font-display text-lg font-bold">{t.ops_sim_title}</h2>
+          <p className="text-sm text-muted">{t.ops_sim_hint}</p>
+          <SimulateDecision appId={a.id} />
+        </section>
+      )}
 
       <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.ops_actions}</h2>
@@ -99,7 +111,7 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
 
       <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.trip_timeline}</h2>
-        <ol className="space-y-2 border-l-2 border-sky-line pl-4 text-sm">{(history ?? []).map((h, i) => <li key={i}><b>{(t as unknown as Record<string, string>)[`st_${h.to_status}`] ?? h.to_status}</b> <span className="text-muted tabular">· {h.source} · {when.format(new Date(h.at))}</span>{h.reason && <span className="block text-xs text-muted">{reasonText(t, h.reason)}</span>}</li>)}</ol>
+        <ol className="space-y-2 border-l-2 border-sky-line ps-4 text-sm">{(history ?? []).map((h, i) => <li key={i}><b>{(t as unknown as Record<string, string>)[`st_${h.to_status}`] ?? h.to_status}</b> <span className="text-muted tabular">· {h.source} · {when.format(new Date(h.at))}</span>{h.reason && <span className="block text-xs text-muted">{reasonText(t, h.reason)}</span>}</li>)}</ol>
       </section>
     </div>
   );

@@ -3,6 +3,7 @@ import { featureEnabled } from "@/lib/flags";
 import { aiConfigured, loadAi } from "@/lib/ai/settings";
 import { getT } from "@/lib/i18n/server";
 import { FAQ } from "@/lib/content/faq";
+import { forLang } from "@/lib/content/types";
 import { FaqList } from "@/components/FaqList";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
@@ -12,7 +13,7 @@ export const generateMetadata = () => pageMeta({ path: "/help", title: "faq_titl
 
 export default async function HelpPage() {
   const { t, lang } = await getT();
-  const items = FAQ[lang];
+  const items = forLang(FAQ, lang);
   const showAi = (await featureEnabled("ai_assistant")) && aiConfigured() && (await loadAi()).enabled;
   const ld = JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: items.map((i) => ({ "@type": "Question", name: i.q, acceptedAnswer: { "@type": "Answer", text: i.a } })) }).replace(/</g, "\\u003c");
   return (

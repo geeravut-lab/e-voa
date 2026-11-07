@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminAction } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { saveBrandImage, resetBrandImage, saveBrandName, type BrandKind } from "@/lib/brand/server";
 import { validBrandName } from "@/lib/brand/brand";
 import { saveFlags, loadFlags } from "@/lib/flags";
@@ -146,16 +147,69 @@ export async function saveAirportNotesAction(_p: ActionResult, fd: FormData): Pr
   return done("/admin/airports");
 }
 
-/** The help assistant's switch, model and spending limits. A model name must look like a Claude model id; numbers are clamped to sane ranges. */
+/** The help assistant's switch and spending limits (which provider and model answer is saved by saveAiRoutingAction). Numbers are clamped to sane ranges. */
 export async function saveAiAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const a = await requireAdminAction();
   if (!a.ok) return a;
   const { parseAi } = await import("@/lib/ai/settings");
   const raw = Object.fromEntries(fd);
-  if (!/^claude-[a-z0-9.-]{3,40}$/.test(String(raw.model ?? ""))) return { ok: false, error: "err_ai_model" };
   if (!(await putSetting("ai", parseAi({ ...raw, enabled: fd.get("enabled") === "on" }), a.viewer.user.id))) return { ok: false, error: "err_generic" };
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.ai", entity: "settings" });
   return done("/admin/ai");
+}
+
+/** Which provider answers each task, which one is the spare, and which model each provider uses. A model name is checked for shape only; "Test" asks the provider for real. */
+export async function saveAiRoutingAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseRouting } = await import("@/lib/ai/route");
+  const { PROVIDERS, MODEL_RE } = await import("@/lib/ai/registry");
+  const { PROVIDER_IDS, TASK_KINDS } = await import("@/lib/ai/types");
+  const { keyFor } = await import("@/lib/ai/server");
+  const routes: Record<string, unknown> = {}, models: Record<string, Record<string, string>> = {};
+  for (const t of TASK_KINDS) {
+    const primary = String(fd.get(`primary_${t}`) ?? ""), fallback = String(fd.get(`fallback_${t}`) ?? "");
+    if (primary && !keyFor(primary as never)) return { ok: false, error: "err_ai_nokey" };          // a provider without a key cannot be chosen
+    routes[t] = { primary, fallback };
+    for (const p of PROVIDER_IDS) {
+      const m = String(fd.get(`model_${p}_${t}`) ?? "").trim();
+      if (m && m !== PROVIDERS[p].models[t]) { if (!MODEL_RE.test(m)) return { ok: false, error: "err_ai_model" }; (models[p] ??= {})[t] = m; }      // only a changed name is stored; the default stays in code
+    }
+  }
+  if (!(await putSetting("ai_routing", parseRouting({ routes, models }), a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.ai_routing", entity: "settings" });
+  return done("/admin/ai");
+}
+
+/** The Test button: one real call to the chosen provider and model, bypassing routing. */
+export async function testAiModelAction(provider: string, model: string): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { isProvider, MODEL_RE } = await import("@/lib/ai/registry");
+  if (!isProvider(provider) || !MODEL_RE.test(model)) return { ok: false, error: "err_ai_model" };
+  const { testModel } = await import("@/lib/ai/server");
+  const r = await testModel(provider, model);
+  return r.ok ? { ok: true, message: `✓ ${r.ms} ms` } : { ok: false, error: r.error };
+}
+
+/** The administrator's added instructions: screened by code, then read by a small model; only text that passes both is saved, and every saved text stays in the history. */
+export async function savePromptExtraAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const { parseExtra, EXTRA_MAX } = await import("@/lib/ai/extra");
+  const { reviewPromptAddition } = await import("@/lib/ai/server");
+  const text = String(fd.get("text") ?? "").trim(), enabled = fd.get("enabled") === "on";
+  if (text.length > EXTRA_MAX) return { ok: false, error: "err_prompt_long" };
+  if (text) { const r = await reviewPromptAddition(text); if (!r.ok) return { ok: false, error: r.error }; }
+  const db = createAdminClient();
+  const { data: last } = await db.from("ai_prompt_versions").select("body").eq("task", "chat").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if ((last?.body ?? "") !== text) {
+    const { data: ins } = await db.from("ai_prompt_versions").insert({ task: "chat", body: text, created_by: a.viewer.user.id }).select("id");
+    if (ins?.length !== 1) return { ok: false, error: "err_generic" };
+  }
+  if (!(await putSetting("ai_prompt_extra", parseExtra({ chat: { enabled, text } }), a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.ai_prompt", entity: "settings" });      // the text itself is in the history table, not in the audit log
+  return done("/admin/prompts");
 }
 
 /** LINE / WhatsApp: on-off and the monthly message quota of each channel (the quota keeps the bill predictable; notices past it still go to the app and e-mail). */
@@ -238,4 +292,16 @@ export async function runRulesAction(_p: ActionResult, _fd: FormData): Promise<A
   const r = await runRules();
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.rules_run", entity: "automation_rules", detail: { reminders: r.payment_reminders, expired: r.expired, fix: r.fix_reminders, warn: r.sla_warnings, late: r.sla_overdue } });
   return done("/admin/rules");
+}
+
+export async function payAgencyCommissionAction(agencyId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const period = String(fd.get("period") ?? "");
+  const { isPeriod } = await import("@/lib/partner-portal/rules");
+  if (!isPeriod(period)) return { ok: false, error: "err_form_incomplete" };
+  const { closePayout } = await import("@/lib/agency/service");
+  const r = await closePayout(a.viewer.user.id, agencyId, period, String(fd.get("note") ?? ""));
+  if (!r.ok) return r;
+  return done("/admin/agencies");
 }

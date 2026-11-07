@@ -14,8 +14,8 @@ export function NotificationRow({ id, link, unread, children }: { id: string; li
     if (to) router.push(to);
     else router.refresh();
   });
-  const cls = "relative flex w-full items-center gap-2 text-left";
-  const spin = pending ? <Spinner size={18} className="ml-auto text-primary" /> : null;
+  const cls = "relative flex w-full items-center gap-2 text-start";
+  const spin = pending ? <Spinner size={18} className="ms-auto text-primary" /> : null;
   if (!link) return unread ? <button type="button" onClick={go} disabled={pending} aria-busy={pending} className={cls}>{children}{spin}</button> : <div className={cls}>{children}</div>;
   return (
     <a href={link} aria-busy={pending} className={cls} onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); if (!pending) go(); }}>

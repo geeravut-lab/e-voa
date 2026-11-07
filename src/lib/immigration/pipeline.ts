@@ -7,6 +7,7 @@ import { DICTS, fmt, type Dict } from "@/lib/i18n/dict";
 import { isLang, type Lang } from "@/lib/i18n/langs";
 import { statusFromImmigration, statusFromImmigrationText, type AppStatus } from "@/lib/applications/state";
 import { ImmigrationError, type ImmigrationGateway } from "./gateway";
+import { SimulatedGateway } from "./simulator";
 import { buildDocket, DocketBuildError, loadDocketDocuments, type AppRow } from "./docket";
 import type { StatusCallback } from "./schema";
 
@@ -60,7 +61,7 @@ export async function sendApplication(gw: ImmigrationGateway, applicationId: str
   if (app.immigration_ref) return { outcome: "skipped", error: "already has an Immigration reference" };
 
   let docket;
-  try { docket = await buildDocket(app); }
+  try { docket = await buildDocket(app, gw instanceof SimulatedGateway); }
   catch (e) {
     if (e instanceof DocketBuildError) { await refuse(app, `We could not build the application: ${e.message}`); return { outcome: "refused", error: e.code }; }
     throw e;
