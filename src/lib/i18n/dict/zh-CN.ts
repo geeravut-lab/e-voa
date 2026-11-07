@@ -1216,6 +1216,7 @@ export const zhCN = {
   content_seed_articles_hint: "网站目前显示程序内置的文章。在此载入一次，之后可逐篇编辑、取消发布或替换，并添加自己的文章。",
   err_content_slug_format: "网址须为 3–80 位小写字母或数字，单词间用单个连字符。",
   err_content_slug_exists: "已存在使用此网址的文章。",
+  card_articles_sub: "出行前后的实用指南",
   err_generic: "出错了，请重试。",
   err_not_signed_in: "请先登录。",
   err_forbidden: "您无权访问此内容。",

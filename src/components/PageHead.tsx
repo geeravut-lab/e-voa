@@ -1,6 +1,6 @@
 import { ART, type ArtName } from "./Art";
 
-export function PageHead({ title, hint, art, tone = "sky" }: { title: string; hint?: string; art?: ArtName; tone?: "gold" | "sky" | "mint" | "rose" | "sand" }) {
+export function PageHead({ title, hint, art, tone = "sky" }: { title: string; hint?: string; art?: ArtName; tone?: "gold" | "sky" | "mint" | "rose" | "sand" | "green" }) {
   return (
     <header className={`tone-${tone} relative mb-5 flex min-h-28 items-center overflow-hidden rounded-card border p-5 shadow-card`}>
       <div className="relative z-[1] max-w-[62%]">

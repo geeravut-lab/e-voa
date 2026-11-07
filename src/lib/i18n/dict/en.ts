@@ -1233,6 +1233,7 @@ export const en = {
   content_seed_articles_hint: "The site now shows the articles built into the program. Load them here once, and you can edit, unpublish or replace each one, and add your own.",
   err_content_slug_format: "The address must be 3–80 lowercase letters or digits, with single dashes between words.",
   err_content_slug_exists: "An article with that address already exists.",
+  card_articles_sub: "Practical guides for your trip",
   // errors
   err_generic: "Something went wrong. Please try again.",
   err_not_signed_in: "Please sign in first.",

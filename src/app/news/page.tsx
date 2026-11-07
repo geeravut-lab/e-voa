@@ -13,11 +13,11 @@ export default async function NewsPage() {
   const fmt = new Intl.DateTimeFormat(lang, { dateStyle: "long", timeZone: "Asia/Bangkok" });
   return (
     <div className="space-y-4">
-      <PageHead title={t.news_title} hint={t.news_hint} art="notifications" tone="sand" />
+      <PageHead title={t.news_title} hint={t.news_hint} art="notifications" tone="green" />
       {items.length === 0 ? <p className="rounded-card border border-line bg-surface p-5 text-center text-muted shadow-card">{t.news_none}</p> : (
         <ul className="space-y-3">
           {items.map((n) => (
-            <li key={n.id} className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
+            <li key={n.id} className="tone-green space-y-2 rounded-card border p-5 shadow-card">
               <h2 className="font-display text-lg font-bold">{n.title}</h2>
               {n.publishedAt && <p className="text-xs text-muted tabular">{fmt.format(new Date(n.publishedAt))}</p>}
               <p className="whitespace-pre-line break-words text-sm">{n.body}</p>

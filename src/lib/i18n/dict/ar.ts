@@ -666,4 +666,5 @@ export const ar: Partial<Dict> = {
   flex_receipt: "الإيصال",
   flex_item: "العنصر",
   flex_reason: "السبب",
+  card_articles_sub: "أدلة عملية لرحلتك",
 };

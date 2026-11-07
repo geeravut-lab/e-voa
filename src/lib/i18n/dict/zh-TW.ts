@@ -666,4 +666,5 @@ export const zhTW: Partial<Dict> = {
   flex_receipt: "收據",
   flex_item: "項目",
   flex_reason: "原因",
+  card_articles_sub: "旅途中實用的指南",
 };

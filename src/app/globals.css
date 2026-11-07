@@ -80,6 +80,7 @@ input, select, textarea { font-size: 16px; } /* 16px stops iOS from zooming on f
 .tone-sky { background: var(--c-sky); border-color: #c9d8f7; }
 .tone-mint { background: var(--c-mint); border-color: #b4ebe6; }
 .tone-rose { background: var(--c-rose-soft); border-color: #ffc4d9; }
+.tone-green { background: #e4f7da; border-color: #bde6a6; }
 .tone-sand { background: var(--c-sand); border-color: #f0e3c8; }
 .tone-white { background: var(--c-surface); border-color: var(--c-line); }
 

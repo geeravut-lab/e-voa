@@ -122,6 +122,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **Own icons for the Revenue and Reconciliation cards** (coins and a banknote with a rising line; two ledgers matched with a check mark) | ✅ |
 
 | **Travel articles from the back office** `/admin/content?kind=article`: write articles (English required, Thai and Chinese optional; `## ` = heading, blank line = paragraph; plain text), a fixed address `/articles/<address>`, summary for the list and search results, date; "Load the built-in articles" copies the five built-in ones into the editor once; published articles replace the built-in list, and the sitemap follows; the FAQ, news and article editors keep what was typed when the server reports a problem (no lost text) | ✅ |
+| **Colours and menu for news/articles (7 Nov 2026)**: the news announcement (home banner and `/news`) is light green (`tone-green`); "Travel guides" (`/articles`) has its own home card + sidebar entry right before Notifications, light blue with a new book-and-pin illustration. Nav items can pin their colour (`pin: true`) and the colour spreading works around them | ✅ |
 
 ## Still planned
 

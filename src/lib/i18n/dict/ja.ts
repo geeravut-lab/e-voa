@@ -666,4 +666,5 @@ export const ja: Partial<Dict> = {
   flex_receipt: "領収書",
   flex_item: "項目",
   flex_reason: "理由",
+  card_articles_sub: "旅に役立つ実用ガイド",
 };

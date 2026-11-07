@@ -29,6 +29,7 @@ export type NavItem = {
   feature?: FeatureKey;
   bottom?: boolean;             // one of the 4 fixed entries of the mobile bar (the 5th, centre, is "apply")
   viewerOnly?: boolean;         // shown only to read-only statistics accounts (report viewers)
+  pin?: boolean;                // the home card keeps exactly this `tone` (the colour spreading works around it)
   home?: boolean;               // shown as a card on the home page
   side?: boolean;               // shown in the desktop sidebar
 };
@@ -46,6 +47,7 @@ export const NAV: NavItem[] = [
   { key: "prepare", label: "prepare_title", sub: "prepare_sub", href: "/prepare", icon: "list", art: "check", tone: "mint", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "status", label: "status_title", sub: "status_hint", href: "/status", icon: "search", art: "trips", tone: "rose", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "fees", label: "card_fees", sub: "card_fees_sub", href: "/fees", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "traveler", auth: false, status: "live", phase: "Phase 2", home: true, side: true },
+  { key: "articles", label: "articles_title", sub: "card_articles_sub", href: "/articles", icon: "scroll", art: "articles", tone: "sky", pin: true, size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "notifications", label: "card_notifications", sub: "card_notifications_sub", href: "/notifications", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", feature: "notifications", home: true },
   { key: "account", label: "card_account", sub: "card_account_sub", href: "/account", icon: "user", art: "account", tone: "sky", size: "half", area: "traveler", auth: true, status: "live", home: true },
   { key: "agency", label: "card_agency", sub: "card_agency_sub", href: "/agency", icon: "users", art: "travelers", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
@@ -110,20 +112,29 @@ export const parentOf = (path: string) => PARENTS.find((p) => p.test.test(path))
 // (left, above, and the two diagonals above) never share a colour, similar colours (gold/sand, sky/mint) are kept apart too, and every colour comes round evenly.
 const SPREAD: Tone[] = ["gold", "sky", "mint", "rose", "sand"];
 const FAMILY: Record<Tone, string> = { gold: "warm", sand: "warm", sky: "cool", mint: "cool", rose: "rose", white: "white" };
-export function spreadTones(items: { key: string; size: "wide" | "half" }[]): Map<string, Tone> {
-  const out = new Map<string, Tone>(), grid: Tone[][] = [], lastUse = new Map<Tone, number>();
+export function spreadTones(items: { key: string; size: "wide" | "half"; pin?: boolean; tone?: Tone }[]): Map<string, Tone> {
+  const out = new Map<string, Tone>(), grid: Tone[][] = [], lastUse = new Map<Tone, number>(), used = new Map<Tone, number>();
+  // 1) where every card sits (the position depends only on the sizes); cards with a fixed colour are placed first so the others can keep away from them
+  const at: { row: number; cols: number[] }[] = [];
   let row = 0, col = 0;
-  items.forEach((it, idx) => {
+  for (const it of items) {
     if (it.size === "wide") { if (col !== 0) { row++; col = 0; } } else if (col > 1) { row++; col = 0; }
     const cols = it.size === "wide" ? [0, 1] : [col];
-    const near: Tone[] = [];
-    for (const c of cols) for (const [dr, dc] of [[0, -1], [-1, -1], [-1, 0], [-1, 1]]) { const t = grid[row + dr]?.[c + dc]; if (t) near.push(t); }
-    const score = (t: Tone) => (near.includes(t) ? 1000 : 0) + near.filter((n) => FAMILY[n] === FAMILY[t]).length * 40 - Math.min(idx - (lastUse.get(t) ?? -99), 12) * 3;
-    const pick = [...SPREAD].sort((a, b) => score(a) - score(b))[0];
-    out.set(it.key, pick); lastUse.set(pick, idx);
-    grid[row] ??= [];
-    for (const c of cols) grid[row][c] = pick;
+    at.push({ row, cols });
     if (it.size === "wide") { row++; col = 0; } else { col++; if (col > 1) { row++; col = 0; } }
+  }
+  items.forEach((it, i) => { if (it.pin && it.tone) { used.set(it.tone, (used.get(it.tone) ?? 0) + 1); for (const c of at[i].cols) { grid[at[i].row] ??= []; grid[at[i].row][c] = it.tone; } } });
+  // 2) colours in reading order
+  items.forEach((it, idx) => {
+    const { row: r, cols } = at[idx];
+    if (it.pin && it.tone) { out.set(it.key, it.tone); lastUse.set(it.tone, idx); return; }
+    const near: Tone[] = [];
+    for (const c of cols) for (const [dr, dc] of [[0, -1], [0, 1], [-1, -1], [-1, 0], [-1, 1], [1, -1], [1, 0], [1, 1]]) { const t = grid[r + dr]?.[c + dc]; if (t) near.push(t); }
+    const score = (t: Tone) => (near.includes(t) ? 1000 : 0) + near.filter((n) => FAMILY[n] === FAMILY[t]).length * 40 - Math.min(idx - (lastUse.get(t) ?? -99), 12) * 3 + (used.get(t) ?? 0) * 80;      // colours already used (fixed ones too) wait their turn: every colour comes round evenly
+    const pick = [...SPREAD].sort((a, b) => score(a) - score(b))[0];
+    out.set(it.key, pick); lastUse.set(pick, idx); used.set(pick, (used.get(pick) ?? 0) + 1);
+    grid[r] ??= [];
+    for (const c of cols) grid[r][c] = pick;
   });
   return out;
 }

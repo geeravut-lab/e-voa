@@ -666,4 +666,5 @@ export const ko: Partial<Dict> = {
   flex_receipt: "영수증",
   flex_item: "항목",
   flex_reason: "사유",
+  card_articles_sub: "여행에 도움이 되는 실용 가이드",
 };

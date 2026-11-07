@@ -267,6 +267,25 @@ export const ART = {
       <Spark x={138} y={30} s={0.7} c={L} />
     </Svg>
   ),
+  articles: (
+    <Svg>
+      <path d="M80 34c-12-8-30-10-52-6v62c22-4 40-2 52 6Z" fill={W} stroke={B} strokeWidth="3" strokeLinejoin="round" />
+      <path d="M80 34c12-8 30-10 52-6v62c-22-4-40-2-52 6Z" fill={S} stroke={B} strokeWidth="3" strokeLinejoin="round" />
+      <path d="M80 34v62" stroke={B} strokeWidth="3" />
+      <path d="M38 44c10-1 20 0 31 3M38 56c10-1 20 0 31 3M38 68c10-1 20 0 31 3" stroke={B} strokeWidth="3.5" strokeLinecap="round" fill="none" />
+      <path d="M38 80c8 0 16 1 24 3" stroke={T} strokeWidth="3.5" strokeLinecap="round" fill="none" />
+      <circle cx="108" cy="52" r="7" fill={G} />
+      <path d="M90 82l14-18 9 11 6-7 11 14c-12-3-28-4-40 0Z" fill={B} />
+      <path d="M121 28v22l-6-5-6 5V28Z" fill={L} />
+      <g transform="translate(132 84)">
+        <path d="M0-16a10 10 0 0 1 10 10c0 8-10 20-10 20S-10 2-10-6a10 10 0 0 1 10-10Z" fill={G} stroke={N} strokeWidth="2" />
+        <circle cx="0" cy="-6" r="3.6" fill={W} />
+      </g>
+      <Plane x={32} y={22} s={0.7} c={B} r={-20} />
+      <Spark x={142} y={24} s={0.7} c={L} />
+      <Spark x={18} y={96} s={0.6} />
+    </Svg>
+  ),
   notifications: (
     <Svg>
       <path d="M80 20c-20 0-30 14-30 34v14l-10 14h80L110 68V54c0-20-10-34-30-34Z" fill={G} />

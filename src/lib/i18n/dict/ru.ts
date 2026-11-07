@@ -666,4 +666,5 @@ export const ru: Partial<Dict> = {
   flex_receipt: "Квитанция",
   flex_item: "Позиция",
   flex_reason: "Причина",
+  card_articles_sub: "Практические советы для поездки",
 };

@@ -29,6 +29,20 @@ describe("card colours", () => {
   });
 });
 
+describe("travel articles card", () => {
+  const trav = NAV.filter((n) => n.home && n.area === "traveler");
+  it("sits right before notifications, in the sidebar too, and stays light blue whatever the layout", () => {
+    const i = trav.findIndex((n) => n.key === "articles");
+    expect(i).toBeGreaterThan(0); expect(trav[i + 1].key).toBe("notifications");
+    expect(NAV.find((n) => n.key === "articles")).toMatchObject({ href: "/articles", tone: "sky", pin: true, side: true, auth: false });
+    for (const set of [trav, trav.filter((n) => !["notifications", "account"].includes(n.key)), trav.filter((n) => !n.viewerOnly)]) {
+      const items = packCards(set), tones = spreadTones(items), at = cells(items);
+      expect(tones.get("articles")).toBe("sky");
+      for (const b of items) if (b.key !== "articles" && touching(at.get("articles")!, at.get(b.key)!)) expect(tones.get(b.key), b.key).not.toBe("sky");
+    }
+  });
+});
+
 describe("cards fill every row", () => {
   const rows = (items: { size: "wide" | "half" }[]) => { const r: number[] = []; let col = 0; for (const it of items) { if (it.size === "wide") { if (col) r.push(col); r.push(2); col = 0; } else { col++; if (col === 2) { r.push(2); col = 0; } } } if (col) r.push(col); return r; };
   it("a half-width card is never left alone in a row, whatever menus are shown", () => {

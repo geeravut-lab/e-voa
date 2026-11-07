@@ -666,4 +666,5 @@ export const hi: Partial<Dict> = {
   flex_receipt: "रसीद",
   flex_item: "आइटम",
   flex_reason: "कारण",
+  card_articles_sub: "आपकी यात्रा के लिए व्यावहारिक गाइड",
 };
