@@ -598,4 +598,7 @@ export const zhTW: Partial<Dict> = {
   card_partner_sub: "向旅客銷售 SIM、VIP 或健康服務並核銷代碼",
   extras_sold_out: "已售完。",
   err_addon_sold_out: "此加購項目剛剛售完，請選擇其他項目。",
+  wallet_google: "加入 Google Wallet",
+  wallet_check: "查看狀態",
+  wallet_not_gov: "私營服務，並非政府文件，最終由泰國移民局決定。",
 };

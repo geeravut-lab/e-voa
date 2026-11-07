@@ -598,4 +598,7 @@ export const ar: Partial<Dict> = {
   card_partner_sub: "بِع شرائح SIM وخدمات VIP أو الصحة للمسافرين واستبدل القسائم",
   extras_sold_out: "نفد المخزون.",
   err_addon_sold_out: "نفدت هذه الإضافة للتو. يرجى اختيار غيرها.",
+  wallet_google: "إضافة إلى Google Wallet",
+  wallet_check: "التحقق من الحالة",
+  wallet_not_gov: "خدمة خاصة وليست وثيقة حكومية. القرار لدى إدارة الهجرة التايلاندية.",
 };

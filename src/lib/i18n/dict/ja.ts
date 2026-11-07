@@ -598,4 +598,7 @@ export const ja: Partial<Dict> = {
   card_partner_sub: "SIM・VIP・ヘルスサービスを旅行者に販売し、コードを引き換え",
   extras_sold_out: "売り切れです。",
   err_addon_sold_out: "このオプションはちょうど売り切れました。別のものをお選びください。",
+  wallet_google: "Google ウォレットに追加",
+  wallet_check: "ステータスを確認",
+  wallet_not_gov: "民間サービスであり、政府の書類ではありません。判断はタイ入国管理局が行います。",
 };

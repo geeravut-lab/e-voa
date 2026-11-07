@@ -78,3 +78,8 @@ Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insura
 | `partner_packages.stock_total` (migration `20261114…`) | Quantity limit of a portal package (null = unlimited); column not readable by travelers or visitors | partner, admin |
 | `agency_payouts` (migration `20261115…`) | One commission payout per agency and month (frozen numbers, statement number) | the agency, admin |
 | `platform_settings.automation_rules`, `automation_last_run` | Rules engine settings and the last run | admin |
+
+## Government / TAT statistics
+
+- `report_viewers (user_id, added_by, created_at)`: accounts that may open `/gov` (read-only statistics). RLS: a viewer reads their own row, staff read all. Written by the server only.
+- `tourism_stats(p_from date, p_to date) → jsonb`: counts only (funnel by status, approved arrivals by day / nationality / airport / purpose / gender / age band / stay band / package, average decision hours, average lead days). Executable by `service_role` only; the server checks who is asking. The app hides every group under 5 (`src/lib/tourism/stats.ts`).

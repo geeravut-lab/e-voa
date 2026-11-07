@@ -598,4 +598,7 @@ export const ko: Partial<Dict> = {
   card_partner_sub: "여행자에게 SIM, VIP, 건강 서비스를 판매하고 코드를 사용 처리",
   extras_sold_out: "품절되었습니다.",
   err_addon_sold_out: "이 부가서비스가 방금 품절되었습니다. 다른 것을 선택해 주세요.",
+  wallet_google: "Google 월렛에 추가",
+  wallet_check: "상태 확인",
+  wallet_not_gov: "민간 서비스이며 정부 문서가 아닙니다. 결정은 태국 출입국관리국이 합니다.",
 };

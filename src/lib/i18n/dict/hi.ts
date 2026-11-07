@@ -598,4 +598,7 @@ export const hi: Partial<Dict> = {
   card_partner_sub: "यात्रियों को SIM, VIP या हेल्थ सेवाएँ बेचें और कोड से रिडीम करें",
   extras_sold_out: "बिक चुका।",
   err_addon_sold_out: "यह एक्स्ट्रा अभी बिक गया। कृपया दूसरा चुनें।",
+  wallet_google: "Google Wallet में जोड़ें",
+  wallet_check: "स्थिति देखें",
+  wallet_not_gov: "निजी सेवा, सरकारी दस्तावेज़ नहीं। निर्णय थाई आव्रजन विभाग का होता है।",
 };

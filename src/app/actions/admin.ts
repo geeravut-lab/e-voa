@@ -75,6 +75,31 @@ export async function revokeAdminAction(userId: string, _p: ActionResult, _fd: F
   return done("/admin/admins");
 }
 
+/** Gives an existing account read-only access to the tourism statistics (/gov). The account must already exist; nothing else in the back office opens for it. */
+export async function grantReportViewerAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const email = String(fd.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok: false, error: "err_email_invalid" };
+  const db = createAdminClient();
+  const { data: p } = await db.from("profiles").select("id").ilike("email", email).limit(1).maybeSingle();
+  if (!p) return { ok: false, error: "err_gov_no_account" };
+  const { error } = await db.from("report_viewers").upsert({ user_id: p.id, added_by: a.viewer.user.id }, { onConflict: "user_id" });
+  if (error) { console.error("[tourism] grant failed", error.message); return { ok: false, error: "err_generic" }; }
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "tourism.viewer_add", entity: "profiles", entityId: p.id });
+  return done("/admin/tourism");
+}
+
+export async function revokeReportViewerAction(userId: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, error: "err_generic" };
+  const { data, error } = await createAdminClient().from("report_viewers").delete().eq("user_id", userId).select("user_id");
+  if (error || data?.length !== 1) return { ok: false, error: "err_generic" };                  // a delete that matches nothing is not success
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "tourism.viewer_remove", entity: "profiles", entityId: userId });
+  return done("/admin/tourism");
+}
+
 const int = (v: FormDataEntryValue | null, min: number, max: number): number | null => {
   const s = String(v ?? "").trim();
   if (!/^\d{1,6}$/.test(s)) return null;

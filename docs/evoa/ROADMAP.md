@@ -102,6 +102,9 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **Partner portal, part 2**: the partner voids an unused voucher (traveler refunded in full through Stripe, both told), limited quantity per package (sold out stops sales, held while the traveler pays), notices to the partner's people (sale, low stock, sold out, void, payout) | ✅ |
 | **Agency, part 2**: monthly commission statement (PDF + CSV, Thai/English) per agency, 6 months on `/agency`, any agency for staff; staff record the commission payout once per month at `/admin/agencies`; the agency is notified | ✅ |
 
+| **Google Wallet pass**: "Add to Google Wallet" on the E-VOA pass (approved applications only; QR, reference, arrival, flight, last four passport characters, private-service notice); the link is signed on our server with the service account key | ✅ link and signature tested · ⬜ real Google credentials, publishing access from Google, a real save on a phone |
+| **Government / TAT statistics** `/admin/tourism` (staff) and `/gov` (read-only accounts staff add by e-mail): approved arrivals by day, nationality, arrival airport, purpose, gender, age group, length of stay, package; approval rate, decision time, lead time; range filter and CSV export. Counts only, groups under 5 hidden | ✅ |
+
 ## Still planned
 
-⬜ Wallet passes · ⬜ Government/TAT dashboard
+⬜ Apple Wallet pass (needs an Apple Developer account) · ⬜ wallet pass updates after issue (status or date changes) · ⬜ TAT API / scheduled data feed

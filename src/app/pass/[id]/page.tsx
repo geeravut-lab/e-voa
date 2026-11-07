@@ -5,6 +5,8 @@ import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import { passToken } from "@/lib/passes";
 import { SITE_URL } from "@/lib/env";
+import { walletConfig } from "@/lib/wallet/google";
+import { WalletButton } from "@/components/WalletButton";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
 import { PrintButton } from "@/components/PrintButton";
@@ -45,6 +47,7 @@ export default async function PassPage({ params }: { params: Promise<{ id: strin
         <p className="text-xs text-muted">{t.pass_offline_hint}</p>
       </article>
       <div className="mx-auto flex max-w-sm flex-wrap justify-center gap-2 print:hidden">
+        {walletConfig(SITE_URL) && <WalletButton href={`/api/wallet/google/${a.id}`}>{t.wallet_google}</WalletButton>}
         <a href={`/pass/${a.id}/card`} download className={btnClass("gold")}>{t.pass_save}</a>
         <PrintButton />
         {evoa && <a href={`/api/documents/${evoa.id}`} target="_blank" rel="noopener" className={btnClass("ghost")}>{t.trip_download_evoa}</a>}
