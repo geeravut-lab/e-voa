@@ -115,7 +115,7 @@ type Order = { id: string; owner_id: string; application_id: string; category: A
 async function notifyAddon(o: Pick<Order, "id" | "owner_id" | "application_id" | "package_name" | "category">, key: "ready" | "used" | "failed" | "result") {
   const t = DICTS[await langOf(o.owner_id)];
   const m = { ready: [t.notif_addon_ready_title, t.notif_addon_ready_body], used: [t.notif_addon_used_title, t.notif_addon_used_body], failed: [t.notif_addon_failed_title, t.notif_addon_failed_body], result: [t.notif_addon_result_title, t.notif_addon_result_body] }[key];
-  await notifyUser({ userId: o.owner_id, title: m[0], body: fmt(m[1], { item: o.package_name }), link: `/trips/${o.application_id}`, kind: `addon.${key}`, dedupeKey: `addon:${o.id}:${key}` });
+  await notifyUser({ userId: o.owner_id, title: m[0], body: fmt(m[1], { item: o.package_name }), link: `/trips/${o.application_id}`, kind: `addon.${key}`, dedupeKey: `addon:${o.id}:${key}`, fields: [[t.flex_item, o.package_name]] });
 }
 
 /**

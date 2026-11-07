@@ -660,4 +660,10 @@ export const ko: Partial<Dict> = {
   news_hint: "서비스 소식",
   news_none: "아직 소식이 없습니다.",
   news_read_all: "모든 소식 보기",
+  flex_ref: "접수번호",
+  flex_status: "상태",
+  flex_amount: "금액",
+  flex_receipt: "영수증",
+  flex_item: "항목",
+  flex_reason: "사유",
 };

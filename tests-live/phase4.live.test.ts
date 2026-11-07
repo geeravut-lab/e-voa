@@ -203,7 +203,7 @@ describe("LINE and WhatsApp notices", () => {
     await notifyUser({ userId: u.id, title: "Application approved", body: "Open your pass", link: "/pass", kind: "application.approved", dedupeKey: "p4:both:1" });
     const mine = sent().slice(before);
     expect(mine.find((m) => m.channel === "line")).toMatchObject({ to: "Uboth" }); expect(String(mine.find((m) => m.channel === "line")!.text)).toContain("Application approved");
-    expect(String(mine.find((m) => m.channel === "line")!.text)).toContain("/pass");
+    expect(JSON.stringify((mine.find((m) => m.channel === "line") as { flex?: unknown }).flex)).toContain("/pass?openExternalBrowser=1");        // the card's button opens the page in the phone's browser
     expect(mine.find((m) => m.channel === "whatsapp")).toMatchObject({ template: "status_update", to: "66911110111" });
     expect((await admin.from("app_notifications").select("id").eq("user_id", u.id).eq("dedupe_key", "p4:both:1")).data).toHaveLength(1);
     await notifyUser({ userId: u.id, title: "Application approved", body: "Open your pass", link: "/pass", kind: "application.approved", dedupeKey: "p4:both:1" });   // the same event again
@@ -224,6 +224,28 @@ describe("LINE and WhatsApp notices", () => {
     await sendToChannels({ userId: u.id, title: "Hello", kind: "x" });
     expect((await sql<{ status: string; last_error: string }>(`select status, last_error from public.notification_channels where owner_id='${u.id}'`))[0]).toMatchObject({ status: "stopped" });
     const n = sent().length; await sendToChannels({ userId: u.id, title: "Again", kind: "x" }); expect(sent().length).toBe(n);
+  });
+  it("LINE: a notice arrives as a card whose header color follows its kind; a card LINE refuses falls back to plain text and the channel stays on", async () => {
+    const u = await makeUser("flex"), boss = await makeUser("flex-boss", { admin: true });
+    await putSetting("messaging", { line_enabled: true, whatsapp_enabled: true, line_quota: 100000, whatsapp_quota: 100000 }, boss.id);
+    const link = async (id: string, lineId: string) => { const st = await startLineLink(id); expect(st.ok).toBe(true); if (st.ok) expect((await bindLine(st.code, lineId)).ok).toBe(true); };
+    await link(u.id, "Uflexuser");
+    const cases: [string, string][] = [["application.approved", "#14833B"], ["application.rejected", "#C0262D"], ["application.action_required", "#B45309"], ["payment.paid", "#0E7C66"], ["payment.refund", "#6D28D9"], ["addon.ready", "#A21CAF"], ["application.submitted", "#1557E0"], ["something.new", "#1557E0"]];
+    for (const [kind, color] of cases) {
+      const before = sent().length;
+      await notifyUser({ userId: u.id, title: `Title ${kind}`, body: "plain body", link: "/trips", kind, dedupeKey: `p5flex:${kind}:${u.id}`, mail: false, fields: [["Reference", "EV-26-000001"], ["Status", "Done"]] });
+      const m = sent().slice(before).find((x) => x.channel === "line") as { flex?: { altText: string; contents: { header: { backgroundColor: string }; footer: { contents: { action: { uri: string } }[] } } } } | undefined;
+      expect(m?.flex, kind).toBeTruthy(); expect(m!.flex!.contents.header.backgroundColor, kind).toBe(color);
+      expect(m!.flex!.contents.footer.contents.at(-1)!.action.uri).toMatch(/\/trips\?openExternalBrowser=1$/); expect(m!.flex!.altText).toContain(`Title ${kind}`); expect(m!.flex!.altText).toContain("Reference EV-26-000001");
+    }
+    // a notice with no rows still makes a card (the text goes in the body)
+    const b0 = sent().length; await notifyUser({ userId: u.id, title: "No rows", body: "Just text here", kind: "info", dedupeKey: `p5flex:norows:${u.id}`, mail: false });
+    expect(JSON.stringify((sent().slice(b0).find((x) => x.channel === "line") as { flex?: unknown }).flex)).toContain("Just text here");
+    // LINE refuses the card (HTTP 400): the same notice goes as text, and the channel is NOT stopped
+    const u2 = await makeUser("flex2"); await link(u2.id, "UxFLEXFAIL");
+    const b1 = sent().length; await notifyUser({ userId: u2.id, title: "Fallback please", body: "body", link: "/trips", kind: "application.approved", dedupeKey: `p5flex:fail:${u2.id}`, mail: false });
+    const got = sent().slice(b1).filter((x) => x.channel === "line"); expect(got).toHaveLength(1); expect((got[0] as { flex?: unknown }).flex).toBeUndefined(); expect(String(got[0].text)).toContain("Fallback please");
+    expect((await sql<{ status: string }>(`select status from public.notification_channels where owner_id = '${u2.id}' and channel = 'line'`))[0].status).toBe("active");
   });
 });
 

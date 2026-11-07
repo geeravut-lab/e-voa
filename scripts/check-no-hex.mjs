@@ -8,6 +8,7 @@ const ALLOW = new Map([
   ["src/app/globals.css", "the token file"],
   ["src/components/Art.tsx", "illustrations are drawings, not UI colors"],
   ["src/config/theme.ts", "browser-required literals (theme-color, manifest)"],
+  ["src/config/line-colors.ts", "LINE Flex Messages need hex strings for their header colors"],
   ["src/app/login/LoginForm.tsx", "third-party brand marks (Google G, LINE green)"],
 ]);
 const root = "src";

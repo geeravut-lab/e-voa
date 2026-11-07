@@ -28,7 +28,7 @@ export default async function ReconcilePage({ searchParams }: { searchParams: Pr
   const tone = (s: string) => (s === "ok" ? "bg-mint text-teal-deep" : s === "issues" ? "bg-gold-soft text-gold-deep" : "bg-line text-muted");
   return (
     <div className="space-y-4">
-      <PageHead title={t.admin_reconcile_title} hint={t.admin_reconcile_hint} art="analytics" tone="mint" />
+      <PageHead title={t.admin_reconcile_title} hint={t.admin_reconcile_hint} art="reconcile" tone="mint" />
       <form action="/admin/reconcile" className="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
         <label className="space-y-1"><span className="block text-xs font-semibold text-muted">{t.recon_day}</span><input type="date" name="date" defaultValue={day} max={yesterdayThai()} className={`${inputCls} w-auto`} /></label>
         <button type="submit" className={btnClass("primary", "min-h-11 px-5")}>{t.recon_show}</button>

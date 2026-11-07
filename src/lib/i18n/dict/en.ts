@@ -1216,6 +1216,12 @@ export const en = {
   recon_notif_body: "Open Reconciliation to see them.",
   an_recon_issues: "{n} day(s) with differences from Stripe",
   an_recon_issues_hint: "Open Reconciliation, check each difference, then mark the day as reviewed.",
+  flex_ref: "Reference",
+  flex_status: "Status",
+  flex_amount: "Amount",
+  flex_receipt: "Receipt",
+  flex_item: "Item",
+  flex_reason: "Reason",
   // errors
   err_generic: "Something went wrong. Please try again.",
   err_not_signed_in: "Please sign in first.",

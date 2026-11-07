@@ -660,4 +660,10 @@ export const ar: Partial<Dict> = {
   news_hint: "مستجدات من الخدمة",
   news_none: "لا توجد أخبار بعد.",
   news_read_all: "اقرأ كل الأخبار",
+  flex_ref: "المرجع",
+  flex_status: "الحالة",
+  flex_amount: "المبلغ",
+  flex_receipt: "الإيصال",
+  flex_item: "العنصر",
+  flex_reason: "السبب",
 };

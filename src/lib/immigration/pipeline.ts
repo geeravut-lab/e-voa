@@ -42,7 +42,9 @@ export async function notifyStatus(app: Pick<AppRow, "id" | "ref_no" | "owner_id
   };
   const m = msg[status];
   if (!m) return;
-  await notifyUser({ userId: app.owner_id, title: m[0], body: m[1], link: "/trips", kind: `application.${status}`, dedupeKey: `app:${app.id}:${status}` });
+  const tt = t as unknown as Record<string, string>;
+  const fields: [string, string][] = [[t.flex_ref, app.ref_no], [t.flex_status, tt[`st_${status}`] ?? status], ...(reason && (status === "rejected" || status === "action_required") ? [[t.flex_reason, reason] as [string, string]] : [])];
+  await notifyUser({ userId: app.owner_id, title: m[0], body: m[1], link: "/trips", kind: `application.${status}`, dedupeKey: `app:${app.id}:${status}`, fields });
 }
 
 // ------------------------------------------------------------------ sending

@@ -54,8 +54,8 @@ export const NAV: NavItem[] = [
 
   { key: "admin_home", label: "nav_admin", barLabel: "nav_admin", href: "/admin", icon: "shield", tone: "sky", size: "half", area: "admin", auth: true, status: "live", side: true },
   { key: "admin_notifs", label: "admin_notif_title", barLabel: "nav_alerts", sub: "admin_notif_hint", href: "/admin/notifications", icon: "bell", art: "notifications", tone: "sand", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "revenue", label: "admin_revenue_title", sub: "admin_revenue_hint", href: "/admin/revenue", icon: "chart", art: "analytics", tone: "mint", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "reconcile", label: "admin_reconcile_title", sub: "admin_reconcile_hint", href: "/admin/reconcile", icon: "chart", art: "analytics", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "revenue", label: "admin_revenue_title", sub: "admin_revenue_hint", href: "/admin/revenue", icon: "chart", art: "revenue", tone: "mint", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "reconcile", label: "admin_reconcile_title", sub: "admin_reconcile_hint", href: "/admin/reconcile", icon: "chart", art: "reconcile", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "discounts", label: "admin_discounts_title", sub: "admin_discounts_hint", href: "/admin/discounts", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "tourism", label: "admin_tourism_title", sub: "admin_tourism_hint", href: "/admin/tourism", icon: "chart", art: "analytics", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "ops", label: "card_ops", barLabel: "nav_queue", sub: "card_ops_sub", href: "/admin/queue", icon: "queue", art: "ops", tone: "gold", size: "wide", area: "admin", auth: true, status: "live", phase: "Phase 2", home: true, side: true },

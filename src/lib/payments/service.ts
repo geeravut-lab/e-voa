@@ -144,7 +144,7 @@ export async function afterPayment(paymentId: string): Promise<void> {
   }
   await db.from("addon_orders").update({ status: "paid" }).eq("payment_id", paymentId).eq("status", "pending_payment");
   const t = DICTS[await langOf(pay.owner_id)];
-  await notifyUser({ userId: pay.owner_id, title: t.notif_paid_title, body: fmt(t.notif_paid_body, { amount: Number(pay.amount_thb).toLocaleString("en-US"), receipt: pay.receipt_no ?? "" }), link: `/receipts/${paymentId}`, kind: "payment.paid", dedupeKey: `pay:${paymentId}:paid`, mail: false });
+  await notifyUser({ userId: pay.owner_id, title: t.notif_paid_title, body: fmt(t.notif_paid_body, { amount: Number(pay.amount_thb).toLocaleString("en-US"), receipt: pay.receipt_no ?? "" }), link: `/receipts/${paymentId}`, kind: "payment.paid", dedupeKey: `pay:${paymentId}:paid`, mail: false, fields: [[t.flex_amount, `THB ${Number(pay.amount_thb).toLocaleString("en-US")}`], ...(pay.receipt_no ? [[t.flex_receipt, pay.receipt_no] as [string, string]] : [])] });
   await mailReceipt(paymentId).catch((e) => console.error("[payments] receipt mail failed", (e as Error).message));
   const { issueAddon } = await import("@/lib/partners/service");
   const { data: addons } = await db.from("addon_orders").select("id").eq("payment_id", paymentId).eq("status", "paid");
@@ -221,7 +221,7 @@ export async function refundAddon(addonOrderId: string, reason: string, actor: s
   const r = await doRefund({ paymentId: o.payment_id, amountThb: amount, kind: "addon", reason, addonOrderId: o.id, actor });
   if (!r.ok) { await db.from("addon_orders").update({ refunded_thb: Number(o.refunded_thb), status: o.status }).eq("id", o.id); return r; }
   const t = DICTS[await langOf(o.owner_id)];
-  await notifyUser({ userId: o.owner_id, title: t.notif_refund_title, body: fmt(t.notif_refund_body, { amount: r.amountThb.toLocaleString("en-US"), item: o.package_name }), link: `/receipts/${o.payment_id}`, kind: "payment.refund", dedupeKey: `refund:${r.refundId}` });
+  await notifyUser({ userId: o.owner_id, title: t.notif_refund_title, body: fmt(t.notif_refund_body, { amount: r.amountThb.toLocaleString("en-US"), item: o.package_name }), link: `/receipts/${o.payment_id}`, kind: "payment.refund", dedupeKey: `refund:${r.refundId}`, fields: [[t.flex_item, o.package_name], [t.flex_amount, `THB ${r.amountThb.toLocaleString("en-US")}`]] });
   return r;
 }
 
@@ -303,5 +303,5 @@ export async function applyUpgrade(paymentId: string): Promise<void> {
   if (upd.data?.length !== 1) return;
   await audit({ actorId: null, actorRole: "system", action: "application.upgrade", entity: "application", entityId: app.id });
   const t = DICTS[await langOf(app.owner_id)];
-  await notifyUser({ userId: app.owner_id, title: t.notif_upgrade_title, body: fmt(t.notif_upgrade_body, { ref: app.ref_no }), link: `/trips/${app.id}`, kind: "application.upgrade", dedupeKey: `upgrade:${paymentId}` });
+  await notifyUser({ userId: app.owner_id, title: t.notif_upgrade_title, body: fmt(t.notif_upgrade_body, { ref: app.ref_no }), link: `/trips/${app.id}`, kind: "application.upgrade", dedupeKey: `upgrade:${paymentId}`, fields: [[t.flex_ref, app.ref_no]] });
 }

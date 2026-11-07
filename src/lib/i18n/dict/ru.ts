@@ -660,4 +660,10 @@ export const ru: Partial<Dict> = {
   news_hint: "Новости сервиса",
   news_none: "Новостей пока нет.",
   news_read_all: "Все новости",
+  flex_ref: "Номер",
+  flex_status: "Статус",
+  flex_amount: "Сумма",
+  flex_receipt: "Квитанция",
+  flex_item: "Позиция",
+  flex_reason: "Причина",
 };

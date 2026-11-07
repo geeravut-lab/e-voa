@@ -178,6 +178,22 @@ export function createMockServer(opts = {}) {
 
   // ------------------------------------------------------------------ Anthropic Messages API (help assistant)
   // Enough of the real shape for the app's loop: the answer is picked from the last user text; tool questions get a tool_use first, then text built from the tool results.
+  /** The limits LINE enforces on a Flex message that matter here (altText 400, button label 20, button URI https/http, texts present, bubble shape). Returns the problem or null. */
+  const flexProblem = (m) => {
+    if (typeof m.altText !== "string" || !m.altText || m.altText.length > 400) return "altText must be 1-400 characters";
+    const c = m.contents; if (!c || c.type !== "bubble") return "contents must be a bubble";
+    const walk = (n, depth) => {
+      if (depth > 6) return "too deep";
+      if (n.type === "text" && (typeof n.text !== "string" || !n.text)) return "text must not be empty";
+      if (n.type === "button") { const a = n.action ?? {}; if (a.type !== "uri" || !/^https?:\/\//.test(String(a.uri ?? ""))) return "button uri must be http(s)"; if (!a.label || a.label.length > 20) return "button label must be 1-20 characters"; }
+      for (const k of ["contents"]) if (Array.isArray(n[k])) for (const x of n[k]) { const r = walk(x, depth + 1); if (r) return r; }
+      return null;
+    };
+    for (const part of ["header", "body", "footer"]) if (c[part]) { const r = walk(c[part], 1); if (r) return `${part}: ${r}`; if (!Array.isArray(c[part].contents) || c[part].contents.length === 0) return `${part} must have contents`; }
+    if (JSON.stringify(c).length > 30000) return "bubble too large";
+    return null;
+  };
+
   /** The "instruction checker" of the simulator: rejects the obvious, accepts plain guidance (a stand-in for a small model). */
   const reviewVerdict = (text) => (/REJECT-ME|ignore|reveal|password/i.test(text) ? { verdict: "reject", reason: "tries to change the rules" } : { verdict: "ok", reason: "" });
   /** Gemini generateContent + model list, in the real shapes. The key travels in x-goog-api-key. */
@@ -232,10 +248,15 @@ export function createMockServer(opts = {}) {
     const body = await readBody(req); const auth = String(req.headers.authorization ?? "");
     if (path === "/line/v2/bot/message/push") {
       if (!auth.startsWith("Bearer ")) return send(res, 401, { message: "Authentication failed" });
-      const to = String(body.to ?? ""), text = (body.messages ?? []).map((m) => m.text ?? "").join("\n");
+      const to = String(body.to ?? ""), text = (body.messages ?? []).map((m) => m.text ?? m.altText ?? "").join("\n");
       if (!to || !Array.isArray(body.messages)) return send(res, 400, { message: "The request body has 1 error(s)" });
       if (to.endsWith("BLOCKED")) return send(res, 400, { message: "Failed to send messages" });
-      state.messagesSent.push({ channel: "line", to, text }); return send(res, 200, { sentMessages: [{ id: String(++state.seq) }] });
+      // Flex messages are checked the way LINE checks them: LINE refuses the whole message when a limit is passed
+      for (const m of body.messages) if (m.type === "flex") {
+        if (to.endsWith("FLEXFAIL")) return send(res, 400, { message: "The request body has 1 error(s): contents invalid" });                    // simulates a card LINE refuses
+        const bad = flexProblem(m); if (bad) { cfg.log(`LINE flex refused: ${bad}`); return send(res, 400, { message: `The request body has 1 error(s): ${bad}` }); }
+      }
+      state.messagesSent.push({ channel: "line", to, text, ...(body.messages.some((m) => m.type === "flex") ? { flex: body.messages.find((m) => m.type === "flex") } : {}) }); return send(res, 200, { sentMessages: [{ id: String(++state.seq) }] });
     }
     if (path === "/line/v2/bot/message/reply") {
       if (!auth.startsWith("Bearer ")) return send(res, 401, { message: "Authentication failed" });

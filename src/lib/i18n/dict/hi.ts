@@ -660,4 +660,10 @@ export const hi: Partial<Dict> = {
   news_hint: "सेवा से अपडेट",
   news_none: "अभी कोई समाचार नहीं।",
   news_read_all: "सभी समाचार पढ़ें",
+  flex_ref: "संदर्भ",
+  flex_status: "स्थिति",
+  flex_amount: "राशि",
+  flex_receipt: "रसीद",
+  flex_item: "आइटम",
+  flex_reason: "कारण",
 };

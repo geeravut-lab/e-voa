@@ -22,6 +22,15 @@ export async function linePush(to: string, text: string): Promise<SendResult> {
     return { ok: false, error: `LINE ${res.status}: ${(j.message ?? "").slice(0, 120)}`, permanent: res.status === 400 || res.status === 403 };   // blocked / not a friend: do not keep trying
   } catch (e) { return { ok: false, error: `LINE unreachable: ${(e as Error).message}`.slice(0, 160), permanent: false }; }
 }
+/** A Flex card (see flex.ts). Same error handling as a text push. */
+export async function lineFlex(to: string, flex: { type: "flex"; altText: string; contents: unknown }): Promise<SendResult> {
+  try {
+    const res = await fetch(`${base()}/v2/bot/message/push`, { method: "POST", headers: headers(), body: JSON.stringify({ to, messages: [flex] }), signal: AbortSignal.timeout(10_000) });
+    if (res.ok) return { ok: true };
+    const j = (await res.json().catch(() => ({}))) as { message?: string };
+    return { ok: false, error: `LINE ${res.status}: ${(j.message ?? "").slice(0, 120)}`, permanent: res.status === 400 || res.status === 403 };
+  } catch (e) { return { ok: false, error: `LINE unreachable: ${(e as Error).message}`.slice(0, 160), permanent: false }; }
+}
 export async function lineReply(replyToken: string, text: string): Promise<void> {
   try { await fetch(`${base()}/v2/bot/message/reply`, { method: "POST", headers: headers(), body: JSON.stringify({ replyToken, messages: [{ type: "text", text: text.slice(0, 900) }] }), signal: AbortSignal.timeout(10_000) }); } catch { /* the link already worked; the confirmation is a courtesy */ }
 }

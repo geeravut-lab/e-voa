@@ -660,4 +660,10 @@ export const ja: Partial<Dict> = {
   news_hint: "サービスからのお知らせ",
   news_none: "お知らせはまだありません。",
   news_read_all: "すべてのお知らせを見る",
+  flex_ref: "参照番号",
+  flex_status: "ステータス",
+  flex_amount: "金額",
+  flex_receipt: "領収書",
+  flex_item: "項目",
+  flex_reason: "理由",
 };

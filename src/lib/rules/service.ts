@@ -44,11 +44,11 @@ export async function runRules(now = new Date(), opts: { onlyOwners?: string[]; 
         if (!r.error && (r.data as { status?: string } | null)?.status === "expired") {
           out.expired++;
           const t = DICTS[await langOf(a.owner_id)];
-          await sendOnce({ userId: a.owner_id, title: t.rule_expired_title, body: fmt(t.rule_expired_body, { ref: a.ref_no }), link: "/trips", kind: "rule.expired", dedupeKey: `rule:expired:${a.id}` });
+          await sendOnce({ userId: a.owner_id, title: t.rule_expired_title, body: fmt(t.rule_expired_body, { ref: a.ref_no }), link: "/trips", kind: "rule.expired", dedupeKey: `rule:expired:${a.id}` , fields: [[t.flex_ref, a.ref_no]] });
         }
       } else if (needsPaymentReminder(a, arrival, cfg, now)) {
         const t = DICTS[await langOf(a.owner_id)];
-        const ok = await sendOnce({ userId: a.owner_id, title: t.rule_payrem_title, body: fmt(t.rule_payrem_body, { ref: a.ref_no }), link: "/apply", kind: "rule.payment_reminder", dedupeKey: `rule:payrem:${a.id}` });
+        const ok = await sendOnce({ userId: a.owner_id, title: t.rule_payrem_title, body: fmt(t.rule_payrem_body, { ref: a.ref_no }), link: "/apply", kind: "rule.payment_reminder", dedupeKey: `rule:payrem:${a.id}` , fields: [[t.flex_ref, a.ref_no]] });
         if (ok) out.payment_reminders++;
       }
     }
@@ -61,7 +61,7 @@ export async function runRules(now = new Date(), opts: { onlyOwners?: string[]; 
     const { data } = await q;
     for (const a of data ?? []) if (needsFixReminder(a, cfg, now)) {
       const t = DICTS[await langOf(a.owner_id)];
-      if (await sendOnce({ userId: a.owner_id, title: t.rule_fix_title, body: fmt(t.rule_fix_body, { ref: a.ref_no }), link: `/trips/${a.id}`, kind: "rule.fix_reminder", dedupeKey: `rule:fix:${a.id}` })) out.fix_reminders++;
+      if (await sendOnce({ userId: a.owner_id, title: t.rule_fix_title, body: fmt(t.rule_fix_body, { ref: a.ref_no }), link: `/trips/${a.id}`, kind: "rule.fix_reminder", dedupeKey: `rule:fix:${a.id}`, fields: [[t.flex_ref, a.ref_no]] })) out.fix_reminders++;
     }
   });
 

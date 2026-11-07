@@ -19,6 +19,8 @@ export async function notifyUser(n: {
   kind?: string;
   dedupeKey?: string;
   mail?: boolean;                 // default true: also send the message by e-mail when mail is configured
+  fields?: [string, string][];    // "label | value" rows for the LINE card (in the person's language)
+  note?: string;                  // a short line under the rows on the LINE card
 }): Promise<boolean> {
   if (!hasServiceRole()) return false;
   try {
@@ -56,6 +58,6 @@ async function mailToo(n: { userId: string; title: string; body?: string; link?:
   } catch (e) { console.error("[notify] mail failed", (e as Error).message); }
 }
 
-async function chatToo(n: { userId: string; title: string; body?: string; link?: string; kind?: string }) {
+async function chatToo(n: { userId: string; title: string; body?: string; link?: string; kind?: string; fields?: [string, string][]; note?: string }) {
   try { await sendToChannels(n); } catch (e) { console.error("[notify] chat failed", (e as Error).message); }
 }

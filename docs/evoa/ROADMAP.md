@@ -118,6 +118,9 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **FAQ and news** `/admin/content`: write questions (EN required, TH and 中文 optional) and news; load the built-in FAQ once to edit it; pinned news shows on the home page; `/news` for visitors; the AI assistant answers from the published English questions | ✅ |
 | **Reconciliation** `/admin/reconcile` (only payments that belong to ThaiPass are compared: the Stripe account may be shared with other apps, so a payment counts as ours when its metadata `payment_id` is one of our payment ids; new checkouts also carry `app=thaipass-evoa`): every day (Thai time) our paid payments and refunds are compared with Stripe's; differences (Stripe-only, ours-only, amount, refund) are listed with a CSV export, staff are notified, the day stays on the attention list until marked reviewed | ✅ compared with injected Stripe data · ⬜ first run against real Stripe data |
 
+| **LINE cards (Flex Message)**: notices reach LINE as a card: colored header by kind (blue info, green approved, amber needs action/deadline, red rejected/failed, teal payment, purple refund, magenta add-on, navy staff), "label | value" rows (reference, status, amount, receipt, item, reason), and one Open button that opens in the phone's browser (`openExternalBrowser=1`); `altText` carries the details for the lock screen; every text is cut to LINE's limits; if LINE refuses a card the same notice is sent as text and the channel is NOT stopped | ✅ checked against a simulator that enforces LINE's limits · ⬜ with the real LINE account |
+| **Own icons for the Revenue and Reconciliation cards** (coins and a banknote with a rising line; two ledgers matched with a check mark) | ✅ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes · ⬜ rich text and images in news

@@ -29,7 +29,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
   const top = Math.max(...REVENUE_CATEGORIES.map((c) => s.byCategory[c].net), 1);
   return (
     <div className="space-y-4">
-      <PageHead title={t.admin_revenue_title} hint={t.admin_revenue_hint} art="analytics" tone="mint" />
+      <PageHead title={t.admin_revenue_title} hint={t.admin_revenue_hint} art="revenue" tone="mint" />
       <RevenueFilter active={range.key} from={range.fromDate} to={range.toDate} />
       <p className="px-1 text-sm text-muted tabular">{t.rev_showing.replace("{from}", range.fromDate).replace("{to}", range.toDate)}</p>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label={t.rev_summary}>

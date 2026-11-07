@@ -152,7 +152,7 @@ export async function redeemVoucher(userId: string, raw: string): Promise<{ ok: 
   if (upd.data?.length !== 1) return { ok: false, error: "err_voucher_used" };                // somebody else redeemed it a moment ago
   const { data: prof } = await db().from("profiles").select("lang").eq("id", o.owner_id).maybeSingle();
   const t = DICTS[isLang(prof?.lang) ? prof.lang : "en"];
-  await notifyUser({ userId: o.owner_id, title: t.notif_addon_used_title, body: fmt(t.notif_addon_used_body, { item: o.package_name }), link: `/trips/${o.application_id}`, kind: "addon.used", dedupeKey: `addon:${o.id}:used` });
+  await notifyUser({ userId: o.owner_id, title: t.notif_addon_used_title, body: fmt(t.notif_addon_used_body, { item: o.package_name }), link: `/trips/${o.application_id}`, kind: "addon.used", dedupeKey: `addon:${o.id}:used`, fields: [[t.flex_item, o.package_name]] });
   await audit({ actorId: userId, action: "partner.redeem", entity: "addon_order", entityId: o.id, detail: { partner: m.partner.id } });
   return { ok: true, item: o.package_name };
 }

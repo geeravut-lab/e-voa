@@ -660,4 +660,10 @@ export const zhTW: Partial<Dict> = {
   news_hint: "來自服務的最新消息",
   news_none: "尚無消息。",
   news_read_all: "查看所有消息",
+  flex_ref: "參考編號",
+  flex_status: "狀態",
+  flex_amount: "金額",
+  flex_receipt: "收據",
+  flex_item: "項目",
+  flex_reason: "原因",
 };

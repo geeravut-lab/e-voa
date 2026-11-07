@@ -196,6 +196,36 @@ export const ART = {
       <Spark x={16} y={96} s={0.7} c={L} />
     </Svg>
   ),
+  revenue: (
+    <Svg>
+      <rect x="14" y="52" width="92" height="52" rx="8" fill={W} stroke={B} strokeWidth="3" />
+      <circle cx="60" cy="78" r="14" fill={GL} stroke={G} strokeWidth="3" />
+      <path d="M60 70v16M56 73.5c0-2.5 8-2.5 8 0s-8 2.5-8 5 8 2.5 8 0" stroke={N} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <circle cx="26" cy="64" r="3.5" fill={T} /><circle cx="94" cy="92" r="3.5" fill={T} />
+      <g transform="translate(110 70)">
+        <ellipse cx="14" cy="34" rx="18" ry="7" fill={G} /><rect x="-4" y="26" width="36" height="8" fill={G} />
+        <ellipse cx="14" cy="26" rx="18" ry="7" fill={GL} />
+        <ellipse cx="14" cy="18" rx="18" ry="7" fill={G} /><rect x="-4" y="10" width="36" height="8" fill={G} />
+        <ellipse cx="14" cy="10" rx="18" ry="7" fill={GL} />
+      </g>
+      <path d="M26 40l22-12 16 8 32-22" stroke={TD} strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M84 14l12-1-2 12Z" fill={TD} transform="translate(-2 4)" />
+      <Spark x={14} y={22} s={0.8} c={L} /><Spark x={146} y={58} s={0.7} />
+    </Svg>
+  ),
+  reconcile: (
+    <Svg>
+      <rect x="10" y="16" width="52" height="72" rx="8" fill={W} stroke={B} strokeWidth="3" />
+      <rect x="98" y="16" width="52" height="72" rx="8" fill={W} stroke={TD} strokeWidth="3" />
+      {[30, 46, 62].map((y, i) => (<g key={y}><rect x="18" y={y} width={36 - i * 6} height="6" rx="3" fill={B} opacity="0.85" /><rect x="106" y={y} width={36 - i * 6} height="6" rx="3" fill={TD} opacity="0.85" /></g>))}
+      <rect x="18" y="76" width="22" height="6" rx="3" fill={G} /><rect x="106" y="76" width="22" height="6" rx="3" fill={G} />
+      <path d="M66 40h28m0 0-7-7m7 7-7 7" stroke={N} strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M94 62H66m0 0 7-7m-7 7 7 7" stroke={N} strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="80" cy="96" r="17" fill={T} stroke={W} strokeWidth="4" />
+      <path d="M71 96l6 6 12-13" stroke={W} strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Spark x={146} y={104} s={0.8} /><Spark x={14} y={104} s={0.7} c={L} />
+    </Svg>
+  ),
   fees: (
     <Svg>
       <path d="M32 14h60v86l-8-6-8 6-8-6-8 6-8-6-8 6-8-6-4 4Z" fill={W} stroke={B} strokeWidth="3" strokeLinejoin="round" />

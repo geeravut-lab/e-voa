@@ -5,7 +5,11 @@ import { envValue, SITE_URL } from "@/lib/env";
 import { hashId } from "@/lib/crypto";
 import { audit } from "@/lib/audit";
 import { loadMessaging, lineConfigured, whatsappConfigured } from "./settings";
-import { linePush, lineReply, type SendResult } from "./line";
+import { linePush, lineFlex, lineReply, type SendResult } from "./line";
+import { buildFlex } from "./flex";
+import { loadBrand } from "@/lib/brand/server";
+import { DICTS } from "@/lib/i18n/dict";
+import { isLang } from "@/lib/i18n/langs";
 import { waTemplate } from "./whatsapp";
 
 export type Channel = "line" | "whatsapp";
@@ -79,17 +83,34 @@ export async function monthCount(channel: Channel): Promise<number> {
 }
 
 /** The same notice on every linked and active chat channel, within the monthly quota. Never throws; failures are logged and shown to the user on their account page. */
-export async function sendToChannels(n: { userId: string; title: string; body?: string; link?: string; kind?: string }): Promise<void> {
+export async function sendToChannels(n: { userId: string; title: string; body?: string; link?: string; kind?: string; fields?: [string, string][]; note?: string }): Promise<void> {
   const [{ data: chans }, cfg] = await Promise.all([db().from("notification_channels").select("id, channel, address").eq("owner_id", n.userId).eq("status", "active"), loadMessaging()]);
   if (!chans?.length) return;
   const text = [n.title, n.body, n.link ? `${SITE_URL}${n.link}` : ""].filter(Boolean).join("\n");
+  // LINE gets a card: colored header by kind, rows, one button (in the person's language); the text above stays for WhatsApp and as the fallback
+  const lineChan = chans.find((c) => c.channel === "line");
+  let flex: ReturnType<typeof buildFlex> | null = null;
+  if (lineChan) {
+    const [{ data: prof }, brand] = await Promise.all([db().from("profiles").select("lang").eq("id", n.userId).maybeSingle(), loadBrand()]);
+    const t = DICTS[isLang(prof?.lang) ? prof.lang : "en"];
+    flex = buildFlex({ brand: brand.name, title: n.title, fields: n.fields, text: n.body, note: n.note, url: n.link?.startsWith("/") ? `${SITE_URL}${n.link}` : undefined, buttonLabel: t.mail_open, kind: n.kind });
+  }
   for (const c of chans) {
     const channel = c.channel as Channel;
     if (!c.address || !(channel === "line" ? cfg.line_enabled && lineConfigured() : cfg.whatsapp_enabled && whatsappConfigured())) continue;
     if ((await monthCount(channel)) >= (channel === "line" ? cfg.line_quota : cfg.whatsapp_quota)) continue;          // quota used: the in-app notice and e-mail still go out
-    const r: SendResult = channel === "line" ? await linePush(c.address, text) : await waTemplate(c.address, envValue("WHATSAPP_TEMPLATE_NOTICE"), [n.title, [n.body, n.link ? `${SITE_URL}${n.link}` : ""].filter(Boolean).join(" ")]);
+    const r: SendResult = channel === "line" ? await pushLine(c.address, text, flex) : await waTemplate(c.address, envValue("WHATSAPP_TEMPLATE_NOTICE"), [n.title, [n.body, n.link ? `${SITE_URL}${n.link}` : ""].filter(Boolean).join(" ")]);
     await db().from("message_log").insert({ owner_id: n.userId, channel, kind: n.kind ?? null, status: r.ok ? "sent" : "failed", error: r.ok ? null : r.error });
     await db().from("notification_channels").update(r.ok ? { last_error: null } : { last_error: r.error, ...(r.permanent ? { status: "stopped" } : {}) }).eq("id", c.id).select("id");
   }
+}
+/** The card first. If LINE refuses the card (HTTP 400 can also mean "malformed"), the same notice goes as plain text, so a formatting problem never costs a message or stops a channel. */
+async function pushLine(to: string, text: string, flex: ReturnType<typeof buildFlex> | null): Promise<SendResult> {
+  if (flex) {
+    const r = await lineFlex(to, flex); if (r.ok) return r;
+    if (!r.error.startsWith("LINE 400")) return r;
+    console.error("[messaging] LINE refused the card, sending plain text:", r.error);
+  }
+  return linePush(to, text);
 }
 export { lineReply };
