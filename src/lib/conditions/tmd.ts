@@ -8,10 +8,15 @@ const decode = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").rep
 const tag = (xml: string, name: string) => { const m = new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, "i").exec(xml); return m ? decode(m[1]).replace(/\s+/g, " ").trim() : ""; };
 
 export type FeedItem = { title: string; link: string; pubDate: string };
-/** The items of the RSS. Only links to the department's own site are kept: the server will fetch each one. */
-export function parseCapFeed(xml: string): FeedItem[] {
+/**
+ * The items of the RSS. The server fetches every link, so only two kinds are kept: the department's own documents (https://www.tmd.go.th/uploads/CAP/….xml), and, when the operator
+ * pointed the service at another feed (a test server), documents on that same origin (`sameOrigin`, e.g. "http://127.0.0.1:4010").
+ */
+export function parseCapFeed(xml: string, sameOrigin = ""): FeedItem[] {
   const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map((m) => ({ title: tag(m[1], "title"), link: tag(m[1], "link"), pubDate: tag(m[1], "pubDate") }));
-  return items.filter((i) => /^https:\/\/www\.tmd\.go\.th\/uploads\/CAP\/[\w.-]+\.xml$/.test(i.link)).slice(0, 8);
+  const own = /^https:\/\/www\.tmd\.go\.th\/uploads\/CAP\/[\w.-]+\.xml$/;
+  const other = sameOrigin ? new RegExp(`^${sameOrigin.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}/[\\w./-]+\\.xml$`) : null;
+  return items.filter((i) => own.test(i.link) || (other !== null && other.test(i.link) && !i.link.includes(".."))).slice(0, 8);
 }
 
 export type Warning = { id: string; event: string; headline: string; description: string; instruction: string; severity: "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown"; effective: string | null; expires: string | null; areas: string[]; link: string };

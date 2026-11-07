@@ -13,6 +13,8 @@ export default async function ToolkitPage() {
     { href: "/stay", title: t.tk_stay, sub: t.tk_stay_sub, tone: "tone-mint" },
     { href: "/tdac", title: t.tk_tdac, sub: t.tk_tdac_sub, tone: "tone-sky" },
     { href: "/check-rules", title: t.tk_rules, sub: t.tk_rules_sub, tone: "tone-rose" },
+    { href: "/incident", title: t.tk_incident, sub: t.tk_incident_sub, tone: "tone-rose" },
+    { href: "/rental", title: t.tk_rental, sub: t.tk_rental_sub, tone: "tone-mint" },
     { href: "/phrases", title: t.tk_phrases, sub: t.tk_phrases_sub, tone: "tone-gold" },
     { href: "/emergency", title: t.card_emergency, sub: t.card_emergency_sub, tone: "tone-sand" },
   ];

@@ -15,11 +15,11 @@ import { admin, cleanupUsers, makeUser, sql } from "./helpers";
 type Mock = { listen: (p?: number) => Promise<number>; close: () => Promise<void> };
 let mock: Mock, base = "", savedToolkit: unknown = null;
 const post = (path: string, body: unknown) => fetch(`${base}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-const resetCache = () => { (globalThis as unknown as { __evoaConditions?: Map<string, unknown> }).__evoaConditions?.clear(); };
+const resetCache = () => { const g = globalThis as unknown as { __evoaConditions?: Map<string, unknown>; __evoaOfficial?: Record<string, unknown> }; g.__evoaConditions?.clear(); if (g.__evoaOfficial) for (const k of Object.keys(g.__evoaOfficial)) delete g.__evoaOfficial[k]; };
 
 beforeAll(async () => {
   mock = createMockServer({ decisionDelayMs: 60, log: () => {} }) as unknown as Mock; base = `http://127.0.0.1:${await mock.listen(0)}`;
-  Object.assign(process.env, { OPEN_METEO_URL: `${base}/open-meteo`, OPEN_METEO_AQ_URL: `${base}/open-meteo-aq`, ANTHROPIC_API_KEY: "test-key", ANTHROPIC_BASE_URL: `${base}/ai` });
+  Object.assign(process.env, { OPEN_METEO_URL: `${base}/open-meteo`, OPEN_METEO_AQ_URL: `${base}/open-meteo-aq`, AIR4THAI_URL: `${base}/air4thai/getNewAQI_JSON.php`, TMD_CAP_URL: `${base}/tmd/CAP`, ANTHROPIC_API_KEY: "test-key", ANTHROPIC_BASE_URL: `${base}/ai` });
   savedToolkit = ((await sql<{ value: unknown }>(`select value from public.platform_settings where key='${TOOLKIT_SETTING}'`))[0]?.value) ?? null;
 }, 120_000);
 afterAll(async () => {
@@ -37,9 +37,9 @@ describe("live conditions", () => {
     if (c.ok) expect(c.readings).toMatchObject({ tempC: 31.4, feelsC: 33.2, humidity: 66, pm25: 18.5, rainProbMax: 20, uvMax: 6, time: "2026-11-07T14:00" });
     const calls = async () => ((await (await fetch(`${base}/__admin/state`)).json()) as { weatherCalls?: unknown[] }).weatherCalls?.length;
     await fetchConditions(place); await fetchConditions(place);
-    resetCache(); await post("/__admin/weather-break", { status: 503 });
+    resetCache(); await post("/__admin/weather-break", { status: 503 }); await post("/__admin/official", { air4thaiDown: true, tmdDown: true });
     expect(await fetchConditions(place)).toEqual({ ok: false, error: "unavailable" });
-    await post("/__admin/weather-break", { status: 0 }); expect((await fetchConditions(place)).ok).toBe(true);
+    await post("/__admin/weather-break", { status: 0 }); await post("/__admin/official", {}); expect((await fetchConditions(place)).ok).toBe(true);
     void calls;
   });
   it("the assistant's tool says what is dangerous in words, refuses unknown places, and admits when it has no data", async () => {
@@ -47,11 +47,11 @@ describe("live conditions", () => {
     const j = JSON.parse(await conditionsTool({ place: "Is it safe in Patong?" }));
     expect(j).toMatchObject({ place: "Phuket", source: "Weather data by Open-Meteo.com", air: { pm2_5_ug_m3: 96, pm2_5_level: "unhealthy for everyone" } });
     expect(j.advice.map((a: { text: string }) => a.text).join(" ")).toMatch(/PM2\.5 is very high/); expect(j.advice.map((a: { text: string }) => a.text).join(" ")).toMatch(/1669/); expect(j.advice.map((a: { level: string }) => a.level)).toContain("warning");
-    expect(j.data_note).toMatch(/not official warnings/); expect(j.emergency).toContain("1155");
+    expect(j.data_note).toMatch(/Only official_warnings are official warnings/); expect(j.emergency).toContain("1155");
     expect(await conditionsTool({ place: "Tokyo" })).toMatch(/Unknown place.*Places with live data: Bangkok/s);
-    resetCache(); await post("/__admin/weather-break", { status: 500 });
+    resetCache(); await post("/__admin/weather-break", { status: 500 }); await post("/__admin/official", { air4thaiDown: true, tmdDown: true });
     expect(await conditionsTool({ place: "Bangkok" })).toMatch(/not available right now.*do not guess/s);
-    await post("/__admin/weather-break", { status: 0 }); await post("/__admin/weather", {});
+    await post("/__admin/weather-break", { status: 0 }); await post("/__admin/weather", {}); await post("/__admin/official", {});
     expect(await runTool("get_conditions", { place: "Phuket" }, { userId: null, lang: "en" })).toContain("Phuket");
   });
   it("a traveler asking about haze gets an answer built from the live data (the model is the simulator)", async () => {
@@ -64,16 +64,46 @@ describe("live conditions", () => {
   }, 120_000);
 });
 
+describe("official Thai data", () => {
+  it("uses a nearby measuring station for PM2.5 and says so; falls back to the model when none is near or the service is down", async () => {
+    resetCache(); await post("/__admin/official", {}); await post("/__admin/weather", {}); await post("/__admin/weather-break", { status: 0 });
+    const bkk = await fetchConditions(findPlace("Bangkok")!);
+    expect(bkk.ok).toBe(true);
+    if (bkk.ok) { expect(bkk.air).toMatchObject({ source: "air4thai", station: { name: "Mock Bangkok Station", thaiAqi: 92 } }); expect(bkk.readings.pm25).toBe(42.5); expect(bkk.readings.tempC).toBe(31.4); }
+    const phuket = await fetchConditions(findPlace("Phuket")!);                                        // its station has no reading: modelled value from the weather service
+    if (phuket.ok) { expect(phuket.air).toEqual({ source: "model" }); expect(phuket.readings.pm25).toBe(18.5); }
+    const j = JSON.parse(await conditionsTool({ place: "Bangkok" }));
+    expect(j.air).toMatchObject({ pm2_5_ug_m3: 42.5, station: "Mock Bangkok Station", thai_aqi: 92 }); expect(j.air.source).toMatch(/Air4Thai/);
+    resetCache(); await post("/__admin/official", { air4thaiDown: true });
+    const down = await fetchConditions(findPlace("Bangkok")!); if (down.ok) { expect(down.air).toEqual({ source: "model" }); expect(down.readings.pm25).toBe(18.5); }
+    await post("/__admin/official", {});
+  });
+  it("matches the department's warnings to the province, ignores links to other sites, and says plainly when the feed is down", async () => {
+    resetCache(); await post("/__admin/official", {});
+    const phuket = await fetchConditions(findPlace("Phuket")!);
+    expect(phuket.ok && phuket.warningsKnown).toBe(true);
+    if (phuket.ok) { expect(phuket.warnings).toHaveLength(1); expect(phuket.warnings[0]).toMatchObject({ event: "Heavy Rain", severity: "Severe", headline: "ฝนตกหนักบริเวณภาคใต้" }); }
+    const bkk = await fetchConditions(findPlace("Bangkok")!); expect(bkk.ok && bkk.warnings).toEqual([]);
+    const j = JSON.parse(await conditionsTool({ place: "Phuket" }));
+    expect(j.official_warnings[0]).toMatchObject({ severity: "Severe", level: "warning", headline_th: "ฝนตกหนักบริเวณภาคใต้" }); expect(j.official_warnings[0].source).toMatch(/Thai Meteorological Department/);
+    expect(JSON.parse(await conditionsTool({ place: "Bangkok" })).official_warnings).toMatch(/No active Thai Meteorological Department warning/);
+    resetCache(); await post("/__admin/official", { tmdDown: true });
+    expect(JSON.parse(await conditionsTool({ place: "Bangkok" })).official_warnings).toMatch(/could not be read/);
+    resetCache(); await post("/__admin/official", { noWarning: true }); const none = await fetchConditions(findPlace("Phuket")!); expect(none.ok && none.warnings).toEqual([]);
+    await post("/__admin/official", {});
+  });
+});
+
 describe("travel safety content edited in the back office", () => {
   it("shows the built-in lists until staff save a list, then shows the saved one, and falls back when it is damaged", async () => {
     const staff = await makeUser("tk-staff", { admin: true });
     await sql(`delete from public.platform_settings where key='${TOOLKIT_SETTING}'`);
-    let tk = await loadToolkit(); expect(tk.edited).toEqual({ emergency: false, phrases: false, rules: false }); expect(tk.emergency.map((e) => e.number)).toContain("1155");
+    let tk = await loadToolkit(); expect(tk.edited).toEqual({ emergency: false, phrases: false, rules: false, incidents: false }); expect(tk.emergency.map((e) => e.number)).toContain("1155");
     const list = [{ number: "1155", label: { en: "Tourist Police", th: "ตำรวจท่องเที่ยว", "zh-CN": "旅游警察" }, use: { en: "English spoken", th: "x", "zh-CN": "x" } }, { number: "1669", label: { en: "Ambulance", th: "x", "zh-CN": "x" }, use: { en: "Medical", th: "x", "zh-CN": "x" } }];
     expect(await putSetting(TOOLKIT_SETTING, { emergency: list, reviewed: { emergency: "2026-11-07" } }, staff.id)).toBe(true);
     tk = await loadToolkit(); expect(tk.edited.emergency).toBe(true); expect(tk.emergency.map((e) => e.number)).toEqual(["1155", "1669"]); expect(tk.reviewed.emergency).toBe("2026-11-07"); expect(tk.phrases.length).toBeGreaterThan(5);
     await putSetting(TOOLKIT_SETTING, { emergency: [{ number: "x" }], phrases: "broken", rules: 5 }, staff.id);
-    tk = await loadToolkit(); expect(tk.edited).toEqual({ emergency: false, phrases: false, rules: false }); expect(tk.emergency.length).toBeGreaterThanOrEqual(6);
+    tk = await loadToolkit(); expect(tk.edited).toEqual({ emergency: false, phrases: false, rules: false, incidents: false }); expect(tk.emergency.length).toBeGreaterThanOrEqual(6);
   });
 });
 void admin;

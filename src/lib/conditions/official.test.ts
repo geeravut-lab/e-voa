@@ -34,6 +34,10 @@ describe("TMD warnings (real sample)", () => {
     expect(parseCapFeed(evil)).toEqual([]); expect(parseCapFeed("<html>")).toEqual([]);
   });
   const w = parseCapAlert(read("fixtures-tmd-cap.xml"), "https://www.tmd.go.th/uploads/CAP/CAPTMD20261107160513_2.xml")!;
+  it("keeps same-origin documents only when the operator named that origin (a test feed), and never anything else", () => {
+    const feed = `<rss><channel><item><title>a</title><link>http://127.0.0.1:4010/tmd/CAP1.xml</link></item><item><title>b</title><link>http://127.0.0.1:4010/../x.xml</link></item><item><title>c</title><link>http://evil.example.com/tmd/CAP1.xml</link></item></channel></rss>`;
+    expect(parseCapFeed(feed)).toEqual([]); expect(parseCapFeed(feed, "http://127.0.0.1:4010").map((i) => i.title)).toEqual(["a"]);
+  });
   it("reads one alert", () => {
     expect(w).toMatchObject({ id: "TMD20261107160513_2", event: "Heavy Rain", severity: "Severe", effective: "2026-11-07T16:00:00+07:00", expires: "2026-11-08T06:00:00+07:00" });
     expect(w.areas).toContain("ภูเก็ต"); expect(w.areas).toContain("เชียงใหม่"); expect(w.areas).not.toContain("กรุงเทพมหานคร"); expect(w.description).toContain("ภาคใต้"); expect(w.instruction.length).toBeGreaterThan(20);

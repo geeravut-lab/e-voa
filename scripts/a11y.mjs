@@ -8,7 +8,7 @@ const { chromium } = require("playwright");
 const axeSource = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 
 const base = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
-const PAGES = ["/", "/eligibility", "/fees", "/prepare", "/guide", "/help", "/extras", "/status", "/official", "/privacy", "/terms", "/articles", "/news", "/login", "/toolkit", "/emergency", "/stay", "/tdac", "/check-rules", "/phrases", "/pay/link/not-a-real-link"];
+const PAGES = ["/", "/eligibility", "/fees", "/prepare", "/guide", "/help", "/extras", "/status", "/official", "/privacy", "/terms", "/articles", "/news", "/login", "/toolkit", "/emergency", "/stay", "/tdac", "/check-rules", "/phrases", "/conditions", "/incident", "/incident/road-accident", "/rental", "/pay/link/not-a-real-link"];
 const VIEWPORTS = [["phone", { width: 390, height: 844 }], ["desktop", { width: 1280, height: 800 }]];
 const FAIL_ON = new Set(["serious", "critical"]);
 

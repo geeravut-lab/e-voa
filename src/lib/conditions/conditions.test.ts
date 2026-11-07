@@ -53,6 +53,6 @@ describe("advice", () => {
   it("has text in English, Thai and Chinese for every piece of advice, and the heat warning names the ambulance number", () => {
     const all: AdviceKey[] = ["air_fair", "air_moderate", "air_sensitive", "air_unhealthy", "heat_caution", "heat_danger", "uv_high", "uv_very_high", "uv_extreme", "rain", "storm", "wind"];
     for (const k of all) for (const l of ["en", "th", "zh-CN"] as const) expect(ADVICE[k][l].length, `${k} ${l}`).toBeGreaterThan(12);
-    expect(ADVICE.heat_danger.en).toContain("1669"); expect(ADVICE_NOTE.en).toMatch(/not an official warning|not official warnings/); for (const l of ["en", "th", "zh-CN"] as const) expect(ADVICE_NOTE[l]).toContain("1669");
+    expect(ADVICE.heat_danger.en).toContain("1669"); expect(ADVICE_NOTE.en).toMatch(/Only the department.s warnings are official/); for (const l of ["en", "th", "zh-CN"] as const) expect(ADVICE_NOTE[l]).toContain("1669");
   });
 });

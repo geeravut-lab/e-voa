@@ -5,6 +5,7 @@ import { PLACES, findPlace } from "@/lib/conditions/places";
 import { ADVICE, ADVICE_NOTE, advise, airLevel, uvBand, weatherGroup } from "@/lib/conditions/rules";
 import { AIR_LABEL, UV_LABEL, WEATHER_LABEL } from "@/lib/conditions/labels";
 import { fetchConditions, SOURCE } from "@/lib/conditions/service";
+import { warningLevel } from "@/lib/conditions/tmd";
 import { limited } from "@/lib/ratelimit";
 import { PageHead } from "@/components/PageHead";
 import { AppLink } from "@/components/AppLink";
@@ -19,7 +20,7 @@ export default async function ConditionsPage({ searchParams }: { searchParams: P
   const { t, lang } = await getT();
   const place = findPlace((await searchParams).place) ?? PLACES[0];
   const cond = (await limited("conditions", 60, 600)) ? ({ ok: false } as const) : await fetchConditions(place);       // the cache keeps repeated views from calling the weather service
-  const r = cond.ok ? cond.readings : null;
+  const ok = cond.ok ? cond : null, r = ok ? ok.readings : null, hasNumbers = !!r && (r.tempC !== null || r.pm25 !== null);
   const box = "space-y-2 rounded-card border border-line bg-surface p-5 shadow-card";
   const num = (v: number | null | undefined, unit = "") => (v === null || v === undefined ? "—" : `${Math.round(v * 10) / 10}${unit}`);
   const wg = r ? weatherGroup(r.weatherCode) : null, air = r ? airLevel(r.pm25) : null, uv = r ? uvBand(r.uvNow ?? r.uvMax) : null, advice = r ? advise(r) : [];
@@ -27,7 +28,23 @@ export default async function ConditionsPage({ searchParams }: { searchParams: P
     <div className="space-y-4">
       <PageHead title={t.cond_title} hint={t.cond_hint} art="toolkit" tone="sky" />
       <PlacePicker current={place.slug} lang={lang} />
-      {!r ? <p role="alert" className="rounded-card border border-gold bg-gold-soft p-5 font-semibold text-gold-deep">{t.cond_unavailable}</p> : (
+      {!r || !hasNumbers ? <p role="alert" className="rounded-card border border-gold bg-gold-soft p-5 font-semibold text-gold-deep">{t.cond_unavailable}</p> : null}
+      {ok?.warningsKnown && (
+            <section className={box} aria-label={t.cond_warnings}>
+              <h2 className="font-display text-lg font-bold">{t.cond_warnings}</h2>
+              {ok.warnings.length === 0 ? <p className="text-sm text-muted">{t.cond_no_warnings}</p> : (
+                <>
+                  <ul className="space-y-2">{ok.warnings.map((w) => (
+                    <li key={w.id} className={`space-y-1 rounded-control border p-3 text-sm ${TONE[warningLevel(w.severity)]}`}>
+                      <b className="block" lang="th">{w.headline || w.event}{w.expires ? ` · ${t.cond_warn_until.replace("{time}", w.expires.slice(0, 16).replace("T", " "))}` : ""}</b>
+                      <span className="block font-normal text-ink" lang="th">{w.description}</span>{w.instruction && <span className="block font-semibold text-ink" lang="th">{w.instruction}</span>}
+                    </li>))}</ul>
+                  <p className="text-xs text-muted">{t.cond_warning_note}</p>
+                </>
+              )}
+            </section>
+          )}
+      {r && hasNumbers && (
         <>
           <section className={box} aria-label={t.cond_now}>
             <h2 className="font-display text-lg font-bold">{t.cond_now} · {forLang(place.name, lang)}</h2>
@@ -44,7 +61,8 @@ export default async function ConditionsPage({ searchParams }: { searchParams: P
           <section className={box} aria-label={t.cond_air}>
             <h2 className="font-display text-lg font-bold">{t.cond_air}</h2>
             <p className="font-display text-3xl font-extrabold tabular">{num(r.pm25)} <span className="text-base font-semibold text-muted">µg/m³</span></p>
-            {air && <p className="font-semibold">{forLang(AIR_LABEL[air], lang)}{r.usAqi !== null ? ` · US AQI ${Math.round(r.usAqi)}` : ""}</p>}
+            {air && <p className="font-semibold">{forLang(AIR_LABEL[air], lang)}{ok!.air.source === "air4thai" ? (ok!.air.station.thaiAqi !== null ? ` · Thai AQI ${Math.round(ok!.air.station.thaiAqi)}` : "") : r.usAqi !== null ? ` · US AQI ${Math.round(r.usAqi)}` : ""}</p>}
+            <p className="text-xs text-muted">{ok!.air.source === "air4thai" ? t.cond_air_station.replace("{station}", ok!.air.station.name).replace("{km}", String(ok!.air.station.distanceKm)).replace("{time}", ok!.air.station.at?.replace("T", " ") ?? "—") : t.cond_air_model}</p>
           </section>
           <section className={box} aria-label={t.cond_advice}>
             <h2 className="font-display text-lg font-bold">{t.cond_advice}</h2>
@@ -58,7 +76,7 @@ export default async function ConditionsPage({ searchParams }: { searchParams: P
         <AppLink href="/help/chat" className={btnClass("primary")}>{t.cond_ask_ai}</AppLink>
         <AppLink href="/emergency" className={btnClass("ghost")}>{t.card_emergency}</AppLink>
       </div>
-      <p className="text-xs text-muted">{SOURCE === "Weather data by Open-Meteo.com" ? t.cond_source : SOURCE}</p>
+      <p className="text-xs text-muted">{t.cond_source} · {t.cond_source_air} · {t.cond_source_tmd}{SOURCE ? "" : ""}</p>
     </div>
   );
 }

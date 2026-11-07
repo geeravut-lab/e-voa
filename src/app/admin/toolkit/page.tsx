@@ -82,6 +82,25 @@ export default async function ToolkitAdmin() {
         </ActionForm>
         {reset("rules")}
       </section>
+
+      <section className={box}>
+        {head("incidents", t.admin_tk_incidents)}
+        <ActionForm action={saveToolkitAction.bind(null, "incidents")} className="space-y-3">
+          {Array.from({ length: total(tk.incidents.length) }, (_, i) => { const c = tk.incidents[i]; return (
+            <div key={i} className={row}>
+              <div className="grid gap-2 sm:grid-cols-2">{field(`incidents.${i}.id`, t.admin_tk_id, c?.id, { max: 40 })}{field(`incidents.${i}.call`, t.admin_tk_call, c?.call.join(" "), { max: 40 })}</div>
+              {tri(`incidents.${i}.title`, t.admin_tk_title_f, c?.title ?? null, LIMITS.title)}{tri(`incidents.${i}.summary`, t.admin_tk_summary, c?.summary ?? null, LIMITS.summary)}
+              <div className="grid gap-2 sm:grid-cols-3">
+                {field(`incidents.${i}.steps.en`, `${t.admin_tk_steps} · EN`, c?.steps.en.join("\n"), { area: true, max: LIMITS.steps * LIMITS.step })}
+                {field(`incidents.${i}.steps.th`, `${t.admin_tk_steps} · ไทย`, c && c.steps.th !== c.steps.en ? c.steps.th.join("\n") : "", { area: true, max: LIMITS.steps * LIMITS.step, lang: "th" })}
+                {field(`incidents.${i}.steps.zh`, `${t.admin_tk_steps} · 中文`, c && c.steps["zh-CN"] !== c.steps.en ? c.steps["zh-CN"].join("\n") : "", { area: true, max: LIMITS.steps * LIMITS.step, lang: "zh-CN" })}
+              </div>
+              {c && del(`incidents.${i}.del`)}
+            </div>); })}
+          {foot("incidents")}
+        </ActionForm>
+        {reset("incidents")}
+      </section>
     </div>
   );
 }

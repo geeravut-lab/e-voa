@@ -1,13 +1,14 @@
 // The editable part of "While in Thailand": emergency numbers, Thai phrases and the rules check. PURE (no server imports): the pages, the back-office form,
 // the offline page and the tests share it. The built-in lists in toolkit.ts are the fallback, so a missing or damaged setting never breaks a page (rule 9).
 import { EMERGENCY, PHRASES, RULES_CHECK, type Emergency, type Phrase, type RuleItem } from "./toolkit";
+import { INCIDENTS, type Incident } from "./incidents";
 import type { PerLang } from "./types";
 
-export type ToolkitContent = { emergency: Emergency[]; phrases: Phrase[]; rules: RuleItem[] };
+export type ToolkitContent = { emergency: Emergency[]; phrases: Phrase[]; rules: RuleItem[]; incidents: Incident[] };
 export type ToolkitKind = keyof ToolkitContent;
-export const KINDS: ToolkitKind[] = ["emergency", "phrases", "rules"];
-export const BUILTIN: ToolkitContent = { emergency: EMERGENCY, phrases: PHRASES, rules: RULES_CHECK };
-export const LIMITS = { emergency: 12, phrases: 40, rules: 30, label: 80, use: 200, th: 80, roman: 100, meaning: 100, title: 100, text: 700 } as const;
+export const KINDS: ToolkitKind[] = ["emergency", "phrases", "rules", "incidents"];
+export const BUILTIN: ToolkitContent = { emergency: EMERGENCY, phrases: PHRASES, rules: RULES_CHECK, incidents: INCIDENTS };
+export const LIMITS = { emergency: 12, phrases: 40, rules: 30, incidents: 16, steps: 12, step: 300, summary: 200, label: 80, use: 200, th: 80, roman: 100, meaning: 100, title: 100, text: 700 } as const;
 const LEVELS = ["illegal", "restricted", "respect", "careful"] as const;
 const THAI = /[฀-๿]/;
 
@@ -44,7 +45,21 @@ function cleanRules(raw: unknown): RuleItem[] {
   }
   return out.slice(0, LIMITS.rules);
 }
-const CLEAN = { emergency: cleanEmergency, phrases: cleanPhrases, rules: cleanRules } as const;
+/** Lines keep their line breaks (one step per line); every line is trimmed and cut. */
+const linesOf = (v: unknown, perLine: number, maxLines: number): string[] => (typeof v === "string" ? v.split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim().slice(0, perLine)).filter(Boolean).slice(0, maxLines) : []);
+function cleanIncidents(raw: unknown): Incident[] {
+  const out: Incident[] = [], used = new Set<string>();
+  for (const r of Array.isArray(raw) ? raw : []) {
+    const o = (r ?? {}) as Record<string, unknown>, title = three(o.title, LIMITS.title), summary = three(o.summary, LIMITS.summary), st = (o.steps && typeof o.steps === "object" ? o.steps : {}) as Record<string, unknown>;
+    const en = linesOf(st.en, LIMITS.step, LIMITS.steps); if (!title || !summary || en.length === 0) continue;
+    const th = linesOf(st.th, LIMITS.step, LIMITS.steps), zh = linesOf(st["zh-CN"], LIMITS.step, LIMITS.steps);
+    let id = str(o.id, 40).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `case-${out.length + 1}`; while (used.has(id)) id += "-x"; used.add(id);
+    const call = (Array.isArray(o.call) ? o.call : []).map((n) => str(n, 8)).filter((n) => /^\d{3,6}$/.test(n)).slice(0, 4);
+    out.push({ id, call, title, summary, steps: { en, th: th.length ? th : en, "zh-CN": zh.length ? zh : en } });
+  }
+  return out.slice(0, LIMITS.incidents);
+}
+const CLEAN = { emergency: cleanEmergency, phrases: cleanPhrases, rules: cleanRules, incidents: cleanIncidents } as const;
 
 /** The stored setting, with every list cleaned: bad items are dropped, an empty list counts as "not edited". */
 export function parseToolkit(raw: unknown): Partial<ToolkitContent> {
@@ -53,7 +68,7 @@ export function parseToolkit(raw: unknown): Partial<ToolkitContent> {
   return out;
 }
 /** What the pages show: the edited list when there is one, otherwise the built-in one. */
-export const mergeToolkit = (stored: Partial<ToolkitContent>): ToolkitContent => ({ emergency: stored.emergency ?? BUILTIN.emergency, phrases: stored.phrases ?? BUILTIN.phrases, rules: stored.rules ?? BUILTIN.rules });
+export const mergeToolkit = (stored: Partial<ToolkitContent>): ToolkitContent => ({ emergency: stored.emergency ?? BUILTIN.emergency, phrases: stored.phrases ?? BUILTIN.phrases, rules: stored.rules ?? BUILTIN.rules, incidents: stored.incidents ?? BUILTIN.incidents });
 
 // ---------------------------------------------------------------- the back-office form
 type Form = { get(k: string): unknown };
@@ -69,12 +84,13 @@ export function parseToolkitForm(kind: ToolkitKind, f: Form): { ok: true; list: 
     if (f.get(`${p}.del`) === "on") continue;
     if (kind === "emergency") { const number = v(f, `${p}.number`).trim(); if (!number && !v(f, `${p}.label.en`).trim()) continue; rows.push({ number, label: tri(f, `${p}.label`), use: tri(f, `${p}.use`) }); }
     else if (kind === "phrases") { if (!v(f, `${p}.th`).trim() && !v(f, `${p}.en`).trim()) continue; rows.push({ th: v(f, `${p}.th`), roman: v(f, `${p}.roman`), en: v(f, `${p}.en`), zh: v(f, `${p}.zh`), urgent: f.get(`${p}.urgent`) === "on" }); }
+    else if (kind === "incidents") { if (!v(f, `${p}.title.en`).trim() && !v(f, `${p}.steps.en`).trim()) continue; rows.push({ id: v(f, `${p}.id`), call: v(f, `${p}.call`).split(/[\s,;]+/).filter(Boolean), title: tri(f, `${p}.title`), summary: tri(f, `${p}.summary`), steps: { en: v(f, `${p}.steps.en`), th: v(f, `${p}.steps.th`), "zh-CN": v(f, `${p}.steps.zh`) } }); }
     else { if (!v(f, `${p}.title.en`).trim() && !v(f, `${p}.text.en`).trim()) continue; rows.push({ level: v(f, `${p}.level`), title: tri(f, `${p}.title`), text: tri(f, `${p}.text`) }); }
   }
   if (rows.length === 0) return { ok: false, error: "err_toolkit_empty" };
   if (rows.length > LIMITS[kind]) return { ok: false, error: "err_toolkit_too_many" };
   const cleaned = CLEAN[kind](rows);
-  if (cleaned.length !== rows.length) return { ok: false, error: kind === "emergency" ? "err_toolkit_number" : kind === "phrases" ? "err_toolkit_thai" : "err_toolkit_incomplete" };
+  if (cleaned.length !== rows.length) return { ok: false, error: kind === "emergency" ? "err_toolkit_number" : kind === "phrases" ? "err_toolkit_thai" : kind === "incidents" ? "err_toolkit_steps" : "err_toolkit_incomplete" };
   return { ok: true, list: cleaned };
 }
 

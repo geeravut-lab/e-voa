@@ -87,7 +87,7 @@ export function createMockServer(opts = {}) {
     },
     log: opts.log ?? (process.env.MOCK_QUIET === "1" ? () => {} : (m) => console.log(`[mock] ${m}`)),
   };
-  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, walletPatches: [], weather: {}, weatherBreak: 0, weatherCalls: [], messagesSent: [], seq: 0, errOnce: new Set() };
+  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, walletPatches: [], weather: {}, weatherBreak: 0, official: {}, weatherCalls: [], messagesSent: [], seq: 0, errOnce: new Set() };
   const timers = new Set();
 
   const send = (res, code, body, headers = {}) => { const s = JSON.stringify(body); res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(s), ...headers }); res.end(s); };
@@ -369,6 +369,7 @@ export function createMockServer(opts = {}) {
     if (path === "/__admin/decide" && req.method === "POST") { const app = state.applications.get(b.webReferenceNumber); if (!app) return send(res, 404, { error: "unknown application" }); await decide(app, Number(b.statusId), b.statusDesc); return send(res, 200, { ok: true, status: app.status }); }
     if (path === "/__admin/config" && req.method === "POST") { for (const k of ["decisionDelayMs", "duplicateMode"]) if (b[k] !== undefined) cfg[k] = b[k]; for (const k of Object.keys(cfg.callbacks)) if (b.callbacks?.[k] !== undefined) cfg.callbacks[k] = b.callbacks[k]; return send(res, 200, { ok: true }); }
     if (path === "/__admin/weather" && req.method === "POST") { state.weather = b ?? {}; return send(res, 200, { ok: true, weather: state.weather }); }
+    if (path === "/__admin/official" && req.method === "POST") { state.official = b ?? {}; return send(res, 200, { ok: true }); }
     if (path === "/__admin/weather-break" && req.method === "POST") { state.weatherBreak = Number(b?.status) || 0; return send(res, 200, { ok: true }); }
     if (path === "/__admin/ai-break" && req.method === "POST") { state.aiBreak = b?.provider ? { ...state.aiBreak, [b.provider]: b.status || 0 } : {}; return send(res, 200, { ok: true, aiBreak: state.aiBreak }); }
     if (path === "/__admin/reset" && req.method === "POST") { state.aiBreak = {}; for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.walletPatches.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
@@ -390,6 +391,24 @@ export function createMockServer(opts = {}) {
       if (path === "/flights/lookup") return flights(req, res, url);
       if (path === "/ai/v1/messages" && req.method === "POST") return await anthropicMock(req, res);
       if (path === "/ai/v1/models" && req.method === "GET") return send(res, 200, { data: [{ id: "claude-sonnet-5-5", type: "model" }, { id: "claude-haiku-5-5", type: "model" }, { id: "claude-opus-5-5", type: "model" }], has_more: false, first_id: "claude-sonnet-5-5", last_id: "claude-opus-5-5" });
+      // Air4Thai and TMD CAP look-alikes (same shapes as the real services, checked 8 Nov 2026). POST /__admin/official {air4thaiDown, tmdDown, stationPm25, noWarning}
+      if (path === "/air4thai/getNewAQI_JSON.php") {
+        if (state.official.air4thaiDown) return send(res, 503, { error: "down" });
+        const th = new Date(Date.now() + 7 * 3600_000 - 20 * 60_000).toISOString(), date = th.slice(0, 10), time = th.slice(11, 16), pm = String(state.official.stationPm25 ?? 42.5);
+        const st = (id, nameEN, areaEN, lat, lon, value) => ({ stationID: id, nameTH: nameEN, nameEN, areaTH: areaEN, areaEN, stationType: "GROUND", lat: String(lat), long: String(lon), forecast: [], AQILast: { date, time, PM25: { color_id: "3", aqi: "92", value }, PM10: { color_id: "0", aqi: "-1", value: "-1" }, AQI: { color_id: "3", aqi: "92", param: "PM25" } } });
+        return send(res, 200, { stations: [st("02t", "Mock Bangkok Station", "Thon Buri, Bangkok", 13.7328, 100.4877, pm), st("99t", "Mock Phuket Station", "Mueang, Phuket", 7.89, 98.39, "-1"), st("98t", "Far Away Station", "Chiang Mai", 18.79, 98.98, "5.5")] });
+      }
+      if (path === "/tmd/CAP") {
+        if (state.official.tmdDown) return send(res, 503, { error: "down" });
+        const origin = `http://${req.headers.host}`;
+        res.writeHead(200, { "Content-Type": "text/xml" });
+        return res.end(`<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel><title>TMD</title>${state.official.noWarning ? "" : `<item><title>ฝนตกหนัก</title><description>x</description><link>${origin}/tmd/CAPTEST1.xml</link><pubDate>now</pubDate></item><item><title>evil</title><link>https://evil.example.com/a.xml</link></item>`}</channel></rss>`);
+      }
+      if (path === "/tmd/CAPTEST1.xml") {
+        const eff = new Date(Date.now() - 3600_000).toISOString(), exp = new Date(Date.now() + 6 * 3600_000).toISOString();
+        res.writeHead(200, { "Content-Type": "text/xml" });
+        return res.end(`<?xml version="1.0" encoding="utf-8"?><alert xmlns="urn:oasis:names:tc:emergency:cap:1.2"><identifier>MOCK1</identifier><sender>TMD</sender><status>Actual</status><msgType>Alert</msgType><scope>Public</scope><info><language>th-TH</language><event>Heavy Rain</event><urgency>Immediate</urgency><severity>Severe</severity><effective>${eff}</effective><expires>${exp}</expires><headline>ฝนตกหนักบริเวณภาคใต้</headline><description>ภาคใต้มีฝนตกหนักบางพื้นที่</description><instruction>ระวังน้ำท่วมฉับพลัน</instruction><area><areaDesc>ภูเก็ต พังงา กระบี่</areaDesc></area></info></alert>`);
+      }
       // Open-Meteo look-alike (weather + air quality): fixed readings that a test can change with POST /__admin/weather {pm25, feelsC, code, rainProb, uv, gust}; /__admin/weather-break {status} makes it fail
       if (path === "/open-meteo/v1/forecast" || path === "/open-meteo-aq/v1/air-quality") {
         const u = new URL(req.url, "http://x"), lat = Number(u.searchParams.get("latitude")), lon = Number(u.searchParams.get("longitude"));

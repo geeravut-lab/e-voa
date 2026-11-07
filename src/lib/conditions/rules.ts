@@ -72,7 +72,7 @@ export const ADVICE: Record<AdviceKey, PerLang<string>> = {
   wind: { en: "Strong wind. Boat trips and island ferries may be cancelled or rough: check with the operator before you go.", th: "ลมแรง เรือท่องเที่ยวและเรือข้ามเกาะอาจถูกยกเลิกหรือคลื่นแรง สอบถามผู้ให้บริการก่อนเดินทาง", "zh-CN": "风力较强。游船和跨岛渡轮可能取消或颠簸，出发前请向运营方确认。" },
 };
 export const ADVICE_NOTE: PerLang<string> = {
-  en: "Modelled values for the area, not a measurement at your street, and not official warnings. For official warnings see the Thai Meteorological Department; in an emergency call 1669, 191 or 1155.",
-  th: "เป็นค่าประมาณจากแบบจำลองของพื้นที่ ไม่ใช่การวัดที่หน้าบ้านคุณ และไม่ใช่คำเตือนอย่างเป็นทางการ ดูคำเตือนทางการได้ที่กรมอุตุนิยมวิทยา กรณีฉุกเฉินโทร 1669, 191 หรือ 1155",
-  "zh-CN": "这是该区域的模型估算值，并非您所在街道的实测，也不是官方预警。官方预警请查看泰国气象局；紧急情况请拨打 1669、191 或 1155。",
+  en: "Weather and UV are modelled for the area, not measured at your street. PM2.5 is measured when a station is named, otherwise modelled. Only the department's warnings are official; in an emergency call 1669, 191 or 1155.",
+  th: "สภาพอากาศและ UV เป็นค่าจากแบบจำลองของพื้นที่ ไม่ได้วัดที่หน้าบ้านคุณ ค่า PM2.5 เป็นค่าที่วัดจริงเมื่อระบุสถานี มิฉะนั้นเป็นค่าประมาณ เฉพาะคำเตือนของกรมอุตุนิยมวิทยาเท่านั้นที่เป็นทางการ กรณีฉุกเฉินโทร 1669, 191 หรือ 1155",
+  "zh-CN": "天气和紫外线为区域模型估算，并非您所在街道的实测。注明监测站时 PM2.5 为实测值，否则为估算值。只有气象局的预警属于官方预警；紧急情况请拨打 1669、191 或 1155。",
 };
