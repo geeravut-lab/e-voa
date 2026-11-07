@@ -21,7 +21,7 @@ export async function passCardPng(href: string): Promise<Blob> {
   } finally { URL.revokeObjectURL(url); }
 }
 
-/** "Save to phone": on a phone the share sheet offers "Save image"; elsewhere the PNG downloads. */
+/** "Save to phone": the PNG is saved straight to the phone (the browser's download), with no share sheet in between. */
 export function SavePassButton({ href, filename }: { href: string; filename: string }) {
   const t = useT();
   const [err, setErr] = useState<string | null>(null);
@@ -30,10 +30,7 @@ export function SavePassButton({ href, filename }: { href: string; filename: str
       <AsyncButton variant="gold" onClick={async () => {
         setErr(null);
         try {
-          const png = await passCardPng(href), file = new File([png], filename, { type: "image/png" });
-          if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-            try { await navigator.share({ files: [file], title: filename }); return; } catch (e) { if ((e as Error).name === "AbortError") return; /* sharing failed: fall back to a download */ }
-          }
+          const png = await passCardPng(href);
           const a = document.createElement("a"); a.href = URL.createObjectURL(png); a.download = filename; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
         } catch { setErr(errorText("err_generic", t)); }
       }}>{t.pass_save}</AsyncButton>

@@ -55,7 +55,6 @@ export function RentalHelper({ groups, slots }: { groups: ClientGroup[]; slots: 
     setErr(null);
     const files = list.map((s, i) => new File([photos[s.id].blob], stampFileName(s.id, photos[s.id].at, i), { type: "image/jpeg" }));
     try {
-      if (typeof navigator.canShare === "function" && navigator.canShare({ files })) { try { await navigator.share({ files, title: t.rental_title }); setSaved(files.length); return; } catch (e) { if ((e as Error).name === "AbortError") return; } }
       for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10_000); await new Promise((r) => setTimeout(r, 250)); }
       setSaved(files.length);
     } catch { setErr(t.rental_photo_error); }
