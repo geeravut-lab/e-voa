@@ -8,16 +8,19 @@ import { DEFAULT_REFUND_POLICY, parseRefundPolicy } from "@/lib/payments/refund-
 import { DICTS } from "@/lib/i18n/dict";
 import type { Lang } from "@/lib/i18n/langs";
 import type { ToolDef } from "./types";
+import { conditionsTool } from "@/lib/conditions/tool";
 
 export const TOOLS: ToolDef[] = [
   { name: "get_my_applications", description: "List the signed-in user's own applications: reference, traveler first name, status in words, what the status means, arrival date and package. Returns an error text if nobody is signed in.", input_schema: { type: "object", properties: {}, additionalProperties: false }, strict: true },
   { name: "get_fees", description: "The current prices per traveler in Thai baht and the refund rule.", input_schema: { type: "object", properties: {}, additionalProperties: false }, strict: true },
   { name: "check_eligibility", description: "Whether a nationality is on the Visa on Arrival / visa-free list the service has loaded. Give the country name in English.", input_schema: { type: "object", properties: { nationality: { type: "string", description: "Country or nationality name in English" } }, required: ["nationality"], additionalProperties: false }, strict: true },
+  { name: "get_conditions", description: "Live weather, air quality (PM2.5), UV, heat and rain advice for a place in Thailand (a province, city or island such as Bangkok, Phuket, Chiang Mai, Krabi). Use it when the user asks whether the weather or air is a problem, is it safe to go out or travel somewhere now, heat, smoke, haze, rain or storms. Give the place name in English.", input_schema: { type: "object", properties: { place: { type: "string", description: "Place name in English, e.g. Phuket" } }, required: ["place"], additionalProperties: false }, strict: true },
 ];
 
 /** Runs one tool. Always returns a short text (never throws): the model reads it as data. Personal data returned is limited to the caller's own applications. */
 export async function runTool(name: string, input: unknown, ctx: { userId: string | null; lang: Lang }): Promise<string> {
   try {
+    if (name === "get_conditions") return await conditionsTool(input);
     if (name === "get_fees") {
       const fees = await loadFees(); const policy = parseRefundPolicy(await getSetting<unknown>("refund_policy", DEFAULT_REFUND_POLICY));
       return JSON.stringify({ visa_fee_thb: fees.visa_thb, service_fee_regular_thb: fees.regular_service_thb, service_fee_express_thb: fees.express_service_thb, visa_and_service_fee_refundable: policy.visa_fee_refundable, unused_extras_refundable: policy.unused_addons_refundable });

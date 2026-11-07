@@ -87,7 +87,7 @@ export function createMockServer(opts = {}) {
     },
     log: opts.log ?? (process.env.MOCK_QUIET === "1" ? () => {} : (m) => console.log(`[mock] ${m}`)),
   };
-  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, walletPatches: [], messagesSent: [], seq: 0, errOnce: new Set() };
+  const state = { applications: new Map(), byPayment: new Map(), insurance: new Map(), sim: new Map(), vip: new Map(), bhs: new Map(), callbacksSent: [], aiRequests: [], aiBreak: {}, walletPatches: [], weather: {}, weatherBreak: 0, weatherCalls: [], messagesSent: [], seq: 0, errOnce: new Set() };
   const timers = new Set();
 
   const send = (res, code, body, headers = {}) => { const s = JSON.stringify(body); res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(s), ...headers }); res.end(s); };
@@ -367,6 +367,8 @@ export function createMockServer(opts = {}) {
     if (path === "/__admin/state") return send(res, 200, { config: { ...cfg, partnerSecret: "***", callbackSecret: "***" }, applications: [...state.applications.values()], insurance: [...state.insurance.values()], sim: [...state.sim.values()], vip: [...state.vip.values()], bhs: [...state.bhs.values()], callbacksSent: state.callbacksSent, aiRequests: state.aiRequests, walletPatches: state.walletPatches, messagesSent: state.messagesSent });
     if (path === "/__admin/decide" && req.method === "POST") { const app = state.applications.get(b.webReferenceNumber); if (!app) return send(res, 404, { error: "unknown application" }); await decide(app, Number(b.statusId), b.statusDesc); return send(res, 200, { ok: true, status: app.status }); }
     if (path === "/__admin/config" && req.method === "POST") { for (const k of ["decisionDelayMs", "duplicateMode"]) if (b[k] !== undefined) cfg[k] = b[k]; for (const k of Object.keys(cfg.callbacks)) if (b.callbacks?.[k] !== undefined) cfg.callbacks[k] = b.callbacks[k]; return send(res, 200, { ok: true }); }
+    if (path === "/__admin/weather" && req.method === "POST") { state.weather = b ?? {}; return send(res, 200, { ok: true, weather: state.weather }); }
+    if (path === "/__admin/weather-break" && req.method === "POST") { state.weatherBreak = Number(b?.status) || 0; return send(res, 200, { ok: true }); }
     if (path === "/__admin/ai-break" && req.method === "POST") { state.aiBreak = b?.provider ? { ...state.aiBreak, [b.provider]: b.status || 0 } : {}; return send(res, 200, { ok: true, aiBreak: state.aiBreak }); }
     if (path === "/__admin/reset" && req.method === "POST") { state.aiBreak = {}; for (const m of [state.applications, state.byPayment, state.insurance, state.sim, state.vip, state.bhs]) m.clear(); state.callbacksSent.length = 0; state.aiRequests.length = 0; state.walletPatches.length = 0; state.messagesSent.length = 0; state.errOnce.clear(); return send(res, 200, { ok: true }); }
     // partner-side events: the partner tells ThaiPass that something happened (SIM picked up, VIP used, voucher used, lab result)
@@ -387,6 +389,17 @@ export function createMockServer(opts = {}) {
       if (path === "/flights/lookup") return flights(req, res, url);
       if (path === "/ai/v1/messages" && req.method === "POST") return await anthropicMock(req, res);
       if (path === "/ai/v1/models" && req.method === "GET") return send(res, 200, { data: [{ id: "claude-sonnet-5-5", type: "model" }, { id: "claude-haiku-5-5", type: "model" }, { id: "claude-opus-5-5", type: "model" }], has_more: false, first_id: "claude-sonnet-5-5", last_id: "claude-opus-5-5" });
+      // Open-Meteo look-alike (weather + air quality): fixed readings that a test can change with POST /__admin/weather {pm25, feelsC, code, rainProb, uv, gust}; /__admin/weather-break {status} makes it fail
+      if (path === "/open-meteo/v1/forecast" || path === "/open-meteo-aq/v1/air-quality") {
+        const u = new URL(req.url, "http://x"), lat = Number(u.searchParams.get("latitude")), lon = Number(u.searchParams.get("longitude"));
+        state.weatherCalls.push({ path, lat, lon });
+        if (state.weatherBreak) return send(res, state.weatherBreak, { error: true, reason: "forced failure" });
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return send(res, 400, { error: true, reason: "latitude and longitude are required" });
+        const w = { pm25: 18.5, feelsC: 33.2, code: 2, rainProb: 20, uv: 6, gust: 20, ...state.weather };
+        const time = "2026-11-07T14:00";
+        if (path.endsWith("/forecast")) return send(res, 200, { latitude: lat, longitude: lon, timezone: "Asia/Bangkok", current: { time, temperature_2m: 31.4, relative_humidity_2m: 66, apparent_temperature: w.feelsC, precipitation: 0, weather_code: w.code, wind_speed_10m: 12.3, wind_gusts_10m: w.gust }, daily: { time: ["2026-11-07"], temperature_2m_max: [33.1], precipitation_probability_max: [w.rainProb], uv_index_max: [w.uv] } });
+        return send(res, 200, { latitude: lat, longitude: lon, current: { time, pm2_5: w.pm25, pm10: w.pm25 * 1.6, us_aqi: Math.round(w.pm25 * 3.1), uv_index: w.uv } });
+      }
       if (path.startsWith("/ai/v1beta/")) return await googleMock(req, res, path);
       // Google Wallet (updating a saved pass): OAuth token for a service account, then PATCH of the pass object (an id containing MISSING answers 404 like a pass nobody saved)
       if (path === "/wallet/token" && req.method === "POST") { const f = Object.fromEntries(new URLSearchParams(await readRaw(req))); return f.grant_type === "urn:ietf:params:oauth:grant-type:jwt-bearer" && String(f.assertion ?? "").split(".").length === 3 ? send(res, 200, { access_token: "mock-wallet-token", expires_in: 3600, token_type: "Bearer" }) : send(res, 400, { error: "invalid_grant" }); }

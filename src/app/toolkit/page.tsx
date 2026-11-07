@@ -9,6 +9,7 @@ export const generateMetadata = () => pageMeta({ path: "/toolkit", title: "toolk
 export default async function ToolkitPage() {
   const { t } = await getT();
   const tools = [
+    { href: "/conditions", title: t.tk_conditions, sub: t.tk_conditions_sub, tone: "tone-sky" },
     { href: "/stay", title: t.tk_stay, sub: t.tk_stay_sub, tone: "tone-mint" },
     { href: "/tdac", title: t.tk_tdac, sub: t.tk_tdac_sub, tone: "tone-sky" },
     { href: "/check-rules", title: t.tk_rules, sub: t.tk_rules_sub, tone: "tone-rose" },
