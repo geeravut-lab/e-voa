@@ -16,3 +16,17 @@ describe("cleaning what staff type", () => {
   });
   it("limits the length", () => { expect(cleanTexts({ en: "x".repeat(BODY_MAX + 50) }, BODY_MAX).en).toHaveLength(BODY_MAX); });
 });
+
+import { parseSections, sectionsToText, validSlug } from "@/lib/content/managed";
+describe("article text ↔ sections", () => {
+  it("## starts a section and a blank line ends a paragraph; lines inside a paragraph are joined", () => {
+    const s = parseSections("Intro line one\nstill the intro\n\n## First\n\nPara A line 1\nline 2\n\nPara B\n\n## Second\nOnly one paragraph");
+    expect(s).toEqual([{ h: "", p: ["Intro line one still the intro"] }, { h: "First", p: ["Para A line 1 line 2", "Para B"] }, { h: "Second", p: ["Only one paragraph"] }]);
+  });
+  it("round-trips", () => {
+    const sections = [{ h: "One", p: ["a", "b"] }, { h: "Two", p: ["c"] }]; expect(parseSections(sectionsToText(sections))).toEqual(sections);
+    expect(parseSections(sectionsToText([{ h: "", p: ["x"] }]))).toEqual([{ h: "", p: ["x"] }]);
+  });
+  it("is empty for empty text and never keeps markup as markup (it stays text)", () => { expect(parseSections("  \n\n ")).toEqual([]); expect(parseSections("<script>alert(1)</script>")[0].p[0]).toBe("<script>alert(1)</script>"); });
+  it("accepts only tidy slugs", () => { for (const ok of ["how-it-works", "abc", "a1-b2-c3"]) expect(validSlug(ok), ok).toBe(true); for (const bad of ["ab", "Has-Caps", "double--dash", "-lead", "trail-", "with space", "x".repeat(81), "a/b", ""]) expect(validSlug(bad), bad).toBe(false); });
+});

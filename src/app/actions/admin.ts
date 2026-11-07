@@ -131,31 +131,36 @@ export async function setDiscountActiveAction(id: string, active: boolean, _p: A
 }
 
 // ---------------------------------------------------------------- FAQ and news (content_items)
-/** Creates or updates one FAQ question or news item. English is required; Thai and Chinese are optional (a missing language shows the English text). */
+/** Creates or updates one FAQ question, news item or travel article. English is required; Thai and Chinese are optional (a missing language shows the English text). */
 export async function saveContentAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const a = await requireAdminAction();
   if (!a.ok) return a;
-  const { cleanTexts, TITLE_MAX, BODY_MAX } = await import("@/lib/content/managed");
-  const kind = fd.get("kind") === "news" ? "news" : "faq", idRaw = String(fd.get("id") ?? "");
+  const { cleanTexts, TITLE_MAX, BODY_MAX, ARTICLE_MAX, SUMMARY_MAX, validSlug, parseSections } = await import("@/lib/content/managed");
+  const kindRaw = String(fd.get("kind") ?? ""), kind = kindRaw === "news" ? "news" : kindRaw === "article" ? "article" : "faq", idRaw = String(fd.get("id") ?? "");
   if (idRaw && !/^[0-9a-f-]{36}$/i.test(idRaw)) return { ok: false, error: "err_generic" };
   const pick = (name: string, max: number) => cleanTexts({ en: fd.get(`${name}_en`), th: fd.get(`${name}_th`), "zh-CN": fd.get(`${name}_zh`) }, max);
-  const title = pick("title", TITLE_MAX), body = pick("body", BODY_MAX);
-  if (!title.en || !body.en) return { ok: false, error: "err_content_en_required" };
+  const article = kind === "article", title = pick("title", TITLE_MAX), body = pick("body", article ? ARTICLE_MAX : BODY_MAX), summary = article ? pick("summary", SUMMARY_MAX) : null;
+  if (!title.en || !body.en || (article && !summary?.en)) return { ok: false, error: "err_content_en_required" };
+  if (article) for (const [l, t] of Object.entries(body)) if (parseSections(t as string).length === 0) return { ok: false, error: l === "en" ? "err_content_en_required" : "err_generic" };
+  const slug = article && !idRaw ? String(fd.get("slug") ?? "").trim().toLowerCase() : null;
+  if (article && !idRaw && !validSlug(slug ?? "")) return { ok: false, error: "err_content_slug_format" };
   const published = fd.get("published") === "on", pinned = kind === "news" && fd.get("pinned") === "on", sortN = Number(fd.get("sort") || 100), sort = Number.isInteger(sortN) && sortN >= 0 && sortN <= 9999 ? sortN : 100;
+  const dateRaw = String(fd.get("date") ?? "").trim(), chosen = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) && !Number.isNaN(Date.parse(`${dateRaw}T00:00:00+07:00`)) ? new Date(`${dateRaw}T00:00:00+07:00`).toISOString() : null;
   const db = createAdminClient(), now = new Date().toISOString();
   let id = idRaw;
   if (id) {
     const { data: old } = await db.from("content_items").select("published_at, kind").eq("id", id).maybeSingle();
     if (!old || old.kind !== kind) return { ok: false, error: "err_not_found" };
-    const upd = await db.from("content_items").update({ title, body, published, pinned, sort, published_at: published ? old.published_at ?? now : old.published_at, updated_by: a.viewer.user.id, updated_at: now }).eq("id", id).select("id");
+    const upd = await db.from("content_items").update({ title, body, ...(summary ? { summary } : {}), published, pinned, sort, published_at: chosen ?? (published ? old.published_at ?? now : old.published_at), updated_by: a.viewer.user.id, updated_at: now }).eq("id", id).select("id");
     if (upd.error || upd.data?.length !== 1) return { ok: false, error: "err_generic" };                  // a write that matches no row is not success
   } else {
-    const ins = await db.from("content_items").insert({ kind, title, body, published, pinned, sort, published_at: published ? now : null, created_by: a.viewer.user.id, updated_by: a.viewer.user.id }).select("id");
+    const ins = await db.from("content_items").insert({ kind, title, body, ...(summary ? { summary } : {}), ...(slug ? { slug } : {}), published, pinned, sort, published_at: chosen ?? (published ? now : null), created_by: a.viewer.user.id, updated_by: a.viewer.user.id }).select("id");
+    if (ins.error?.code === "23505") return { ok: false, error: "err_content_slug_exists" };
     if (ins.error || ins.data?.length !== 1) return { ok: false, error: "err_generic" };
     id = ins.data[0].id;
   }
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: idRaw ? "content.update" : "content.create", entity: "content_item", entityId: id, detail: { kind, published } });
-  revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/", "layout");
+  revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/articles"); revalidatePath("/", "layout");
   if (!idRaw) redirect(`/admin/content/${id}`);
   return done(`/admin/content/${id}`);
 }
@@ -167,8 +172,27 @@ export async function deleteContentAction(id: string, _p: ActionResult, _fd: For
   const { data, error } = await createAdminClient().from("content_items").delete().eq("id", id).select("id, kind");
   if (error || data?.length !== 1) return { ok: false, error: "err_generic" };
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.delete", entity: "content_item", entityId: id, detail: { kind: data[0].kind } });
-  revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/", "layout");
+  revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/articles"); revalidatePath("/", "layout");
   redirect(`/admin/content?kind=${data[0].kind}`);
+}
+
+/** Copies the built-in travel articles (English, Thai, Chinese) into the editor, once, so every article can be edited, unpublished or replaced. */
+export async function seedArticlesAction(_p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction();
+  if (!a.ok) return a;
+  const db = createAdminClient();
+  const { count } = await db.from("content_items").select("id", { count: "exact", head: true }).eq("kind", "article");
+  if ((count ?? 0) > 0) return { ok: false, error: "err_content_seed_exists" };
+  const { ARTICLES } = await import("@/lib/content/articles"), { sectionsToText } = await import("@/lib/content/managed");
+  const find = (lang: "th" | "zh-CN", slug: string) => ARTICLES[lang].find((x) => x.slug === slug);
+  const rows = ARTICLES.en.map((e, i) => { const th = find("th", e.slug), zh = find("zh-CN", e.slug);
+    return { kind: "article", slug: e.slug, title: { en: e.title, ...(th ? { th: th.title } : {}), ...(zh ? { "zh-CN": zh.title } : {}) }, summary: { en: e.summary, ...(th ? { th: th.summary } : {}), ...(zh ? { "zh-CN": zh.summary } : {}) },
+      body: { en: sectionsToText(e.body), ...(th ? { th: sectionsToText(th.body) } : {}), ...(zh ? { "zh-CN": sectionsToText(zh.body) } : {}) }, published: true, sort: (i + 1) * 10, published_at: `${e.date}T00:00:00+07:00`, created_by: a.viewer.user.id, updated_by: a.viewer.user.id }; });
+  const { data, error } = await db.from("content_items").insert(rows).select("id");
+  if (error || data?.length !== rows.length) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.seed_articles", entity: "content_item", detail: { count: rows.length } });
+  revalidatePath("/articles");
+  return done("/admin/content");
 }
 
 /** Copies the built-in FAQ (English, Thai, Chinese) into the editor, once, so every question can be edited or hidden. */

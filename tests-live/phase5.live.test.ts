@@ -8,7 +8,8 @@ import { failPayment, startCheckout } from "@/lib/payments/service";
 import { quoteForTrip } from "@/lib/discounts/service";
 import { reconcileDay, type StripeSide } from "@/lib/reconcile/service";
 import { attentionItems } from "@/lib/admin-attention";
-import { loadFaq, loadNews, pinnedNews } from "@/lib/content/server";
+import { loadArticle, loadArticles, loadFaq, loadNews, pinnedNews } from "@/lib/content/server";
+import { ARTICLES } from "@/lib/content/articles";
 import { FAQ } from "@/lib/content/faq";
 import { createClient } from "@supabase/supabase-js";
 import { SB_ANON, SB_URL, admin, cleanupUsers, makeDraft, makeUser, sql } from "./helpers";
@@ -165,6 +166,24 @@ describe("FAQ and news from the back office", () => {
     expect((await loadNews("en")).slice(0, 2).map((n) => n.title)).toEqual(["P5 Pinned news", "P5 Old news"]); expect((await pinnedNews("th"))?.title).toBe("P5 ข่าวปักหมุด");
     await sql(`delete from public.content_items where title->>'en' like 'P5 %'`);
     expect((await loadFaq("en")).length).toBe(FAQ.en.length); expect(await pinnedNews("en")).toBeNull();                                            // back to the built-in FAQ
+  });
+});
+
+describe("travel articles from the back office", () => {
+  it("shows published articles in the reader's language with English as the fallback, keeps addresses unique, and falls back to the built-in articles when none is published", async () => {
+    cleanups.push(`delete from public.content_items where slug like 'p5-art-%'`);
+    expect((await loadArticles("en")).map((a) => a.slug)).toEqual(ARTICLES.en.map((a) => a.slug));                                                    // nothing written yet: the built-in articles
+    const ins = (slug: string, pub: boolean, title: object, body: object, at: string) => sql(`insert into public.content_items (kind, slug, title, summary, body, published, published_at) values ('article', '${slug}', '${JSON.stringify(title)}'::jsonb, '${JSON.stringify({ en: "A summary", th: "สรุป" })}'::jsonb, '${JSON.stringify(body)}'::jsonb, ${pub}, '${at}')`);
+    await ins("p5-art-newer", true, { en: "P5 Newer", th: "P5 ใหม่กว่า" }, { en: "Intro\n\n## Part one\n\nText A\n\nText B", th: "บทนำ\n\n## ส่วนหนึ่ง\n\nข้อความ" }, "2026-12-02T00:00:00Z");
+    await ins("p5-art-older", true, { en: "P5 Older" }, { en: "## Only heading\nOne paragraph" }, "2026-11-01T00:00:00Z"); await ins("p5-art-hidden", false, { en: "P5 Hidden" }, { en: "x" }, "2026-12-03T00:00:00Z");
+    expect((await loadArticles("en")).map((a) => a.slug)).toEqual(["p5-art-newer", "p5-art-older"]);                                                  // newest first, unpublished left out, the built-in ones are not mixed in
+    const th = await loadArticle("p5-art-newer", "th"); expect(th).toMatchObject({ title: "P5 ใหม่กว่า", summary: "สรุป", date: "2026-12-02" }); expect(th!.body).toEqual([{ h: "", p: ["บทนำ"] }, { h: "ส่วนหนึ่ง", p: ["ข้อความ"] }]);
+    expect((await loadArticle("p5-art-older", "th"))!.title).toBe("P5 Older");                                                                        // Thai not written: English
+    expect(await loadArticle("p5-art-hidden", "en")).toBeNull(); expect(await loadArticle("nope", "en")).toBeNull();
+    await expect(ins("p5-art-newer", true, { en: "dup" }, { en: "dup" }, "2026-12-04T00:00:00Z")).rejects.toThrow(/duplicate|unique/i);               // one address, one article
+    await expect(ins("Bad Slug", true, { en: "x" }, { en: "x" }, "2026-12-04T00:00:00Z")).rejects.toThrow(/slug_check|violates/i);                    // the database refuses an untidy address
+    await sql(`delete from public.content_items where slug like 'p5-art-%'`);
+    expect((await loadArticles("en")).length).toBe(ARTICLES.en.length);
   });
 });
 

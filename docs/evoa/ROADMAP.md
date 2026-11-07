@@ -121,6 +121,8 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | **LINE cards (Flex Message)**: notices reach LINE as a card: colored header by kind (blue info, green approved, amber needs action/deadline, red rejected/failed, teal payment, purple refund, magenta add-on, navy staff), "label | value" rows (reference, status, amount, receipt, item, reason), and one Open button that opens in the phone's browser (`openExternalBrowser=1`); `altText` carries the details for the lock screen; every text is cut to LINE's limits; if LINE refuses a card the same notice is sent as text and the channel is NOT stopped | ✅ checked against a simulator that enforces LINE's limits · ⬜ with the real LINE account |
 | **Own icons for the Revenue and Reconciliation cards** (coins and a banknote with a rising line; two ledgers matched with a check mark) | ✅ |
 
+| **Travel articles from the back office** `/admin/content?kind=article`: write articles (English required, Thai and Chinese optional; `## ` = heading, blank line = paragraph; plain text), a fixed address `/articles/<address>`, summary for the list and search results, date; "Load the built-in articles" copies the five built-in ones into the editor once; published articles replace the built-in list, and the sitemap follows | ✅ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes · ⬜ rich text and images in news
