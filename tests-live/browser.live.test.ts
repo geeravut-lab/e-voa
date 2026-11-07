@@ -467,7 +467,7 @@ describe("menus, language, notifications", () => {
   it("automation rules page shows each rule with its switch and number", async () => {
     const staff = await makeUser("rules-s", true); const ctx = await ctxFor(staff); const p = await ctx.newPage();
     await p.goto(`${APP}/admin/rules`); await p.getByText("Payment reminder", { exact: true }).waitFor({ timeout: 20_000 });
-    expect(await p.locator("input[type=checkbox]").count()).toBe(8); expect(await p.locator("input[type=number]").count()).toBe(4);
+    expect(await p.locator("input[type=checkbox]").count()).toBe(8); expect(await p.locator("input[type=number]").count()).toBe(7);
     expect(await p.getByRole("button", { name: "Run the rules now" }).count()).toBe(1); expect(await overflowX(p)).toBe(false); await shot(p, "rules-390"); await ctx.close();
   });
 
