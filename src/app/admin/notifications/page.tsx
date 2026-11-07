@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminNotifications() {
   const v = await requireAdminPage();
   const { t } = await getT();
-  const items = await attentionFor(v.user.id);
+  const items = await attentionFor(v.user.id, v.caps);
   const unseen = items.filter((i) => !i.seen).length;
   const text = (k: string) => (t as unknown as Record<string, string>)[k];
   return (

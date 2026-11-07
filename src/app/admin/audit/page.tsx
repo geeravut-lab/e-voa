@@ -11,7 +11,7 @@ import { SubmitButton } from "@/components/Buttons";
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
-  await requireAdminPage();
+  await requireAdminPage("audit");
   const { t, lang } = await getT();
   const { data } = await (await createClient()).from("audit_log").select("id, at, actor_id, actor_role, action, entity, detail, source").order("at", { ascending: false }).limit(100);
   const fmtDate = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "medium" });

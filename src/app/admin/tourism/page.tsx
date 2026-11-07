@@ -12,7 +12,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminTourism({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage("audit");
   const { t } = await getT();
   const sp = await searchParams;
   const range = resolveRange(sp.range, new Date(), sp.from, sp.to);

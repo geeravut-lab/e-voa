@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminAction } from "@/lib/auth";
+import { isRole } from "@/lib/roles";
 import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,7 @@ import type { ActionResult } from "@/components/ActionForm";
 const done = (path: string): ActionResult => { revalidatePath("/", "layout"); revalidatePath(path); return { ok: true }; };
 
 export async function saveBrandNameAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const name = String(fd.get("name") ?? "");
   if (!validBrandName(name)) return { ok: false, error: "err_name_invalid" };
@@ -25,7 +26,7 @@ export async function saveBrandNameAction(_p: ActionResult, fd: FormData): Promi
 }
 
 export async function uploadBrandImageAction(kind: BrandKind, _p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const file = fd.get("file");
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "err_file_missing" };
@@ -36,7 +37,7 @@ export async function uploadBrandImageAction(kind: BrandKind, _p: ActionResult, 
 }
 
 export async function resetBrandImageAction(kind: BrandKind, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const res = await resetBrandImage(kind, a.viewer.user.id);
   if (!res.ok) return res;
@@ -45,7 +46,7 @@ export async function resetBrandImageAction(kind: BrandKind, _p: ActionResult, _
 }
 
 export async function saveFlagsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const before = await loadFlags();
   const next = Object.fromEntries(FEATURE_KEYS.map((k) => [k, fd.get(`flag_${k}`) === "on"])) as Record<(typeof FEATURE_KEYS)[number], boolean>;
@@ -57,18 +58,31 @@ export async function saveFlagsAction(_p: ActionResult, fd: FormData): Promise<A
 }
 
 export async function grantAdminAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("staff");
   if (!a.ok) return a;
   const email = String(fd.get("email") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok: false, error: "err_email_invalid" };
   // The database function enforces the rules (caller is admin, account must already exist).
-  const { error } = await (await createClient()).rpc("grant_admin", { p_email: email });
+  const role = String(fd.get("role") ?? "manager"); if (!isRole(role)) return { ok: false, error: "err_role_invalid" };
+  const { error } = await (await createClient()).rpc("grant_admin", { p_email: email, p_role: role });
   if (error) return { ok: false, error: /err_[a-z_]+/.exec(error.message)?.[0] ?? "err_generic" };
   return done("/admin/admins");
 }
 
+/** The owner changes the role of another staff account. The owner's own row never changes. */
+export async function setAdminRoleAction(userId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction("staff");
+  if (!a.ok) return a;
+  const role = String(fd.get("role") ?? ""); if (!isRole(role) || !/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, error: "err_role_invalid" };
+  if (!a.viewer.isOwner) return { ok: false, error: "err_forbidden" };
+  const upd = await createAdminClient().from("admins").update({ role }).eq("user_id", userId).eq("is_owner", false).select("user_id");     // a write that matches no row is not success
+  if (upd.error || upd.data?.length !== 1) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "staff.role", entity: "admins", entityId: userId, detail: { role } });
+  return done("/admin/admins");
+}
+
 export async function revokeAdminAction(userId: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("staff");
   if (!a.ok) return a;
   if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, error: "err_generic" };
   const { error } = await (await createClient()).rpc("revoke_admin", { p_user: userId });
@@ -78,7 +92,7 @@ export async function revokeAdminAction(userId: string, _p: ActionResult, _fd: F
 
 /** Gives an existing account read-only access to the tourism statistics (/gov). The account must already exist; nothing else in the back office opens for it. */
 export async function grantReportViewerAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("staff");
   if (!a.ok) return a;
   const email = String(fd.get("email") ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok: false, error: "err_email_invalid" };
@@ -92,7 +106,7 @@ export async function grantReportViewerAction(_p: ActionResult, fd: FormData): P
 }
 
 export async function revokeReportViewerAction(userId: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("staff");
   if (!a.ok) return a;
   if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, error: "err_generic" };
   const { data, error } = await createAdminClient().from("report_viewers").delete().eq("user_id", userId).select("user_id");
@@ -103,7 +117,7 @@ export async function revokeReportViewerAction(userId: string, _p: ActionResult,
 
 /** Creates a discount code. Percent 1–100 or a fixed baht amount; optional dates and limits. A code is never deleted afterwards, only turned off. */
 export async function createDiscountAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   const { CODE_RE, normalizeCode } = await import("@/lib/discounts/rules");
   const code = normalizeCode(String(fd.get("code") ?? "")); if (!CODE_RE.test(code)) return { ok: false, error: "err_discount_code_format" };
@@ -121,7 +135,7 @@ export async function createDiscountAction(_p: ActionResult, fd: FormData): Prom
 }
 
 export async function setDiscountActiveAction(id: string, active: boolean, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "err_generic" };
   const { data, error } = await createAdminClient().from("discount_codes").update({ active }).eq("id", id).select("id");
@@ -133,7 +147,7 @@ export async function setDiscountActiveAction(id: string, active: boolean, _p: A
 // ---------------------------------------------------------------- FAQ and news (content_items)
 /** Creates or updates one FAQ question, news item or travel article. English is required; Thai and Chinese are optional (a missing language shows the English text). */
 export async function saveContentAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!a.ok) return a;
   const { cleanTexts, TITLE_MAX, BODY_MAX, ARTICLE_MAX, SUMMARY_MAX, validSlug, parseSections } = await import("@/lib/content/managed");
   const kindRaw = String(fd.get("kind") ?? ""), kind = kindRaw === "news" ? "news" : kindRaw === "article" ? "article" : "faq", idRaw = String(fd.get("id") ?? "");
@@ -166,7 +180,7 @@ export async function saveContentAction(_p: ActionResult, fd: FormData): Promise
 }
 
 export async function deleteContentAction(id: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!a.ok) return a;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "err_generic" };
   const { data, error } = await createAdminClient().from("content_items").delete().eq("id", id).select("id, kind");
@@ -178,7 +192,7 @@ export async function deleteContentAction(id: string, _p: ActionResult, _fd: For
 
 /** Copies the built-in travel articles (English, Thai, Chinese) into the editor, once, so every article can be edited, unpublished or replaced. */
 export async function seedArticlesAction(_p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!a.ok) return a;
   const db = createAdminClient();
   const { count } = await db.from("content_items").select("id", { count: "exact", head: true }).eq("kind", "article");
@@ -197,7 +211,7 @@ export async function seedArticlesAction(_p: ActionResult, _fd: FormData): Promi
 
 /** Copies the built-in FAQ (English, Thai, Chinese) into the editor, once, so every question can be edited or hidden. */
 export async function seedFaqAction(_p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!a.ok) return a;
   const db = createAdminClient();
   const { count } = await db.from("content_items").select("id", { count: "exact", head: true }).eq("kind", "faq");
@@ -213,7 +227,7 @@ export async function seedFaqAction(_p: ActionResult, _fd: FormData): Promise<Ac
 
 /** Runs (or re-runs) the reconciliation of one Thai day. */
 export async function runReconcileAction(day: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   const { thaiDayRange, yesterdayThai } = await import("@/lib/reconcile/rules");
   if (!thaiDayRange(day) || day > yesterdayThai(new Date(Date.now() + 86_400_000))) return { ok: false, error: "err_number_invalid" };
@@ -226,7 +240,7 @@ export async function runReconcileAction(day: string, _p: ActionResult, _fd: For
 
 /** "I have looked at these differences": the day stops asking for attention. */
 export async function reviewReconcileAction(day: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ok: false, error: "err_generic" };
   const { data, error } = await createAdminClient().from("reconciliation_reports").update({ reviewed_at: new Date().toISOString(), reviewed_by: a.viewer.user.id }).eq("day", day).select("day");
@@ -243,7 +257,7 @@ const int = (v: FormDataEntryValue | null, min: number, max: number): number | n
 };
 
 export async function saveSettingsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const visa = int(fd.get("visa_thb"), 0, 100_000);
   const regular = int(fd.get("regular_service_thb"), 0, 100_000);
@@ -262,7 +276,7 @@ export async function saveSettingsAction(_p: ActionResult, fd: FormData): Promis
 const codes = (s: string) => [...new Set(s.toUpperCase().split(/[^A-Z]+/).filter((c) => /^[A-Z]{3}$/.test(c)))];
 /** Who may apply for Visa on Arrival / who needs no visa: 3-letter nationality codes copied from the official announcement. */
 export async function saveEligibilityAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const voa = codes(String(fd.get("voa") ?? "")), visa_free = codes(String(fd.get("visa_free") ?? ""));
   if (voa.some((c) => visa_free.includes(c))) return { ok: false, error: "err_elig_overlap" };
@@ -273,7 +287,7 @@ export async function saveEligibilityAction(_p: ActionResult, fd: FormData): Pro
 
 /** The addresses shown on the public "Official channels" page. Anything that is not a plain https link / e-mail / phone is dropped. */
 export async function saveChannelsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { parseChannels } = await import("@/lib/channels");
   const value = parseChannels(Object.fromEntries(fd));
@@ -284,7 +298,7 @@ export async function saveChannelsAction(_p: ActionResult, fd: FormData): Promis
 
 /** The seller's details printed on every tax invoice (name, tax id, address, VAT registration). Checked shape only: the accountant confirms the content. */
 export async function saveCompanyAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { parseCompany } = await import("@/lib/invoice");
   const raw = Object.fromEntries(fd);
@@ -297,7 +311,7 @@ export async function saveCompanyAction(_p: ActionResult, fd: FormData): Promise
 
 /** Airport-specific notes for the public Airport guide, per airport and language (counters, lanes, hours): written by staff from the airport / Thai Immigration, never generated. */
 export async function saveAirportNotesAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!a.ok) return a;
   const { parseAirportNotes } = await import("@/lib/airports");
   const raw: Record<string, Record<string, string>> = {};
@@ -309,7 +323,7 @@ export async function saveAirportNotesAction(_p: ActionResult, fd: FormData): Pr
 
 /** The help assistant's switch and spending limits (which provider and model answer is saved by saveAiRoutingAction). Numbers are clamped to sane ranges. */
 export async function saveAiAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { parseAi } = await import("@/lib/ai/settings");
   const raw = Object.fromEntries(fd);
@@ -320,7 +334,7 @@ export async function saveAiAction(_p: ActionResult, fd: FormData): Promise<Acti
 
 /** Which provider answers each task, which one is the spare, and which model each provider uses. A model name is checked for shape only; "Test" asks the provider for real. */
 export async function saveAiRoutingAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { parseRouting } = await import("@/lib/ai/route");
   const { PROVIDERS, MODEL_RE } = await import("@/lib/ai/registry");
@@ -343,7 +357,7 @@ export async function saveAiRoutingAction(_p: ActionResult, fd: FormData): Promi
 
 /** The Test button: one real call to the chosen provider and model, bypassing routing. */
 export async function testAiModelAction(provider: string, model: string): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { isProvider, MODEL_RE } = await import("@/lib/ai/registry");
   if (!isProvider(provider) || !MODEL_RE.test(model)) return { ok: false, error: "err_ai_model" };
@@ -354,7 +368,7 @@ export async function testAiModelAction(provider: string, model: string): Promis
 
 /** The administrator's added instructions: screened by code, then read by a small model; only text that passes both is saved, and every saved text stays in the history. */
 export async function savePromptExtraAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!a.ok) return a;
   const { parseExtra, EXTRA_MAX } = await import("@/lib/ai/extra");
   const { reviewPromptAddition } = await import("@/lib/ai/server");
@@ -374,7 +388,7 @@ export async function savePromptExtraAction(_p: ActionResult, fd: FormData): Pro
 
 /** LINE / WhatsApp: on-off and the monthly message quota of each channel (the quota keeps the bill predictable; notices past it still go to the app and e-mail). */
 export async function saveMessagingAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { parseMessaging } = await import("@/lib/messaging/settings");
   const raw = Object.fromEntries(fd);
@@ -385,7 +399,7 @@ export async function saveMessagingAction(_p: ActionResult, fd: FormData): Promi
 
 /** Staff decide about an agency: approve, suspend, and the terms agreed with it (service-fee discount per application, commission on service fees). */
 export async function setAgencyAction(agencyId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   const status = String(fd.get("status") ?? ""), discount = Math.floor(Number(fd.get("discount_thb"))), pct = Number(fd.get("commission_pct"));
   if (!["pending", "active", "suspended"].includes(status) || !Number.isFinite(discount) || discount < 0 || discount > 600 || !Number.isFinite(pct) || pct < 0 || pct > 50) return { ok: false, error: "err_form_incomplete" };
@@ -397,7 +411,7 @@ export async function setAgencyAction(agencyId: string, _p: ActionResult, fd: Fo
 }
 
 export async function setPartnerAction(partnerId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const status = String(fd.get("status") ?? ""), pct = Number(fd.get("settlement_pct"));
   if (!["pending", "active", "suspended"].includes(status) || !Number.isFinite(pct) || pct < 0 || pct > 100) return { ok: false, error: "err_form_incomplete" };
@@ -408,7 +422,7 @@ export async function setPartnerAction(partnerId: string, _p: ActionResult, fd: 
   return done("/admin/partners");
 }
 export async function settlePartnerAction(partnerId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   const period = String(fd.get("period") ?? "");
   const { isPeriod } = await import("@/lib/partner-portal/rules");
@@ -420,7 +434,7 @@ export async function settlePartnerAction(partnerId: string, _p: ActionResult, f
 }
 
 export async function saveAuditConfigAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { AUDIT_CATEGORIES } = await import("@/lib/audit-config");
   const enabled = fd.get("enabled") === "on";
@@ -433,7 +447,7 @@ export async function saveAuditConfigAction(_p: ActionResult, fd: FormData): Pro
 }
 
 export async function saveRulesAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { parseRules } = await import("@/lib/rules/rules");
   const on = (k: string) => fd.get(k) === "on", n = (k: string) => Number(fd.get(k));
@@ -446,7 +460,7 @@ export async function saveRulesAction(_p: ActionResult, fd: FormData): Promise<A
   return done("/admin/rules");
 }
 export async function runRulesAction(_p: ActionResult, _fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("config");
   if (!a.ok) return a;
   const { runRules } = await import("@/lib/rules/service");
   const r = await runRules();
@@ -455,7 +469,7 @@ export async function runRulesAction(_p: ActionResult, _fd: FormData): Promise<A
 }
 
 export async function payAgencyCommissionAction(agencyId: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("finance");
   if (!a.ok) return a;
   const period = String(fd.get("period") ?? "");
   const { isPeriod } = await import("@/lib/partner-portal/rules");

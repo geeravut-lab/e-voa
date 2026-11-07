@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 
 export default async function SettingsPage() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const [{ t }, fees, retention] = await Promise.all([getT(), getSetting("fees", DEFAULT_FEES), getSetting("retention", DEFAULT_RETENTION)]);
   const input = "min-h-11 w-full rounded-control border-[1.5px] border-field bg-surface px-3 tabular";
   const field = (name: string, label: string, value: number) => (

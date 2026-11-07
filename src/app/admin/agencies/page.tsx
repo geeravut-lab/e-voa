@@ -14,7 +14,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminAgencies() {
-  await requireAdminPage();
+  await requireAdminPage("finance");
   const { t } = await getT();
   const db = createAdminClient();
   const { data: list } = await db.from("agencies").select("id, name, status, contact_name, contact_email, contact_phone, country, license_no, discount_thb, commission_pct, admin_note, created_at").order("created_at", { ascending: false }).limit(100);

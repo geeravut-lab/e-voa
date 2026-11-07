@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { Bell, LogIn } from "lucide-react";
 import { unstable_rethrow } from "next/navigation";
-import { NAV, resolveHref, type NavItem } from "@/config/nav";
+import { NAV, navAllowed, resolveHref, type NavItem } from "@/config/nav";
 import { getViewer, displayNameOf } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { loadFlags } from "@/lib/flags";
@@ -35,14 +35,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const signedIn = !!viewer.user;
   const isAdmin = viewer.isAdmin;
   // Staff see only the back-office menu; their bell counts what waits for them (not the traveler notices).
-  const attention = isAdmin ? await attentionTotal(viewer.user!.id) : 0;
+  const attention = isAdmin ? await attentionTotal(viewer.user!.id, viewer.caps) : 0;
   const unread = !isAdmin && signedIn && flags.notifications ? await unreadCount() : 0;
   if (viewer.user) {
     const id = viewer.user.id;
     after(() => trackEvent(id, "active")); // once a day per person; never blocks the page
   }
 
-  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && (!n.viewerOnly || viewer.isReportViewer) && n.area === (isAdmin ? "admin" : "traveler"));
+  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && (!n.viewerOnly || viewer.isReportViewer) && n.area === (isAdmin ? "admin" : "traveler") && (!isAdmin || navAllowed(n, viewer.caps)));
   const entry = (n: NavItem): NavEntry => ({
     key: n.key,
     label: t[n.label],
@@ -56,7 +56,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   });
   const by = (k: string) => visible.find((n) => n.key === k);
   const side = visible.filter((n) => n.side).map(entry);
-  const centreKey = isAdmin ? "ops" : "apply";
+  const centreKey = isAdmin ? (["ops", "revenue", "content", "errors"].find((k) => by(k)) ?? "admin_home") : "apply";            // the centre button of the bar: the first area this role has
   const apply = by(centreKey) ?? NAV.find((n) => n.key === centreKey)!;
   const barKeys = isAdmin ? { left: ["admin_home", "admin_notifs"], right: ["errors"] } : { left: ["home", "trips"], right: ["help"] };
   const left = barKeys.left.map(by).filter((n): n is NavItem => !!n).map(entry);

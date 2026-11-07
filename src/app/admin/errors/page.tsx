@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Errors the server threw while showing pages or running actions (scrubbed of personal data). The reference matches the "ref" shown on the error page. */
 export default async function ErrorsPage() {
-  await requireAdminPage();
+  await requireAdminPage("audit");
   const { t, lang } = await getT();
   const { data } = await (await createClient()).from("error_log").select("id, at, route, kind, message, digest").order("at", { ascending: false }).limit(100);
   const fmt = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "medium" });

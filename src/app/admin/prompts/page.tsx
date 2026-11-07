@@ -18,7 +18,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPrompts() {
-  await requireAdminPage();
+  await requireAdminPage("content");
   const { t, lang } = await getT();
   const [extra, fees, policy, ch, faq, { data: versions }] = await Promise.all([loadExtra(), loadFees(), getSetting<unknown>("refund_policy", DEFAULT_REFUND_POLICY).then(parseRefundPolicy), loadChannels(), loadFaq("en"),
     createAdminClient().from("ai_prompt_versions").select("id, body, created_at").eq("task", "chat").order("created_at", { ascending: false }).limit(10)]);

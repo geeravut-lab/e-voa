@@ -12,7 +12,7 @@ import { btnClass } from "@/components/buttonStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminContent({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage("content");
   const { t, lang } = await getT();
   const k = (await searchParams).kind, kind: "faq" | "news" | "article" = k === "news" ? "news" : k === "article" ? "article" : "faq";
   const { data: rows } = await createAdminClient().from("content_items").select("id, title, slug, published, pinned, sort, published_at, updated_at").eq("kind", kind).order(kind === "faq" ? "sort" : "published_at", { ascending: kind === "faq", nullsFirst: kind !== "faq" }).limit(500);

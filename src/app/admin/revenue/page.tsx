@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const money = (n: number) => `THB ${n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 export default async function RevenuePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage("finance");
   const { t, lang } = await getT();
   const sp = await searchParams;
   const range = resolveRange(sp.range, new Date(), sp.from, sp.to);

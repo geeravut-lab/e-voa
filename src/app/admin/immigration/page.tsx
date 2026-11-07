@@ -14,7 +14,7 @@ import { PageHead } from "@/components/PageHead";
 export const dynamic = "force-dynamic";
 
 export default async function ImmigrationPage() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t, lang } = await getT();
   const configured = !!gatewayFromEnv();
   const simOn = await simulatorActive();

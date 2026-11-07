@@ -16,7 +16,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminAi() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t } = await getT();
   const cfg = await loadAi();
   const routing = await loadRouting();

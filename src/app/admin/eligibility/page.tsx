@@ -10,7 +10,7 @@ import { PageHead } from "@/components/PageHead";
 export const dynamic = "force-dynamic";
 
 export default async function AdminEligibility() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t } = await getT();
   const cfg = parseEligibility(await getSetting<unknown>("eligibility", { voa: [], visa_free: [] }));
   const area = "min-h-40 w-full rounded-control border-[1.5px] border-field bg-surface p-3 font-mono text-sm";

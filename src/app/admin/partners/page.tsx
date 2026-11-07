@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const money = (n: number) => `THB ${n.toLocaleString("en-US")}`;
 
 export default async function AdminPartners() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t } = await getT();
   const db = createAdminClient();
   const { data: list } = await db.from("partners").select("id, name, provider, status, portal_managed, settlement_pct, contact_name, contact_email, contact_phone, admin_note").order("created_at", { ascending: false }).limit(100);

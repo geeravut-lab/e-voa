@@ -9,7 +9,7 @@ import { SB_ANON, SB_URL, admin, cleanupUsers, makeDraft, makeUser, sql } from "
 afterAll(async () => { const problems = await cleanupUsers(); if (problems.length) throw new Error(problems.join("; ")); }, 120_000);
 // the status guard only allows real transitions; the test needs states without whole journeys, so it skips the guard for its own rows
 const set = (id: string, status: string, extra = "") => sql(`set session_replication_role = replica; update public.applications set status = '${status}' ${extra} where id = '${id}'`);
-const asViewer = (id: string | null, isAdmin = false) => ({ user: id ? ({ id } as never) : null, profile: null, isAdmin, isOwner: false, isReportViewer: false });
+const asViewer = (id: string | null, isAdmin = false) => ({ user: id ? ({ id } as never) : null, profile: null, isAdmin, isOwner: false, isReportViewer: false, role: isAdmin ? ("manager" as const) : null, caps: isAdmin ? (["ops", "finance", "content", "config", "audit"] as const) : [] });
 
 describe("tourism statistics", () => {
   it("counts approved arrivals by arrival date, hides groups under five, and counts the funnel", async () => {

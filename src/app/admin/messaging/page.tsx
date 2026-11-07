@@ -15,7 +15,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminMessaging() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t } = await getT();
   const [cfg, nl, nw, { data: mails }] = await Promise.all([loadMessaging(), monthCount("line"), monthCount("whatsapp"),
     createAdminClient().from("mail_log").select("ok, code").gte("at", new Date(Date.now() - 7 * 86_400_000).toISOString()).limit(5000)]);

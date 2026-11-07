@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** One day's reconciliation as CSV. Back-office only; every export is recorded. */
 export async function GET(req: Request) {
   const v = await getViewer();
-  if (!v.user || !v.isAdmin) return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  if (!v.user || !v.isAdmin || !v.caps.includes("finance")) return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   const day = new URL(req.url).searchParams.get("date") ?? "";
   if (!thaiDayRange(day)) return new NextResponse("Bad date", { status: 400 });
   const { data: r } = await createAdminClient().from("reconciliation_reports").select("*").eq("day", day).maybeSingle();

@@ -20,7 +20,7 @@ function Section({ title, hint, children }: { title: string; hint: string; child
 }
 
 export default async function BrandingPage() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t, brand } = await getT();
   const file = "block w-full min-h-11 rounded-control border-[1.5px] border-field bg-surface p-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-sky file:px-3 file:py-2 file:font-semibold file:text-primary";
   return (

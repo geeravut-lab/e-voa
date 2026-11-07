@@ -1,6 +1,7 @@
 import type { DictKey } from "@/lib/i18n/dict";
 import type { ArtName } from "@/components/Art";
 import type { FeatureKey } from "./features";
+import type { Cap } from "@/lib/roles";
 
 /**
  * The ONLY list of menu entries. The sidebar, the mobile bottom bar, the "More" sheet and the home cards are all built from it,
@@ -28,11 +29,15 @@ export type NavItem = {
   phase?: string;               // shown on the "coming soon" page
   feature?: FeatureKey;
   bottom?: boolean;             // one of the 4 fixed entries of the mobile bar (the 5th, centre, is "apply")
+  cap?: Cap | readonly Cap[];  // back-office areas: shown only to staff whose role has the capability (any one of them) — see src/lib/roles.ts
   viewerOnly?: boolean;         // shown only to read-only statistics accounts (report viewers)
   pin?: boolean;                // the home card keeps exactly this `tone` (the colour spreading works around it)
   home?: boolean;               // shown as a card on the home page
   side?: boolean;               // shown in the desktop sidebar
 };
+
+/** Whether a staff account with these capabilities sees the entry (entries without `cap` are for every staff account). */
+export const navAllowed = (n: Pick<NavItem, "cap">, caps: readonly Cap[]) => !n.cap || (Array.isArray(n.cap) ? n.cap : [n.cap as Cap]).some((c) => caps.includes(c));
 
 export const NAV: NavItem[] = [
   { key: "home", label: "nav_home", barLabel: "nav_home", href: "/", icon: "home", tone: "white", size: "wide", area: "traveler", auth: false, status: "live", bottom: true, side: true },
@@ -56,30 +61,30 @@ export const NAV: NavItem[] = [
 
   { key: "admin_home", label: "nav_admin", barLabel: "nav_admin", href: "/admin", icon: "shield", tone: "sky", size: "half", area: "admin", auth: true, status: "live", side: true },
   { key: "admin_notifs", label: "admin_notif_title", barLabel: "nav_alerts", sub: "admin_notif_hint", href: "/admin/notifications", icon: "bell", art: "notifications", tone: "sand", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "revenue", label: "admin_revenue_title", sub: "admin_revenue_hint", href: "/admin/revenue", icon: "chart", art: "revenue", tone: "mint", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "reconcile", label: "admin_reconcile_title", sub: "admin_reconcile_hint", href: "/admin/reconcile", icon: "chart", art: "reconcile", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "discounts", label: "admin_discounts_title", sub: "admin_discounts_hint", href: "/admin/discounts", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "tourism", label: "admin_tourism_title", sub: "admin_tourism_hint", href: "/admin/tourism", icon: "chart", art: "analytics", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "ops", label: "card_ops", barLabel: "nav_queue", sub: "card_ops_sub", href: "/admin/queue", icon: "queue", art: "ops", tone: "gold", size: "wide", area: "admin", auth: true, status: "live", phase: "Phase 2", home: true, side: true },
-  { key: "rules", label: "admin_rules_title", sub: "admin_rules_hint", href: "/admin/rules", icon: "toggle", art: "features", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "admin_elig", label: "admin_elig_title", sub: "admin_elig_hint", href: "/admin/eligibility", icon: "search", art: "check", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "errors", label: "errors_title", barLabel: "errors_title", sub: "errors_hint", href: "/admin/errors", icon: "scroll", art: "audit", tone: "rose", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "channels", label: "admin_channels_title", sub: "admin_channels_hint", href: "/admin/channels", icon: "link", art: "help", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "company", label: "admin_company_title", sub: "admin_company_hint", href: "/admin/company", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "airports", label: "admin_airports_title", sub: "admin_airports_hint", href: "/admin/airports", icon: "map", art: "guide", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "content", label: "admin_content_title", sub: "admin_content_hint", href: "/admin/content", icon: "scroll", art: "guide", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "ai", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "prompts", label: "admin_prompts_title", sub: "admin_prompts_hint", href: "/admin/prompts", icon: "scroll", art: "prompts", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "messaging", label: "admin_msg_title", sub: "admin_msg_hint", href: "/admin/messaging", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "agencies", label: "admin_agencies_title", sub: "admin_agencies_hint", href: "/admin/agencies", icon: "users", art: "travelers", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "partners", label: "admin_partners_title", sub: "admin_partners_hint", href: "/admin/partners", icon: "users", art: "extras", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "immigration", label: "card_immigration", sub: "card_immigration_sub", href: "/admin/immigration", icon: "link", art: "ops", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "branding", label: "card_branding", sub: "card_branding_sub", href: "/admin/branding", icon: "palette", art: "branding", tone: "rose", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "features", label: "card_features", sub: "card_features_sub", href: "/admin/features", icon: "toggle", art: "features", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "admins", label: "card_admins", sub: "card_admins_sub", href: "/admin/admins", icon: "shield", art: "admins", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "audit", label: "card_audit", sub: "card_audit_sub", href: "/admin/audit", icon: "scroll", art: "audit", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "analytics", label: "card_analytics", sub: "card_analytics_sub", href: "/admin/analytics", icon: "chart", art: "analytics", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "settings", label: "card_settings", sub: "card_settings_sub", href: "/admin/settings", icon: "settings", art: "settings", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "revenue", label: "admin_revenue_title", sub: "admin_revenue_hint", href: "/admin/revenue", icon: "chart", art: "revenue", tone: "mint", size: "wide", area: "admin", cap: "finance", auth: true, status: "live", home: true, side: true },
+  { key: "reconcile", label: "admin_reconcile_title", sub: "admin_reconcile_hint", href: "/admin/reconcile", icon: "chart", art: "reconcile", tone: "mint", size: "half", area: "admin", cap: "finance", auth: true, status: "live", home: true, side: true },
+  { key: "discounts", label: "admin_discounts_title", sub: "admin_discounts_hint", href: "/admin/discounts", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", cap: "finance", auth: true, status: "live", home: true, side: true },
+  { key: "tourism", label: "admin_tourism_title", sub: "admin_tourism_hint", href: "/admin/tourism", icon: "chart", art: "analytics", tone: "sky", size: "half", area: "admin", cap: "audit", auth: true, status: "live", home: true, side: true },
+  { key: "ops", label: "card_ops", barLabel: "nav_queue", sub: "card_ops_sub", href: "/admin/queue", icon: "queue", art: "ops", tone: "gold", size: "wide", area: "admin", cap: ["ops", "finance"] as const, auth: true, status: "live", phase: "Phase 2", home: true, side: true },
+  { key: "rules", label: "admin_rules_title", sub: "admin_rules_hint", href: "/admin/rules", icon: "toggle", art: "features", tone: "sand", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "admin_elig", label: "admin_elig_title", sub: "admin_elig_hint", href: "/admin/eligibility", icon: "search", art: "check", tone: "mint", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "errors", label: "errors_title", barLabel: "errors_title", sub: "errors_hint", href: "/admin/errors", icon: "scroll", art: "audit", tone: "rose", size: "half", area: "admin", cap: "audit", auth: true, status: "live", home: true, side: true },
+  { key: "channels", label: "admin_channels_title", sub: "admin_channels_hint", href: "/admin/channels", icon: "link", art: "help", tone: "gold", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "company", label: "admin_company_title", sub: "admin_company_hint", href: "/admin/company", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "airports", label: "admin_airports_title", sub: "admin_airports_hint", href: "/admin/airports", icon: "map", art: "guide", tone: "mint", size: "half", area: "admin", cap: "content", auth: true, status: "live", home: true, side: true },
+  { key: "content", label: "admin_content_title", sub: "admin_content_hint", href: "/admin/content", icon: "scroll", art: "guide", tone: "mint", size: "half", area: "admin", cap: "content", auth: true, status: "live", home: true, side: true },
+  { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "ai", tone: "sky", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "prompts", label: "admin_prompts_title", sub: "admin_prompts_hint", href: "/admin/prompts", icon: "scroll", art: "prompts", tone: "gold", size: "half", area: "admin", cap: "content", auth: true, status: "live", home: true, side: true },
+  { key: "messaging", label: "admin_msg_title", sub: "admin_msg_hint", href: "/admin/messaging", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "agencies", label: "admin_agencies_title", sub: "admin_agencies_hint", href: "/admin/agencies", icon: "users", art: "travelers", tone: "sky", size: "half", area: "admin", cap: "finance", auth: true, status: "live", home: true, side: true },
+  { key: "partners", label: "admin_partners_title", sub: "admin_partners_hint", href: "/admin/partners", icon: "users", art: "extras", tone: "sky", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "immigration", label: "card_immigration", sub: "card_immigration_sub", href: "/admin/immigration", icon: "link", art: "ops", tone: "sky", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "branding", label: "card_branding", sub: "card_branding_sub", href: "/admin/branding", icon: "palette", art: "branding", tone: "rose", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "features", label: "card_features", sub: "card_features_sub", href: "/admin/features", icon: "toggle", art: "features", tone: "mint", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
+  { key: "admins", label: "card_admins", sub: "card_admins_sub", href: "/admin/admins", icon: "shield", art: "admins", tone: "sky", size: "half", area: "admin", cap: "staff", auth: true, status: "live", home: true, side: true },
+  { key: "audit", label: "card_audit", sub: "card_audit_sub", href: "/admin/audit", icon: "scroll", art: "audit", tone: "sand", size: "half", area: "admin", cap: "audit", auth: true, status: "live", home: true, side: true },
+  { key: "analytics", label: "card_analytics", sub: "card_analytics_sub", href: "/admin/analytics", icon: "chart", art: "analytics", tone: "gold", size: "half", area: "admin", cap: "audit", auth: true, status: "live", home: true, side: true },
+  { key: "settings", label: "card_settings", sub: "card_settings_sub", href: "/admin/settings", icon: "settings", art: "settings", tone: "mint", size: "half", area: "admin", cap: "config", auth: true, status: "live", home: true, side: true },
   { key: "admin_account", label: "card_account", sub: "card_account_sub", href: "/account", icon: "user", art: "account", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
 ];
 

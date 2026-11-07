@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const v = await getViewer();
   if (!v.user) return notFound();
   const { id } = await ctx.params;
-  const doc = await readDocument(id, { id: v.user.id, isAdmin: v.isAdmin });
+  const doc = await readDocument(id, { id: v.user.id, isAdmin: v.isAdmin && v.caps.includes("ops") });
   if (!doc) return notFound();
   return new NextResponse(new Uint8Array(doc.bytes), {
     headers: {

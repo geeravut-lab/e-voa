@@ -13,7 +13,7 @@ const Stats = z.object({
 });
 
 export default async function AnalyticsPage() {
-  await requireAdminPage();
+  await requireAdminPage("audit");
   const { t } = await getT();
   const { data, error } = await (await createClient()).rpc("admin_analytics", { p_days: 30 });
   if (error) console.error("[analytics] rpc failed", error.message);

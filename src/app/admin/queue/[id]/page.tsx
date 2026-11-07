@@ -13,7 +13,8 @@ import { NoteForm, RequestFixForm, RetrySendForm, CancelForm, RefundExceptionFor
 export const dynamic = "force-dynamic";
 
 export default async function QueueDetail({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdminPage();                                   // first line: hiding the menu is not access control
+  const viewer = await requireAdminPage(["ops", "finance"]);                  // first line: hiding the menu is not access control
+  const ops = viewer.caps.includes("ops"), fin = viewer.caps.includes("finance");   // what this role may do on the page (the actions check again)
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { t, lang } = await getT();
@@ -35,7 +36,7 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
   const when = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "short" });
   const box = "space-y-3 rounded-card border border-line bg-surface p-5 shadow-card";
   const st = a.status as string;
-  const canSimulate = ["submitted", "under_review"].includes(st) && isSimulatedRef(a.immigration_ref) && (await simulatorActive());
+  const canSimulate = ops && ["submitted", "under_review"].includes(st) && isSimulatedRef(a.immigration_ref) && (await simulatorActive());
   const canFix = ["pre_check", "submitted", "under_review"].includes(st), canRetry = st === "submission_failed", canCancel = ["draft", "awaiting_payment", "paid", "pre_check", "action_required", "submission_failed"].includes(st);
   const refundable = pay && ["paid", "partially_refunded"].includes(pay.status) ? Number(pay.amount_thb) - Number(pay.refunded_thb) : 0;
   return (
@@ -61,23 +62,23 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
         </section>
       )}
 
-      <section className={box}>
+      {ops && <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.ops_actions}</h2>
         <p className="text-xs text-muted">{t.ops_decisions_note}</p>
         {canRetry && <RetrySendForm appId={a.id} />}
         {canFix && <RequestFixForm appId={a.id} />}
         {canCancel && <CancelForm appId={a.id} />}
         {!canRetry && !canFix && !canCancel && <p className="text-sm text-muted">{t.ops_no_actions}</p>}
-      </section>
+      </section>}
 
-      <section className={box}>
+      {ops && <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.ops_documents}</h2>
         <ul className="divide-y divide-line text-sm">
           {(docs ?? []).map((d) => <li key={d.id} className="flex items-center justify-between gap-2 py-2"><span>{docLabel(t, d.kind)} <span className="text-muted">· {d.mime}</span></span><a href={`/api/documents/${d.id}`} target="_blank" rel="noopener" className="font-semibold text-primary underline">{t.ops_open}</a></li>)}
           {(docs ?? []).length === 0 && <li className="py-2 text-muted">{t.ops_none}</li>}
         </ul>
         <p className="text-xs text-muted">{t.ops_docs_audited}</p>
-      </section>
+      </section>}
 
       <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.consent_title}</h2>
@@ -89,7 +90,7 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
         <section className={box}>
           <h2 className="font-display text-lg font-bold">{t.receipt_title}</h2>
           <p className="text-sm tabular">{pay.receipt_no ?? "—"} · THB {Number(pay.amount_thb).toLocaleString("en-US")} · {pay.status}{Number(pay.refunded_thb) > 0 ? ` · −${Number(pay.refunded_thb).toLocaleString("en-US")}` : ""}</p>
-          {refundable > 0 && <RefundExceptionForm appId={a.id} paymentId={pay.id} max={refundable} />}
+          {fin && refundable > 0 && <RefundExceptionForm appId={a.id} paymentId={pay.id} max={refundable} />}
         </section>
       )}
 
@@ -102,12 +103,12 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
         </section>
       )}
 
-      <section className={box}>
+      {ops && <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.ops_notes}</h2>
         <NoteForm appId={a.id} />
         <ul className="space-y-2 text-sm">{(notes ?? []).map((n) => <li key={n.id} className="rounded-control bg-sand p-3"><p className="whitespace-pre-wrap">{n.body}</p><p className="text-xs text-muted tabular">{when.format(new Date(n.created_at))}</p></li>)}</ul>
         <p className="text-xs text-muted">{t.ops_notes_hint}</p>
-      </section>
+      </section>}
 
       <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.trip_timeline}</h2>

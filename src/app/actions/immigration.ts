@@ -11,7 +11,7 @@ import type { ActionResult } from "@/components/ActionForm";
 const code = (e: unknown) => (e instanceof ImmigrationError ? (e.kind === "auth" ? "err_immigration_auth" : e.kind === "unavailable" ? "err_immigration_down" : "err_immigration_unexpected") : "err_generic");
 
 export async function testImmigrationAction(): Promise<ActionResult> {
-  const a = await requireAdminAction(); if (!a.ok) return a;
+  const a = await requireAdminAction("config"); if (!a.ok) return a;
   const gw = gatewayFromEnv(); if (!gw) return { ok: false, error: "err_not_configured" };
   const t0 = Date.now();
   try { await gw.master("gender"); } catch (e) { return { ok: false, error: code(e) }; }
@@ -20,7 +20,7 @@ export async function testImmigrationAction(): Promise<ActionResult> {
 }
 
 export async function syncListsAction(): Promise<ActionResult> {
-  const a = await requireAdminAction(); if (!a.ok) return a;
+  const a = await requireAdminAction("config"); if (!a.ok) return a;
   const gw = gatewayFromEnv(); if (!gw) return { ok: false, error: "err_not_configured" };
   try {
     const r = await syncFlatLists(gw);
@@ -32,7 +32,7 @@ export async function syncListsAction(): Promise<ActionResult> {
 }
 
 export async function syncDistrictsAction(): Promise<ActionResult> {
-  const a = await requireAdminAction(); if (!a.ok) return a;
+  const a = await requireAdminAction("config"); if (!a.ok) return a;
   const gw = gatewayFromEnv(); if (!gw) return { ok: false, error: "err_not_configured" };
   try {
     const r = await syncChildLists(gw);
@@ -52,7 +52,7 @@ import { simulateDecision } from "@/lib/immigration/simulate";
 import { pollPending, processOutbox } from "@/lib/immigration/pipeline";
 
 export async function saveSimAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction(); if (!a.ok) return a;
+  const a = await requireAdminAction("config"); if (!a.ok) return a;
   const enabled = fd.get("enabled") === "on";
   if (enabled && realGateway()) return { ok: false, error: "err_sim_real_connected" };          // a real connection always wins
   if (!(await putSetting("immigration_sim", { enabled }, a.viewer.user.id))) return { ok: false, error: "err_generic" };
@@ -63,7 +63,7 @@ export async function saveSimAction(_p: ActionResult, fd: FormData): Promise<Act
 
 /** "Send now": applications waiting in the queue are sent right away instead of at the next scheduled run (the retry waiting time is skipped). */
 export async function runQueueNowAction(): Promise<ActionResult> {
-  const a = await requireAdminAction(); if (!a.ok) return a;
+  const a = await requireAdminAction("config"); if (!a.ok) return a;
   const gw = await resolveGateway(); if (!gw) return { ok: false, error: "err_not_configured" };
   const db = createAdminClient();
   await db.from("immigration_outbox").update({ next_attempt_at: new Date().toISOString() }).eq("status", "pending");
@@ -77,7 +77,7 @@ export async function runQueueNowAction(): Promise<ActionResult> {
 
 /** Plays Immigration's answer for an application that was sent to the SIMULATOR (see lib/immigration/simulate.ts). */
 export async function simulateDecisionAction(appId: string, decision: "approve" | "reject" | "update", _p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const a = await requireAdminAction(); if (!a.ok) return a;
+  const a = await requireAdminAction("config"); if (!a.ok) return a;
   const r = await simulateDecision(appId, decision, String(fd.get("reason") ?? ""));
   if (!r.ok) return r;
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "immigration.simulated_decision", entity: "application", entityId: appId, detail: { decision } });

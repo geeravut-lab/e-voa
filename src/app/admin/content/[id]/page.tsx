@@ -14,7 +14,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function EditContent({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kind?: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage("content");
   const { t } = await getT();
   const { id } = await params, sp = await searchParams;
   if (id !== "new" && !/^[0-9a-f-]{36}$/i.test(id)) notFound();

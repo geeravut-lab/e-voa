@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** The revenue file for the chosen range (same query string as the page). Back-office only; every export is recorded. */
 export async function GET(req: Request) {
   const v = await getViewer();
-  if (!v.user || !v.isAdmin) return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  if (!v.user || !v.isAdmin || !v.caps.includes("finance")) return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   const u = new URL(req.url).searchParams;
   const range = resolveRange(u.get("range") ?? undefined, new Date(), u.get("from") ?? undefined, u.get("to") ?? undefined);
   const { paid, refunds } = await loadRevenue(range);

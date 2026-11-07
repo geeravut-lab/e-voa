@@ -10,7 +10,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminChannels() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t } = await getT();
   const c = await loadChannels();
   const f = (name: keyof typeof c, label: string, ph = "") => <label className="block space-y-1"><span className="text-sm font-semibold">{label}</span><input name={name} defaultValue={c[name]} placeholder={ph} className={inputCls} /></label>;

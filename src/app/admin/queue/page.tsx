@@ -16,7 +16,7 @@ const GROUPS: Record<string, string[]> = {
 };
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<{ g?: string; q?: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage(["ops", "finance"]);
   const { t, lang } = await getT();
   const sp = await searchParams; const g = sp.g && GROUPS[sp.g] ? sp.g : sp.g === "all" ? "all" : "active";
   const { data: sum } = await (await createClient()).rpc("admin_ops_summary");

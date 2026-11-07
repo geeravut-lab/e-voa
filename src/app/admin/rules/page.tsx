@@ -10,7 +10,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function RulesPage() {
-  await requireAdminPage();
+  await requireAdminPage("config");
   const { t, lang } = await getT();
   const [c, last] = await Promise.all([loadRules(), lastRun()]);
   const box = "space-y-3 rounded-card border border-line bg-surface p-5 shadow-card";

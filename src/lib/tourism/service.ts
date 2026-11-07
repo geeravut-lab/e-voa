@@ -11,7 +11,7 @@ import type { User } from "@supabase/supabase-js";
 /** Who may see the statistics: staff, and accounts staff added as report viewers. Everyone else gets nothing (a plain 404). */
 export async function canViewTourism(v: Viewer): Promise<boolean> {
   if (!v.user) return false;
-  if (v.isAdmin) return true;
+  if (v.isAdmin && v.caps.includes("audit")) return true;
   const { data } = await createAdminClient().from("report_viewers").select("user_id").eq("user_id", v.user.id).maybeSingle();
   return !!data;
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Cap } from "@/lib/roles";
 
 /**
  * Everything that waits for staff, computed live from the database (so it disappears by itself when it has been dealt with).
@@ -47,8 +48,11 @@ export async function attentionItems(): Promise<AttentionItem[]> {
 }
 
 /** The same items with `seen` set for one administrator: seen = opened since it last changed. */
-export async function attentionFor(userId: string): Promise<AttentionItem[]> {
-  const items = await attentionItems();
+/** Which role area each alert belongs to: a staff account only sees (and is only counted for) the alerts of its own areas. */
+export const ATTENTION_CAP: Record<AttentionItem["key"], Cap> = { submission_failed: "ops", sla_overdue: "ops", addons_failed: "ops", refunds_failed: "finance", agencies_pending: "finance", partners_pending: "config", settle_due: "finance", errors_24h: "audit", recon_issues: "finance" };
+
+export async function attentionFor(userId: string, caps?: readonly Cap[]): Promise<AttentionItem[]> {
+  const items = (await attentionItems()).filter((i) => !caps || caps.includes(ATTENTION_CAP[i.key]));
   const { data } = await createAdminClient().from("admin_alert_seen").select("key, signature").eq("user_id", userId);
   const seen = new Map((data ?? []).map((r) => [r.key as string, r.signature as string]));
   return items.map((i) => ({ ...i, seen: seen.get(i.key) === i.sig }));
@@ -63,6 +67,6 @@ export async function markAttentionSeen(userId: string, key?: string): Promise<v
 }
 
 /** The number on the bell: what is still unseen. Never throws: a failing count just shows nothing. */
-export async function attentionTotal(userId: string): Promise<number> {
-  try { return (await attentionFor(userId)).filter((i) => !i.seen).reduce((n, i) => n + i.count, 0); } catch { return 0; }
+export async function attentionTotal(userId: string, caps?: readonly Cap[]): Promise<number> {
+  try { return (await attentionFor(userId, caps)).filter((i) => !i.seen).reduce((n, i) => n + i.count, 0); } catch { return 0; }
 }

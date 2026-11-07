@@ -12,7 +12,7 @@ import { PageHead } from "@/components/PageHead";
 export const dynamic = "force-dynamic";
 
 export default async function AdminAirports() {
-  await requireAdminPage();
+  await requireAdminPage("content");
   const { t, lang } = await getT();
   const notes = await loadAirportNotes();
   const names = Object.fromEntries(forLang(ARRIVAL, lang).airports.map((a) => [a.h.match(/\(([A-Z]{3})\)/)?.[1] ?? "", a.h]));

@@ -10,7 +10,7 @@ import { inputCls } from "@/components/inputStyles";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDiscounts() {
-  await requireAdminPage();
+  await requireAdminPage("finance");
   const { t } = await getT();
   const db = createAdminClient();
   const [{ data: codes }, { data: reds }] = await Promise.all([

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const money = (n: number) => `THB ${n.toLocaleString("en-US")}`;
 
 export default async function ReconcilePage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage("finance");
   const { t } = await getT();
   const asked = (await searchParams).date, day = asked && thaiDayRange(asked) ? asked : yesterdayThai();
   const tt = t as unknown as Record<string, string>;
