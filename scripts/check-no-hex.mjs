@@ -9,6 +9,9 @@ const ALLOW = new Map([
   ["src/components/Art.tsx", "illustrations are drawings, not UI colors"],
   ["src/config/theme.ts", "browser-required literals (theme-color, manifest)"],
   ["src/config/line-colors.ts", "LINE Flex Messages need hex strings for their header colors"],
+  ["src/lib/content/toolkit-store.ts", "the offline emergency page is a standalone HTML file with its own inline styles (no stylesheet is available without a signal)"],
+  ["src/components/RentalHelper.tsx", "canvas drawing (photo stamp) takes color strings, not CSS classes"],
+  ["src/components/SavePassButton.tsx", "canvas drawing (white background of the pass picture) takes a color string"],
   ["src/app/login/LoginForm.tsx", "third-party brand marks (Google G, LINE green)"],
 ]);
 const root = "src";
