@@ -60,7 +60,7 @@ export async function reconcileDay(day: string, stripe: StripeSide = REAL): Prom
 export async function runDailyReconcile(): Promise<string> {
   const day = yesterdayThai();
   const { data: have } = await db().from("reconciliation_reports").select("status").eq("day", day).maybeSingle();
-  if (have && have.status !== "error") return `done: ${have.status}`;
+  if (have && have.status !== "error" && have.status !== "skipped") return `done: ${have.status}`;            // a day that failed, or was skipped because Stripe was not set up yet, is tried again
   const r = await reconcileDay(day);
   if (r.status === "issues" && r.report) {
     const { data: admins } = await db().from("admins").select("user_id");
