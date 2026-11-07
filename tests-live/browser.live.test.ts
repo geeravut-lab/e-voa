@@ -1,6 +1,7 @@
 // Browser check of the traveler journey and the Ops console on a phone-sized screen (real Supabase, Stripe TEST API for the session, simulator for partners).
 // Starts `next start` itself (run `npm run build` first). The hosted Stripe page cannot be opened from the cloud sandbox, so the test only checks that
 // the browser is sent to checkout.stripe.com with a real session, then records the payment the same way the app does.
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -271,6 +272,12 @@ describe("traveler journey in the browser", () => {
     await p.goto(`${APP}/pass/${ids.app}`); await p.locator('[role=img] svg').first().waitFor();
     expect(await overflowX(p)).toBe(false); await shot(p, "pass-390");
     const card = await p.request.get(`${APP}/pass/${ids.app}/card`); expect(card.status()).toBe(200); expect(card.headers()["content-type"]).toContain("image/svg+xml");
+    // "Save to phone" gives a real PNG picture (not an SVG): 1200×1680 with the PNG signature
+    await p.goto(`${APP}/pass/${ids.app}`); await p.locator('[role=img] svg').first().waitFor();
+    const dl = p.waitForEvent("download"); await p.getByRole("button", { name: "Save to phone" }).click(); const file = await dl;
+    expect(file.suggestedFilename()).toMatch(/^e-voa-.*\.png$/);
+    const bytes = readFileSync((await file.path())!); expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(bytes.readUInt32BE(16)).toBe(1200); expect(bytes.readUInt32BE(20)).toBe(1680);
     const { passToken } = await import("@/lib/passes");
     const v = await p.goto(`${APP}/v/${passToken(ids.app)}`); expect(v?.status()).toBe(200); expect(await p.getByText("Approved").count()).toBeGreaterThan(0);
     await p.goto(`${APP}/v/${passToken(ids.app).slice(0, -3)}abc`); expect(await p.getByText("This code is not valid").count()).toBe(1);

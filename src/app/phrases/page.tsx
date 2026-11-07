@@ -1,6 +1,6 @@
 import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
-import { PHRASES } from "@/lib/content/toolkit";
+import { loadToolkit } from "@/lib/content/toolkit-server";
 import { PageHead } from "@/components/PageHead";
 import { PhraseCard } from "@/components/PhraseCard";
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PhrasesPage() {
   const { t, lang } = await getT();
+  const { phrases: PHRASES } = await loadToolkit();
   return (
     <div className="space-y-4">
       <PageHead title={t.phrases_title} hint={t.phrases_hint} art="toolkit" tone="sky" />

@@ -1,7 +1,8 @@
 import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { forLang } from "@/lib/content/types";
-import { LAST_REVIEWED, LEVEL_LABEL, RULES_CHECK, RULES_NOTE } from "@/lib/content/toolkit";
+import { LAST_REVIEWED, LEVEL_LABEL, RULES_NOTE } from "@/lib/content/toolkit";
+import { loadToolkit } from "@/lib/content/toolkit-server";
 import { PageHead } from "@/components/PageHead";
 import { AppLink } from "@/components/AppLink";
 import { btnClass } from "@/components/buttonStyles";
@@ -12,6 +13,7 @@ const BADGE = { illegal: "bg-danger-bg text-danger", restricted: "bg-gold-soft t
 
 export default async function RulesCheckPage() {
   const { t, lang } = await getT();
+  const tk = await loadToolkit(), RULES_CHECK = tk.rules;
   return (
     <div className="space-y-4">
       <PageHead title={t.rc_title} hint={t.rc_hint} art="toolkit" tone="rose" />
@@ -23,7 +25,7 @@ export default async function RulesCheckPage() {
           </li>
         ))}
       </ul>
-      <p className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{forLang(RULES_NOTE, lang).replace("{when}", LAST_REVIEWED)}</p>
+      <p className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{forLang(RULES_NOTE, lang).replace("{when}", tk.reviewed.rules?.slice(0, 7) ?? LAST_REVIEWED)}</p>
       <AppLink href="/official" className={btnClass("ghost")}>{t.official_channels_link}</AppLink>
     </div>
   );

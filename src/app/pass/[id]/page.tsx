@@ -7,6 +7,7 @@ import { passToken } from "@/lib/passes";
 import { SITE_URL } from "@/lib/env";
 import { walletConfig } from "@/lib/wallet/google";
 import { appleConfig } from "@/lib/wallet/apple";
+import { SavePassButton } from "@/components/SavePassButton";
 import { WalletButton } from "@/components/WalletButton";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
@@ -50,7 +51,7 @@ export default async function PassPage({ params }: { params: Promise<{ id: strin
       <div className="mx-auto flex max-w-sm flex-wrap justify-center gap-2 print:hidden">
         {walletConfig(SITE_URL) && <WalletButton href={`/api/wallet/google/${a.id}`}>{t.wallet_google}</WalletButton>}
         {appleConfig(SITE_URL) && <WalletButton href={`/api/wallet/apple/${a.id}`}>{t.wallet_apple}</WalletButton>}
-        <a href={`/pass/${a.id}/card`} download className={btnClass("gold")}>{t.pass_save}</a>
+        <SavePassButton href={`/pass/${a.id}/card`} filename={`e-voa-${a.ref_no}.png`} />
         <PrintButton />
         {evoa && <a href={`/api/documents/${evoa.id}`} target="_blank" rel="noopener" className={btnClass("ghost")}>{t.trip_download_evoa}</a>}
         <AppLink href={`/trips/${a.id}`} className={btnClass("ghost")}>{t.back}</AppLink>

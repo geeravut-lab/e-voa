@@ -1,7 +1,8 @@
 import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { forLang } from "@/lib/content/types";
-import { EMERGENCY, EMERGENCY_NOTE, PHRASES } from "@/lib/content/toolkit";
+import { EMERGENCY_NOTE } from "@/lib/content/toolkit";
+import { loadToolkit } from "@/lib/content/toolkit-server";
 import { PageHead } from "@/components/PageHead";
 import { AppLink } from "@/components/AppLink";
 import { btnClass } from "@/components/buttonStyles";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 /** Public, no sign-in: numbers that dial on tap, a position box that never leaves the phone, and the urgent Thai phrases. */
 export default async function EmergencyPage() {
   const { t, lang } = await getT();
+  const { emergency: EMERGENCY, phrases: PHRASES } = await loadToolkit();
   const pick = <T,>(m: { en: T; th: T; "zh-CN": T }) => forLang(m, lang);
   const urgent = PHRASES.filter((p) => p.urgent);
   return (

@@ -480,3 +480,30 @@ export async function payAgencyCommissionAction(agencyId: string, _p: ActionResu
   if (!r.ok) return r;
   return done("/admin/agencies");
 }
+
+/** Saves one list of "While in Thailand" (emergency numbers, Thai phrases or the rules check) written in the back office. The other lists stay as they are. */
+export async function saveToolkitAction(kind: string, _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction("content");
+  if (!a.ok) return a;
+  const { KINDS, parseToolkitForm } = await import("@/lib/content/toolkit-store");
+  const { loadToolkitRaw, TOOLKIT_SETTING } = await import("@/lib/content/toolkit-server");
+  if (!(KINDS as string[]).includes(kind)) return { ok: false, error: "err_generic" };
+  const parsed = parseToolkitForm(kind as never, fd);
+  if (!parsed.ok) return parsed;
+  const cur = await loadToolkitRaw(), reviewed = { ...((cur.reviewed as Record<string, string> | undefined) ?? {}), [kind]: new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10) };
+  if (!(await putSetting(TOOLKIT_SETTING, { ...cur, [kind]: parsed.list, reviewed }, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.toolkit_save", entity: "toolkit", detail: { kind, items: parsed.list.length } });
+  return done("/admin/toolkit");
+}
+/** Goes back to the built-in list (the edited one is removed). */
+export async function resetToolkitAction(kind: string, _p: ActionResult, _fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction("content");
+  if (!a.ok) return a;
+  const { KINDS } = await import("@/lib/content/toolkit-store");
+  const { loadToolkitRaw, TOOLKIT_SETTING } = await import("@/lib/content/toolkit-server");
+  if (!(KINDS as string[]).includes(kind)) return { ok: false, error: "err_generic" };
+  const cur = await loadToolkitRaw(); delete cur[kind];
+  if (!(await putSetting(TOOLKIT_SETTING, cur, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.toolkit_reset", entity: "toolkit", detail: { kind } });
+  return done("/admin/toolkit");
+}

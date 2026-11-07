@@ -2,20 +2,22 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { EMERGENCY, LEVEL_LABEL, PHRASES, RULES_CHECK, STAY, TDAC, TDAC_URL, LAST_REVIEWED } from "@/lib/content/toolkit";
 import { forLang } from "@/lib/content/types";
+import { renderOfflineEmergency } from "@/lib/content/toolkit-store";
 
 const LANGS = ["en", "th", "zh-CN"] as const;
 describe("the offline emergency page", () => {
-  const html = readFileSync("public/offline-emergency.html", "utf8");
-  it("lists exactly the numbers of the emergency page, each with a tel: link", () => {
-    const inPage = [...html.matchAll(/data-n="(\d+)"/g)].map((m) => m[1]).sort();
-    expect(inPage).toEqual(EMERGENCY.map((e) => e.number).sort());
+  const html = renderOfflineEmergency({ emergency: EMERGENCY, phrases: PHRASES });
+  it("lists exactly the numbers it is given, each with a tel: link", () => {
+    expect([...html.matchAll(/data-n="(\d+)"/g)].map((m) => m[1]).sort()).toEqual(EMERGENCY.map((e) => e.number).sort());
     for (const e of EMERGENCY) expect(html).toContain(`href="tel:${e.number}"`);
   });
-  it("holds no personal data and no script, and is kept by the service worker", () => {
+  it("holds no script, escapes what staff typed, and is kept by the service worker", () => {
     expect(html).not.toMatch(/<script/i); expect(html).toMatch(/noindex/);
+    const evil = renderOfflineEmergency({ emergency: [{ number: "999", label: { en: "<img src=x onerror=alert(1)>", th: "ก", "zh-CN": "x" }, use: { en: "a & b", th: "x", "zh-CN": "x" } }], phrases: [] });
+    expect(evil).not.toContain("<img"); expect(evil).toContain("&#60;img"); expect(evil).toContain("a &#38; b");
     expect(readFileSync("public/sw.js", "utf8")).toContain("/offline-emergency.html");
   });
-  it("shows the same urgent Thai phrases as the phrase card", () => { for (const p of PHRASES.filter((x) => ["help", "ambulance", "police", "hospital"].includes(x.id))) expect(html).toContain(p.th); });
+  it("shows the urgent Thai phrases", () => { for (const p of PHRASES.filter((x) => x.urgent).slice(0, 8)) expect(html).toContain(p.th); });
 });
 
 describe("toolkit texts", () => {
