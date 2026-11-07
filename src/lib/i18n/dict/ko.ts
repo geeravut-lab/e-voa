@@ -821,4 +821,12 @@ export const ko: Partial<Dict> = {
   cond_air_model: "지역 추정값: 가까운 최신 측정소가 없습니다.",
   cond_source_air: "공기질: Air4Thai, 오염통제국",
   cond_source_tmd: "경보: 태국 기상청",
+  warn_alert_title: "공식 기상 경보: {place}",
+  warn_alert_body: "{event}: {headline}. {until}까지 유효합니다. 자세한 내용과 대처법을 확인하세요.",
+  cond_watch: "여기에 공식 경보가 나오면 알려 주세요",
+  cond_unwatch: "여기 알림 중지",
+  cond_watching: "태국 기상청이 이 지역에 보통 또는 심각 단계 경보를 내리면 알림을 받습니다. 휴대폰으로 받으려면 계정 → 알림 채널에서 휴대폰 알림을 켜세요.",
+  cond_watch_signin: "로그인하면 이곳에 공식 경보가 발령될 때 알림을 받습니다.",
+  cond_watch_list: "경보를 받는 지역",
+  err_watch_limit: "최대 5곳까지 설정할 수 있습니다. 먼저 하나를 해제하세요.",
 };

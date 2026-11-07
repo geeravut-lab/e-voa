@@ -821,4 +821,12 @@ export const zhTW: Partial<Dict> = {
   cond_air_model: "區域估算值：附近沒有近期的監測站。",
   cond_source_air: "空氣品質：泰國污染控制廳 Air4Thai",
   cond_source_tmd: "預警：泰國氣象局",
+  warn_alert_title: "官方天氣預警：{place}",
+  warn_alert_body: "{event}：{headline}。有效至 {until}。點擊查看詳情與應對建議。",
+  cond_watch: "有官方預警時通知我",
+  cond_unwatch: "不再通知此地",
+  cond_watching: "當泰國氣象局為此省份發布中等或嚴重預警時，您將收到通知。在「帳戶 → 通知管道」中開啟手機通知即可在手機上收到。",
+  cond_watch_signin: "登入後，此處發布官方預警時您會收到通知。",
+  cond_watch_list: "您接收預警的地點",
+  err_watch_limit: "最多可關注 5 個地點，請先取消一個。",
 };

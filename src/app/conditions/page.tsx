@@ -10,6 +10,9 @@ import { limited } from "@/lib/ratelimit";
 import { PageHead } from "@/components/PageHead";
 import { AppLink } from "@/components/AppLink";
 import { PlacePicker } from "@/components/PlacePicker";
+import { WatchBox } from "@/components/WatchBox";
+import { getViewer } from "@/lib/auth";
+import { listWatches } from "@/lib/conditions/watch";
 import { btnClass } from "@/components/buttonStyles";
 
 export const generateMetadata = () => pageMeta({ path: "/conditions", title: "cond_title", description: "cond_hint" });
@@ -20,6 +23,7 @@ export default async function ConditionsPage({ searchParams }: { searchParams: P
   const { t, lang } = await getT();
   const place = findPlace((await searchParams).place) ?? PLACES[0];
   const cond = (await limited("conditions", 60, 600)) ? ({ ok: false } as const) : await fetchConditions(place);       // the cache keeps repeated views from calling the weather service
+  const viewer = await getViewer(), watched = viewer.user ? await listWatches(viewer.user.id) : [];
   const ok = cond.ok ? cond : null, r = ok ? ok.readings : null, hasNumbers = !!r && (r.tempC !== null || r.pm25 !== null);
   const box = "space-y-2 rounded-card border border-line bg-surface p-5 shadow-card";
   const num = (v: number | null | undefined, unit = "") => (v === null || v === undefined ? "—" : `${Math.round(v * 10) / 10}${unit}`);
@@ -71,6 +75,7 @@ export default async function ConditionsPage({ searchParams }: { searchParams: P
           <p className="text-xs text-muted">{r.time ? t.cond_updated.replace("{time}", r.time.replace("T", " ")) : ""}</p>
         </>
       )}
+      <WatchBox slug={place.slug} signedIn={!!viewer.user} watched={watched} names={Object.fromEntries(PLACES.map((p) => [p.slug, forLang(p.name, lang)]))} />
       <p className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{forLang(ADVICE_NOTE, lang)}</p>
       <div className="flex flex-wrap gap-2">
         <AppLink href="/help/chat" className={btnClass("primary")}>{t.cond_ask_ai}</AppLink>

@@ -10,6 +10,7 @@ import { runTool } from "@/lib/ai/tools";
 import { runAssistant } from "@/lib/ai/assistant";
 import { loadToolkit, TOOLKIT_SETTING } from "@/lib/content/toolkit-server";
 import { putSetting } from "@/lib/settings";
+import { addWatch, listWatches, removeWatch, runWarningAlerts, worthAlerting, MAX_WATCHES } from "@/lib/conditions/watch";
 import { admin, cleanupUsers, makeUser, sql } from "./helpers";
 
 type Mock = { listen: (p?: number) => Promise<number>; close: () => Promise<void> };
@@ -92,6 +93,34 @@ describe("official Thai data", () => {
     resetCache(); await post("/__admin/official", { noWarning: true }); const none = await fetchConditions(findPlace("Phuket")!); expect(none.ok && none.warnings).toEqual([]);
     await post("/__admin/official", {});
   });
+});
+
+describe("alerts for official warnings", () => {
+  const nots = async (userId: string) => (await sql<{ dedupe_key: string; title: string; body: string; link: string }>(`select dedupe_key, title, body, link from public.app_notifications where user_id='${userId}' and kind='weather.warning'`));
+  it("a watcher gets one notice per warning (in their language), someone who watches another place gets none, and a repeat run sends nothing", async () => {
+    resetCache(); await post("/__admin/official", {});
+    const a = await makeUser("w-a"), b = await makeUser("w-b"), c = await makeUser("w-c");
+    await sql(`update public.profiles set lang='th' where id='${b.id}'`);
+    expect(await addWatch(a.id, "phuket")).toBe("ok"); expect(await addWatch(a.id, "phuket")).toBe("ok"); expect(await addWatch(b.id, "krabi")).toBe("ok"); expect(await addWatch(c.id, "bangkok")).toBe("ok");
+    expect(await addWatch(a.id, "atlantis")).toBe("err_generic"); expect(await listWatches(a.id)).toEqual(["phuket"]);
+    const r1 = await runWarningAlerts(new Date(), { onlyUsers: [a.id, b.id, c.id] });
+    expect(r1.sent).toBe(2);
+    const na = await nots(a.id), nb = await nots(b.id);
+    expect(na).toHaveLength(1); expect(na[0]).toMatchObject({ dedupe_key: "tmd:MOCK1:phuket", link: "/conditions?place=phuket" }); expect(na[0].title).toBe("Official weather warning: Phuket"); expect(na[0].body).toContain("Heavy Rain"); expect(na[0].body).toContain("ฝนตกหนักบริเวณภาคใต้");
+    expect(nb).toHaveLength(1); expect(nb[0].title).toBe("คำเตือนสภาพอากาศอย่างเป็นทางการ: กระบี่"); expect(await nots(c.id)).toEqual([]);
+    const r2 = await runWarningAlerts(new Date(), { onlyUsers: [a.id, b.id, c.id] }); expect(r2.sent).toBe(0); expect(await nots(a.id)).toHaveLength(1);
+    expect(await removeWatch(a.id, "phuket")).toBe(true); expect(await removeWatch(a.id, "phuket")).toBe(false); expect(await listWatches(a.id)).toEqual([]);
+  }, 120_000);
+  it("sends nothing when the feed has no warning or cannot be read, and follows at most five places", async () => {
+    const u = await makeUser("w-d"); expect(await addWatch(u.id, "phuket")).toBe("ok");
+    resetCache(); await post("/__admin/official", { noWarning: true }); expect((await runWarningAlerts(new Date(), { onlyUsers: [u.id] })).sent).toBe(0);
+    resetCache(); await post("/__admin/official", { tmdDown: true }); expect(await runWarningAlerts(new Date(), { onlyUsers: [u.id] })).toEqual({ checked: 0, sent: 0 });
+    await post("/__admin/official", {}); resetCache();
+    for (const s of ["krabi", "bangkok", "trat", "nan"]) expect(await addWatch(u.id, s)).toBe("ok");
+    expect(await listWatches(u.id)).toHaveLength(MAX_WATCHES); expect(await addWatch(u.id, "loei")).toBe("err_watch_limit");
+    const own = await u.client.from("warning_watches").select("place_slug"); expect((own.data ?? []).length).toBe(MAX_WATCHES);        // the person can read their own rows (and only theirs)
+    expect(worthAlerting({ severity: "Minor" } as never)).toBe(false); expect(worthAlerting({ severity: "Moderate" } as never)).toBe(true);
+  }, 120_000);
 });
 
 describe("travel safety content edited in the back office", () => {

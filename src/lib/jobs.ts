@@ -14,6 +14,7 @@ import { processAddonQueue, syncPartnerPackages } from "@/lib/partners/service";
 import { syncWalletPasses } from "@/lib/wallet/service";
 import { runDailyReconcile } from "@/lib/reconcile/service";
 import { runRules } from "@/lib/rules/service";
+import { runWarningAlerts } from "@/lib/conditions/watch";
 
 const DEFAULT_BUDGET_MS = 20_000;
 const budgetMs = () => { const n = Number(process.env.TICK_BUDGET_MS); return Number.isFinite(n) && n >= 1000 ? n : DEFAULT_BUDGET_MS; };          // tests on a slow link may raise it
@@ -22,7 +23,7 @@ const budgetMs = () => { const n = Number(process.env.TICK_BUDGET_MS); return Nu
  * The timed work. Every job is idempotent and isolated: one failing never stops the others, and the whole tick stops starting new jobs
  * after the budget (20 s) (the summary says where it stopped). Called by the cron route.
  */
-export async function runTick(): Promise<Record<string, unknown>> {
+export async function runTick(only?: string[]): Promise<Record<string, unknown>> {
   const started = Date.now();
   const out: Record<string, unknown> = {};
   if (!hasServiceRole()) return { skipped: "service role not configured" };
@@ -33,6 +34,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     ["pre_check", async () => recheckWaiting()],
     ["addons", async () => processAddonQueue()],
     ["rules", async () => runRules()],
+    ["warnings", async () => runWarningAlerts()],
     ["wallet", async () => syncWalletPasses()],
     ["reconcile", async () => runDailyReconcile()],
     ["partner_packages", async () => {
@@ -62,6 +64,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     }],
   ];
   for (const [name, job] of jobs) {
+    if (only && !only.includes(name)) continue;                                              // /api/cron/tick?only=warnings runs just that job
     if (Date.now() - started > budgetMs()) { out[name] = "not started: time budget used"; continue; }
     try { out[name] = await job(); } catch (e) { console.error(`[tick] ${name} failed`, (e as Error).message); out[name] = { error: (e as Error).message.slice(0, 200) }; }
   }

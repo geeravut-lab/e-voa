@@ -821,4 +821,12 @@ export const ja: Partial<Dict> = {
   cond_air_model: "地域の推定値：近くに最新の観測所がありません。",
   cond_source_air: "空気の質：Air4Thai（公害対策局）",
   cond_source_tmd: "警報：タイ気象局",
+  warn_alert_title: "公式気象警報：{place}",
+  warn_alert_body: "{event}：{headline}。{until} まで有効。詳細と対処法を確認してください。",
+  cond_watch: "ここの公式警報を通知する",
+  cond_unwatch: "ここの通知を止める",
+  cond_watching: "タイ気象局がこの県に中程度または深刻な警報を出すと通知します。スマホで受け取るには、アカウント → 通知チャンネルでスマホ通知をオンにしてください。",
+  cond_watch_signin: "ログインすると、ここで公式警報が出たときに通知されます。",
+  cond_watch_list: "警報を受け取る場所",
+  err_watch_limit: "最大5か所まで設定できます。先に1つ解除してください。",
 };
