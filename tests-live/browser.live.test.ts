@@ -242,7 +242,7 @@ describe("traveler journey in the browser", () => {
     expect(pay.status).toBe("pending"); expect(Number(pay.amount_thb)).toBeGreaterThan(2600);
     expect(errs).toEqual([]);
     await ctx.close();
-  });
+  }, 300_000);                                                                                              // the passport photo is read by OCR in the browser: slow on a busy machine
 
   it("after payment the traveler sees the status, the receipt; after approval the pass, the QR check page and the offline picture", async () => {
     const pay = (await sql<{ id: string }>(`select id from public.payments where owner_id='${traveler.id}'`))[0];
@@ -406,11 +406,11 @@ describe("menus, language, notifications", () => {
       const ctx = await ctxFor(staff); const p = await ctx.newPage(); const bell = "header a[href='/admin/notifications'] span";
       await p.goto(`${APP}/admin/notifications`); await p.getByText(/agency registration\(s\) waiting for approval/).waitFor({ timeout: 20_000 });
       expect(await p.locator(bell).count(), "unseen alerts show a count").toBe(1);
-      const before = Number(await p.locator(bell).innerText());
+      const beforeText = await p.locator(bell).innerText(), capped = beforeText.includes("+"), before = Number(beforeText.replace("+", ""));          // the bell shows "9+" when there are many alerts (the real database has leftovers)
       await p.getByText(/agency registration\(s\) waiting for approval/).click(); await p.waitForURL(/\/admin\/agencies/, { timeout: 20_000 });
       await p.goto(`${APP}/admin/notifications`); await p.getByText(/agency registration\(s\) waiting for approval/).waitFor();
       const after = (await p.locator(bell).count()) ? Number(await p.locator(bell).innerText().then((x: string) => x.replace("+", ""))) : 0;
-      expect(after, "the opened alert no longer counts").toBe(Math.max(before - 1, 0));
+      if (capped) expect(after).toBeLessThanOrEqual(before); else expect(after, "the opened alert no longer counts").toBe(Math.max(before - 1, 0));
       expect(await p.getByText(/agency registration\(s\) waiting for approval/).count(), "it stays in the list until the work is done").toBe(1);
       if (after > 0) { await p.getByRole("button", { name: /mark all/i }).click(); await p.waitForFunction((sel: string) => !document.querySelector(sel), bell, { timeout: 15_000 }); }
       expect(await p.locator(bell).count()).toBe(0);

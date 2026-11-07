@@ -67,7 +67,7 @@ describe("help assistant", () => {
     const anon = await runAssistant([{ role: "user", content: "what is the status of my application" }], { userId: null, lang: "en" });
     expect(anon.ok && anon.reply).toContain("Nobody is signed in");
     const req = mock.state.aiRequests.at(-1)!;                                        // what the model was given
-    expect(req.tools).toEqual(["get_my_applications", "get_fees", "check_eligibility"]); expect(req.output_config).toEqual({ effort: "low" });
+    expect(req.tools).toEqual(["get_my_applications", "get_fees", "check_eligibility", "get_conditions"]); expect(req.output_config).toEqual({ effort: "low" });
     expect(req.system).toContain("PRIVATE service"); expect(req.system).toContain("THB 2000");
   });
   it("answers price questions through the fees tool and eligibility through the list", async () => {
@@ -99,7 +99,7 @@ describe("AI providers and the administrator's added instructions", () => {
       mock.state.aiRequests.length = 0;
       const plain = await ask("hello there"); expect(plain.ok && plain.reply).toContain("Mock Gemini answer: hello there");
       expect(mock.state.aiRequests.at(-1)).toMatchObject({ provider: "google", model: "gemini-3-flash-preview" });
-      expect((mock.state.aiRequests.at(-1) as unknown as { tools: string[] }).tools).toEqual(["get_my_applications", "get_fees", "check_eligibility"]);
+      expect((mock.state.aiRequests.at(-1) as unknown as { tools: string[] }).tools).toEqual(["get_my_applications", "get_fees", "check_eligibility", "get_conditions"]);
       const fee = await ask("how much is the fee"); expect(fee.ok && fee.reply).toContain("Mock Gemini reply from tools"); expect(fee.ok && fee.reply).toContain("2000");     // a Gemini tool call, run by us, answered by Gemini
       await breakAi("google", 503);
       const spare = await ask("a secret question here"); expect(spare.ok && spare.reply).toContain("Mock answer: a secret question here");                                  // answered by the spare (Anthropic)
