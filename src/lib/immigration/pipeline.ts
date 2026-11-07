@@ -43,7 +43,7 @@ export async function notifyStatus(app: Pick<AppRow, "id" | "ref_no" | "owner_id
   const m = msg[status];
   if (!m) return;
   const tt = t as unknown as Record<string, string>;
-  const fields: [string, string][] = [[t.flex_ref, app.ref_no], [t.flex_status, tt[`st_${status}`] ?? status], ...(reason && (status === "rejected" || status === "action_required") ? [[t.flex_reason, reason] as [string, string]] : [])];
+  const fields: [string, string][] = [[t.flex_ref, app.ref_no], [t.flex_status, tt[`st_${status}`] ?? status]];                                            // the reason is NOT put on the card: it can show on the lock screen. The card says there is something to read and the app has the details
   await notifyUser({ userId: app.owner_id, title: m[0], body: m[1], link: "/trips", kind: `application.${status}`, dedupeKey: `app:${app.id}:${status}`, fields });
 }
 

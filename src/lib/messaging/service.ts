@@ -6,7 +6,7 @@ import { hashId } from "@/lib/crypto";
 import { audit } from "@/lib/audit";
 import { loadMessaging, lineConfigured, whatsappConfigured } from "./settings";
 import { linePush, lineFlex, lineReply, type SendResult } from "./line";
-import { buildFlex } from "./flex";
+import { appOpenUrl, buildFlex } from "./flex";
 import { loadBrand } from "@/lib/brand/server";
 import { DICTS } from "@/lib/i18n/dict";
 import { isLang } from "@/lib/i18n/langs";
@@ -93,7 +93,7 @@ export async function sendToChannels(n: { userId: string; title: string; body?: 
   if (lineChan) {
     const [{ data: prof }, brand] = await Promise.all([db().from("profiles").select("lang").eq("id", n.userId).maybeSingle(), loadBrand()]);
     const t = DICTS[isLang(prof?.lang) ? prof.lang : "en"];
-    flex = buildFlex({ brand: brand.name, title: n.title, fields: n.fields, text: n.body, note: n.note, url: n.link?.startsWith("/") ? `${SITE_URL}${n.link}` : undefined, buttonLabel: t.mail_open, kind: n.kind });
+    flex = buildFlex({ brand: brand.name, title: n.title, fields: n.fields, text: n.body, note: n.note, url: appOpenUrl(SITE_URL, n.link), buttonLabel: t.mail_open, kind: n.kind });
   }
   for (const c of chans) {
     const channel = c.channel as Channel;

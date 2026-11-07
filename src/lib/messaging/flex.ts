@@ -2,7 +2,7 @@
 // LINE refuses the WHOLE message when a field is too long, so every text is cut with "…" to its limit. `altText` is what the lock screen and the chat list show.
 import { NOTICE_STYLES, LINE_TEXT, type NoticeStyle } from "@/config/line-colors";
 
-export const LIMITS = { title: 100, label: 24, value: 120, note: 160, rows: 8, alt: 400, brand: 40 } as const;
+export const LIMITS = { title: 100, label: 24, value: 120, note: 160, summary: 300, rows: 8, alt: 400, brand: 40, href: 300 } as const;
 const cut = (s: string, n: number) => { const t = String(s ?? "").replace(/\s+/g, " ").trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 
 /** Which header a notice gets, from its kind ("application.approved", "payment.paid" …). Anything unknown is a plain info card. */
@@ -20,6 +20,18 @@ export function styleOf(kind?: string): NoticeStyle {
 
 export type FlexInput = { brand: string; title: string; fields?: [string, string][]; text?: string; note?: string; url?: string; buttonLabel: string; kind?: string };
 
+/** A page of OUR site only: starts with one "/", not "//", at most 300 characters, no backslash or control characters. Anything else is null. */
+export function safeHref(path: string | null | undefined): string | null {
+  const p = String(path ?? "");
+  // eslint-disable-next-line no-control-regex
+  return p.startsWith("/") && !p.startsWith("//") && p.length <= LIMITS.href && !/[\\\u0000-\u001f\u007f]/.test(p) ? p : null;
+}
+/** The button address: our site + a safe path (the home page when the path is missing or odd) + openExternalBrowser=1. The button therefore never leads away from the site. */
+export function appOpenUrl(baseUrl: string, path: string | null | undefined): string {
+  const url = `${baseUrl.replace(/\/+$/, "")}${safeHref(path) ?? "/"}`;
+  return `${url}${url.includes("?") ? "&" : "?"}openExternalBrowser=1`;
+}
+
 /** The URL a button opens: the full address plus openExternalBrowser=1, so it opens in the phone's browser (LINE's own browser asks to sign in again). Only http(s) addresses are accepted. */
 export function externalUrl(url: string): string | null {
   try { const u = new URL(url); if (u.protocol !== "https:" && u.protocol !== "http:") return null; u.searchParams.set("openExternalBrowser", "1"); return u.toString(); } catch { return null; }
@@ -27,11 +39,13 @@ export function externalUrl(url: string): string | null {
 
 export function buildFlex(i: FlexInput) {
   const st = NOTICE_STYLES[styleOf(i.kind)], title = cut(i.title, LIMITS.title) || "…";
-  const rows = (i.fields ?? []).filter(([l, v]) => cut(l, 1) && cut(v, 1)).slice(0, LIMITS.rows).map(([l, v]) => [cut(l, LIMITS.label), cut(v, LIMITS.value)] as const);
+  const summary = i.text ? cut(i.text, LIMITS.summary) : "";
+  const rows = (i.fields ?? []).filter(([l, v]) => cut(l, 1) && cut(v, 1)).slice(0, LIMITS.rows - (summary ? 1 : 0)).map(([l, v]) => [cut(l, LIMITS.label), cut(v, LIMITS.value)] as const);
   const url = i.url ? externalUrl(i.url) : null;
-  const body = rows.length
-    ? rows.map(([l, v]) => ({ type: "box", layout: "horizontal", spacing: "md", contents: [{ type: "text", text: l, size: "sm", color: LINE_TEXT.muted, flex: 3, wrap: true }, { type: "text", text: v, size: "sm", weight: "bold", color: LINE_TEXT.ink, flex: 5, wrap: true, align: "end" }] }))
-    : [{ type: "text", text: cut(i.text ?? "", 300) || title, size: "sm", color: LINE_TEXT.ink, wrap: true }];
+  const body = [
+    ...(summary || !rows.length ? [{ type: "text", text: summary || title, size: "sm", color: LINE_TEXT.ink, wrap: true }] : []),
+    ...rows.map(([l, v]) => ({ type: "box", layout: "horizontal", spacing: "md", contents: [{ type: "text", text: l, size: "sm", color: LINE_TEXT.muted, flex: 3, wrap: true }, { type: "text", text: v, size: "sm", weight: "bold", color: LINE_TEXT.ink, flex: 5, wrap: true, align: "end" }] })),
+  ];
   const note = i.note ? cut(i.note, LIMITS.note) : "";
   const bubble: Record<string, unknown> = {
     type: "bubble", size: "mega",
@@ -44,6 +58,7 @@ export function buildFlex(i: FlexInput) {
       ...(url ? [{ type: "button", style: "primary", color: st.color, height: "sm", action: { type: "uri", label: cut(i.buttonLabel, 20) || "Open", uri: url } }] : []) ] },
   };
   if (!(bubble.footer as { contents: unknown[] }).contents.length) delete bubble.footer;
-  const alt = cut([title, ...(rows.length ? [rows.map(([l, v]) => `${l} ${v}`).join(" · ")] : i.text ? [cut(i.text, 250)] : [])].join(" — "), LIMITS.alt);
+  // what the lock screen shows: "title — summary · label value · label value"
+  const alt = cut([title, [summary, ...rows.map(([l, v]) => `${l} ${v}`)].filter(Boolean).join(" · ")].filter(Boolean).join(" — "), LIMITS.alt);
   return { type: "flex" as const, altText: alt, contents: bubble };
 }
