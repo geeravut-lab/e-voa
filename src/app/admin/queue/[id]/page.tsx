@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { simulatorActive } from "@/lib/immigration/resolve";
 import { isSimulatedRef } from "@/lib/immigration/simulator";
 import { SimulateDecision } from "@/components/SimulateDecision";
+import { AssignForm } from "@/components/QueueTools";
+import { listAssignees } from "@/lib/ops/service";
 import { NoteForm, RequestFixForm, RetrySendForm, CancelForm, RefundExceptionForm, AddonOpsForms } from "@/components/OpsForms";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,7 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
     db.from("declarations").select("signer_name, version, signed_at").eq("application_id", a.id).maybeSingle(),
     db.from("consents").select("kind, version").eq("application_id", a.id),
   ]);
+  const people = ops ? await listAssignees() : [];
   const when = new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "short" });
   const box = "space-y-3 rounded-card border border-line bg-surface p-5 shadow-card";
   const st = a.status as string;
@@ -61,6 +64,10 @@ export default async function QueueDetail({ params }: { params: Promise<{ id: st
           <SimulateDecision appId={a.id} />
         </section>
       )}
+
+      {ops && <section className={box}>
+        <AssignForm appId={a.id} current={(a.assigned_to as string | null) ?? null} people={people} meId={viewer.user.id} />
+      </section>}
 
       {ops && <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.ops_actions}</h2>
