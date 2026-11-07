@@ -6,9 +6,9 @@ import { hasSupabase } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 export type Profile = { id: string; display_name: string | null; email: string | null; avatar_url: string | null; lang: string };
-export type Viewer = { user: User | null; profile: Profile | null; isAdmin: boolean; isOwner: boolean };
+export type Viewer = { user: User | null; profile: Profile | null; isAdmin: boolean; isOwner: boolean; isReportViewer: boolean };
 
-const VISITOR: Viewer = { user: null, profile: null, isAdmin: false, isOwner: false };
+const VISITOR: Viewer = { user: null, profile: null, isAdmin: false, isOwner: false, isReportViewer: false };
 
 /** Who is looking at this page? Read once per request. If Supabase is missing or unreachable the visitor view is used. */
 export const getViewer = cache(async (): Promise<Viewer> => {
@@ -18,15 +18,17 @@ export const getViewer = cache(async (): Promise<Viewer> => {
     const { data } = await supabase.auth.getUser();
     const user = data.user;
     if (!user) return VISITOR;
-    const [profile, admin] = await Promise.all([
+    const [profile, admin, reportViewer] = await Promise.all([
       supabase.from("profiles").select("id, display_name, email, avatar_url, lang").eq("id", user.id).maybeSingle(),
       supabase.from("admins").select("is_owner").eq("user_id", user.id).maybeSingle(),
+      supabase.from("report_viewers").select("user_id").eq("user_id", user.id).maybeSingle(),            // read-only statistics accounts (own row only, by RLS)
     ]);
     return {
       user,
       profile: (profile.data as Profile | null) ?? null,
       isAdmin: !!admin.data,
       isOwner: !!admin.data?.is_owner,
+      isReportViewer: !!reportViewer.data,
     };
   } catch (e) {
     unstable_rethrow(e); // never swallow Next.js control-flow errors (dynamic rendering, redirects)

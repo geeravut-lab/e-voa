@@ -6,6 +6,11 @@ import { loadMasters } from "@/lib/master";
 import { upsertTraveler } from "@/lib/applications/service";
 import { audit } from "@/lib/audit";
 import { parseCsv, validateRows } from "./csv";
+import { buildStatement, type Statement } from "./statement";
+import { isPeriod, periodRange } from "@/lib/partner-portal/rules";
+import { notifyUser } from "@/lib/notify";
+import { DICTS, fmt } from "@/lib/i18n/dict";
+import { isLang } from "@/lib/i18n/langs";
 
 const db = () => createAdminClient();
 export type Agency = { id: string; name: string; status: "pending" | "active" | "suspended"; discount_thb: number; commission_pct: number; contact_email: string | null };
@@ -101,4 +106,38 @@ export async function importTravelers(userId: string, text: string): Promise<{ c
   errors.sort((a, b) => a.row - b.row);
   await audit({ actorId: userId, action: "agency.import", entity: "traveler", detail: { created, updated, errors: errors.length } });
   return { created, updated, errors };
+}
+
+// ------------------------------------------------------------------ statements and commission payouts
+/** The statement of one month: applications of the agency created in that month (Thai time) that count (paid or later), their service fees and the commission. */
+export async function loadStatement(agencyId: string, period: string): Promise<Statement | null> {
+  if (!isPeriod(period)) return null;
+  const { data: ag } = await db().from("agencies").select("id, name, commission_pct").eq("id", agencyId).maybeSingle();
+  if (!ag) return null;
+  const { from, to } = periodRange(period);
+  const { data: apps } = await db().from("applications").select("ref_no, status, package, service_fee_thb, created_at, traveler_id").eq("agency_id", agencyId).in("status", COUNTED).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()).order("created_at");
+  const ids = [...new Set((apps ?? []).map((a) => a.traveler_id))];
+  const { data: trs } = ids.length ? await db().from("travelers").select("id, given_name, surname").in("id", ids) : { data: [] };
+  return buildStatement({ id: ag.id, name: ag.name, commissionPct: Number(ag.commission_pct) }, period, (apps ?? []).map((a) => { const t = trs?.find((x) => x.id === a.traveler_id); return { date: new Date(new Date(a.created_at).getTime() + 7 * 3_600_000).toISOString().slice(0, 10), reference: a.ref_no, traveler: t ? `${t.given_name} ${t.surname}` : "", package: a.package, serviceFeeThb: Number(a.service_fee_thb) }; }));
+}
+export async function payoutsOf(agencyId: string) {
+  const { data } = await db().from("agency_payouts").select("period, statement_no, applications, commission_thb, paid_at").eq("agency_id", agencyId).order("period", { ascending: false }).limit(24);
+  return (data ?? []).map((p) => ({ ...p, commission_thb: Number(p.commission_thb) }));
+}
+
+/** Staff record that the month's commission was paid to the agency. Once per month; the numbers are frozen as they were at that moment. */
+export async function closePayout(adminId: string, agencyId: string, period: string, note: string): Promise<{ ok: true; commissionThb: number } | { ok: false; error: string }> {
+  const st = await loadStatement(agencyId, period);
+  if (!st) return { ok: false, error: "err_not_found" };
+  if (st.applications === 0 || st.commissionThb <= 0) return { ok: false, error: "err_nothing_to_settle" };
+  const ins = await db().from("agency_payouts").insert({ agency_id: agencyId, period, statement_no: st.statementNo, applications: st.applications, service_fees_thb: st.serviceFeesThb, commission_pct: st.commissionPct, commission_thb: st.commissionThb, paid_by: adminId, note: note.slice(0, 300) || null }).select("id");
+  if (ins.error || ins.data?.length !== 1) return { ok: false, error: ins.error?.code === "23505" ? "err_settled_already" : "err_generic" };
+  await audit({ actorId: adminId, actorRole: "admin", action: "agency.payout", entity: "agency", entityId: agencyId, detail: { period, commission_thb: st.commissionThb, applications: st.applications } });
+  const { data: mem } = await db().from("agency_members").select("user_id").eq("agency_id", agencyId);
+  for (const m of mem ?? []) {
+    const { data: prof } = await db().from("profiles").select("lang").eq("id", m.user_id).maybeSingle();
+    const t = DICTS[isLang(prof?.lang) ? prof.lang : "en"];
+    await notifyUser({ userId: m.user_id, title: t.agency_n_paid_title, body: fmt(t.agency_n_paid_body, { period, amount: st.commissionThb.toLocaleString("en-US"), no: st.statementNo }), link: "/agency", kind: "agency.payout", dedupeKey: `agency:payout:${agencyId}:${period}:${m.user_id}` });
+  }
+  return { ok: true, commissionThb: st.commissionThb };
 }

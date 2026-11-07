@@ -15,7 +15,9 @@ export type AppRow = {
 };
 
 /** Turns a document row into the shape Immigration wants (base64 of the DECRYPTED file). Only JPEG and PDF are accepted by Immigration. */
-export async function loadDocketDocuments(applicationId: string, kinds: string[]): Promise<DocketApplicant["documentList"]> {
+const PLACEHOLDER_JPEG = Buffer.from("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=", "base64");
+/** `lenient` is for the built-in simulator only: a file or number that cannot be decrypted (the key was changed) is replaced by a placeholder so the journey can still be tried. A real send is never lenient. */
+export async function loadDocketDocuments(applicationId: string, kinds: string[], lenient = false): Promise<DocketApplicant["documentList"]> {
   const db = createAdminClient();
   const { data, error } = await db.from("documents").select("id, doc_list_id, storage_path, mime, kind, created_at").eq("application_id", applicationId).is("deleted_at", null).in("kind", kinds).order("created_at");
   if (error) throw new DocketBuildError("err_generic", error.message);
@@ -25,7 +27,8 @@ export async function loadDocketDocuments(applicationId: string, kinds: string[]
     if (!d.doc_list_id) throw new DocketBuildError("err_doc_type", `document ${d.id} has no Immigration document type`);
     const dl = await db.storage.from("documents").download(d.storage_path);
     if (dl.error || !dl.data) throw new DocketBuildError("err_generic", `cannot read document ${d.id}`);
-    const bytes = decryptBytes(new Uint8Array(await dl.data.arrayBuffer()));
+    let bytes: Buffer;
+    try { bytes = decryptBytes(new Uint8Array(await dl.data.arrayBuffer())); } catch (e) { if (!lenient) throw e; bytes = PLACEHOLDER_JPEG; }
     out.push({
       DocumentListId: d.doc_list_id, FileContent: bytes.toString("base64"),
       FileName: `${d.kind}-${d.id.slice(0, 8)}.${d.mime === "application/pdf" ? "pdf" : "jpg"}`.slice(0, 50), MimeType: d.mime as "image/jpeg" | "application/pdf", FileSize: String(Math.ceil(bytes.length / 1024)),
@@ -35,7 +38,7 @@ export async function loadDocketDocuments(applicationId: string, kinds: string[]
 }
 
 /** Collects everything about one application from the database and returns a docket that already passed our own validation. */
-export async function buildDocket(app: AppRow): Promise<Docket> {
+export async function buildDocket(app: AppRow, lenient = false): Promise<Docket> {
   if (!app.payment_receipt_ref) throw new DocketBuildError("err_not_paid", "application has no payment reference yet");
   const db = createAdminClient();
   const [{ data: trip }, { data: t }] = await Promise.all([
@@ -47,8 +50,9 @@ export async function buildDocket(app: AppRow): Promise<Docket> {
   if (!form.success) throw new DocketBuildError("err_form_incomplete", form.error.issues.map((i) => i.path.join(".")).join(", "));
   const f = form.data;
   if (!t.passport_no_enc) throw new DocketBuildError("err_form_incomplete", "passport number is missing");
-  const passport = decryptText(t.passport_no_enc);
-  const docs = await loadDocketDocuments(app.id, ["passport_bio", "photo", "return_ticket", "accommodation", "funds", "insurance", "other"]);
+  let passport: string;
+  try { passport = decryptText(t.passport_no_enc); } catch (e) { if (!lenient) throw e; passport = "SIM000000"; }
+  const docs = await loadDocketDocuments(app.id, ["passport_bio", "photo", "return_ticket", "accommodation", "funds", "insurance", "other"], lenient);
 
   const applicant: DocketApplicant = {
     applicantDetails: {

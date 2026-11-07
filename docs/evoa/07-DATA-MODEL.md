@@ -75,3 +75,17 @@ Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insura
 | `addon_orders.partner_id/settlement_id` | Who delivers an order and which payout covered it; `partner_ref.portal_code` is the unique voucher code | owner, admin |
 | `admin_alert_seen` (migration `20261113…`) | Which back-office alerts each administrator has opened (by alert key and signature) | that administrator |
 | `platform_settings.audit_config` | `{ enabled, disabled[] }`: whether and which groups of events the audit trail records | admin |
+| `partner_packages.stock_total` (migration `20261114…`) | Quantity limit of a portal package (null = unlimited); column not readable by travelers or visitors | partner, admin |
+| `agency_payouts` (migration `20261115…`) | One commission payout per agency and month (frozen numbers, statement number) | the agency, admin |
+| `platform_settings.automation_rules`, `automation_last_run` | Rules engine settings and the last run | admin |
+
+## Government / TAT statistics
+
+- `report_viewers (user_id, added_by, created_at)`: accounts that may open `/gov` (read-only statistics). RLS: a viewer reads their own row, staff read all. Written by the server only.
+- `tourism_stats(p_from date, p_to date) → jsonb`: counts only (funnel by status, approved arrivals by day / nationality / airport / purpose / gender / age band / stay band / package, average decision hours, average lead days). Executable by `service_role` only; the server checks who is asking. The app hides every group under 5 (`src/lib/tourism/stats.ts`).
+
+## Wallet passes
+
+- `wallet_passes (application_id, platform 'google'|'apple', serial, auth_token, lang, fingerprint, updated_at, synced_at, last_error)`: one row per pass handed out. `fingerprint` = hash of what the pass shows; a change means the pass in the wallet is out of date. Apple: `serial` + `auth_token` identify the pass to the phone.
+- `wallet_registrations (device_id, pass_id, push_token)`: Apple phones that registered for updates. Both tables are server-only (RLS on, no policy).
+

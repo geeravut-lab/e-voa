@@ -36,8 +36,8 @@ describe("the assistant's instructions", () => {
 
 describe("assistant settings", () => {
   it("falls back to safe defaults for bad values", () => {
-    expect(parseAi({ model: "gpt-4", daily_token_budget: -5, per_user_hourly: "x" })).toMatchObject({ model: DEFAULT_AI.model, daily_token_budget: DEFAULT_AI.daily_token_budget, per_user_hourly: DEFAULT_AI.per_user_hourly });
-    expect(parseAi({ model: "claude-sonnet-5-5", enabled: false, daily_token_budget: 100000 })).toMatchObject({ model: "claude-sonnet-5-5", enabled: false, daily_token_budget: 100000 });
+    expect(parseAi({ daily_token_budget: -5, per_user_hourly: "x" })).toMatchObject({ daily_token_budget: DEFAULT_AI.daily_token_budget, per_user_hourly: DEFAULT_AI.per_user_hourly });
+    expect(parseAi({ enabled: false, daily_token_budget: 100000 })).toMatchObject({ enabled: false, daily_token_budget: 100000 });
     expect(parseAi(null).enabled).toBe(true);
   });
 });

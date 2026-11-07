@@ -1,6 +1,7 @@
 import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { ARRIVAL } from "@/lib/content/guide";
+import { forLang } from "@/lib/content/types";
 import { PageHead } from "@/components/PageHead";
 import { loadAirportNotes } from "@/lib/airports";
 
@@ -8,7 +9,7 @@ export const generateMetadata = () => pageMeta({ path: "/guide", title: "card_gu
 
 export default async function GuidePage() {
   const { t, lang } = await getT();
-  const c = ARRIVAL[lang]; const notes = await loadAirportNotes();
+  const c = forLang(ARRIVAL, lang); const notes = await loadAirportNotes();
   return (
     <div className="space-y-4">
       <PageHead title={t.card_guide} hint={c.intro} art="guide" tone="mint" />

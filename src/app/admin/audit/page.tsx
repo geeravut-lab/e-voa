@@ -41,7 +41,7 @@ export default async function AuditPage() {
         <p className="rounded-card border border-line bg-surface p-5 text-muted">{t.audit_empty}</p>
       ) : (
         <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
-          <table className="w-full min-w-[640px] text-left text-sm tabular">
+          <table className="w-full min-w-[640px] text-start text-sm tabular">
             <thead className="bg-bg text-xs uppercase tracking-wide text-muted">
               <tr><th className="p-3">{t.audit_when}</th><th className="p-3">{t.audit_who}</th><th className="p-3">{t.audit_what}</th><th className="p-3">{t.audit_detail}</th></tr>
             </thead>
@@ -50,7 +50,7 @@ export default async function AuditPage() {
                 <tr key={r.id}>
                   <td className="whitespace-nowrap p-3">{fmtDate.format(new Date(r.at))}</td>
                   <td className="p-3"><span className="font-mono text-xs">{r.actor_id?.slice(0, 8) ?? "—"}</span> <span className="text-muted">{r.actor_role}</span></td>
-                  <td className="p-3 font-semibold">{r.action}{r.source === "db" && <span className="ml-1 rounded bg-sky px-1 text-xs text-primary">db</span>}</td>
+                  <td className="p-3 font-semibold">{r.action}{r.source === "db" && <span className="ms-1 rounded bg-sky px-1 text-xs text-primary">db</span>}</td>
                   <td className="p-3 font-mono text-xs text-muted">{r.entity ?? ""} {JSON.stringify(r.detail ?? {}) === "{}" ? "" : JSON.stringify(r.detail)}</td>
                 </tr>
               ))}

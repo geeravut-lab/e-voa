@@ -42,7 +42,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     after(() => trackEvent(id, "active")); // once a day per person; never blocks the page
   }
 
-  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && n.area === (isAdmin ? "admin" : "traveler"));
+  const visible = NAV.filter((n) => (!n.feature || flags[n.feature]) && (!n.viewerOnly || viewer.isReportViewer) && n.area === (isAdmin ? "admin" : "traveler"));
   const entry = (n: NavItem): NavEntry => ({
     key: n.key,
     label: t[n.label],
@@ -68,7 +68,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const bell = signedIn && (isAdmin || flags.notifications) && (
     <AppLink href={isAdmin ? "/admin/notifications" : "/notifications"} aria-label={t.nav_notifications} className="relative grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-sky">
       <Bell size={22} aria-hidden="true" />
-      {(isAdmin ? attention : unread) > 0 && <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-lotus px-1 text-[11px] font-bold leading-5 text-white">{(isAdmin ? attention : unread) > 9 ? "9+" : isAdmin ? attention : unread}</span>}
+      {(isAdmin ? attention : unread) > 0 && <span className="absolute end-1 top-1 grid min-w-5 place-items-center rounded-full bg-lotus px-1 text-[11px] font-bold leading-5 text-white">{(isAdmin ? attention : unread) > 9 ? "9+" : isAdmin ? attention : unread}</span>}
     </AppLink>
   );
   const signIn = (

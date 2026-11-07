@@ -28,6 +28,7 @@ export type NavItem = {
   phase?: string;               // shown on the "coming soon" page
   feature?: FeatureKey;
   bottom?: boolean;             // one of the 4 fixed entries of the mobile bar (the 5th, centre, is "apply")
+  viewerOnly?: boolean;         // shown only to read-only statistics accounts (report viewers)
   home?: boolean;               // shown as a card on the home page
   side?: boolean;               // shown in the desktop sidebar
 };
@@ -49,10 +50,12 @@ export const NAV: NavItem[] = [
   { key: "account", label: "card_account", sub: "card_account_sub", href: "/account", icon: "user", art: "account", tone: "sky", size: "half", area: "traveler", auth: true, status: "live", home: true },
   { key: "agency", label: "card_agency", sub: "card_agency_sub", href: "/agency", icon: "users", art: "travelers", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
   { key: "partner", label: "card_partner", sub: "card_partner_sub", href: "/partner", icon: "sparkles", art: "extras", tone: "mint", size: "half", area: "traveler", auth: true, status: "live", home: true, side: true },
+  { key: "gov", label: "admin_tourism_title", sub: "gov_hint", href: "/gov", icon: "chart", art: "analytics", tone: "gold", size: "half", area: "traveler", auth: true, status: "live", viewerOnly: true, home: true, side: true },
 
   { key: "admin_home", label: "nav_admin", barLabel: "nav_admin", href: "/admin", icon: "shield", tone: "sky", size: "half", area: "admin", auth: true, status: "live", side: true },
   { key: "admin_notifs", label: "admin_notif_title", barLabel: "nav_alerts", sub: "admin_notif_hint", href: "/admin/notifications", icon: "bell", art: "notifications", tone: "sand", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "revenue", label: "admin_revenue_title", sub: "admin_revenue_hint", href: "/admin/revenue", icon: "chart", art: "analytics", tone: "mint", size: "wide", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "tourism", label: "admin_tourism_title", sub: "admin_tourism_hint", href: "/admin/tourism", icon: "chart", art: "analytics", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "ops", label: "card_ops", barLabel: "nav_queue", sub: "card_ops_sub", href: "/admin/queue", icon: "queue", art: "ops", tone: "gold", size: "wide", area: "admin", auth: true, status: "live", phase: "Phase 2", home: true, side: true },
   { key: "rules", label: "admin_rules_title", sub: "admin_rules_hint", href: "/admin/rules", icon: "toggle", art: "features", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "admin_elig", label: "admin_elig_title", sub: "admin_elig_hint", href: "/admin/eligibility", icon: "search", art: "check", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
@@ -60,10 +63,11 @@ export const NAV: NavItem[] = [
   { key: "channels", label: "admin_channels_title", sub: "admin_channels_hint", href: "/admin/channels", icon: "link", art: "help", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "company", label: "admin_company_title", sub: "admin_company_hint", href: "/admin/company", icon: "receipt", art: "fees", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "airports", label: "admin_airports_title", sub: "admin_airports_hint", href: "/admin/airports", icon: "map", art: "guide", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "help", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "ai", label: "admin_ai_title", sub: "admin_ai_hint", href: "/admin/ai", icon: "chat", art: "ai", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "prompts", label: "admin_prompts_title", sub: "admin_prompts_hint", href: "/admin/prompts", icon: "scroll", art: "prompts", tone: "gold", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "messaging", label: "admin_msg_title", sub: "admin_msg_hint", href: "/admin/messaging", icon: "bell", art: "notifications", tone: "sand", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "agencies", label: "admin_agencies_title", sub: "admin_agencies_hint", href: "/admin/agencies", icon: "users", art: "admins", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
-  { key: "partners", label: "admin_partners_title", sub: "admin_partners_hint", href: "/admin/partners", icon: "users", art: "admins", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "agencies", label: "admin_agencies_title", sub: "admin_agencies_hint", href: "/admin/agencies", icon: "users", art: "travelers", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
+  { key: "partners", label: "admin_partners_title", sub: "admin_partners_hint", href: "/admin/partners", icon: "users", art: "extras", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "immigration", label: "card_immigration", sub: "card_immigration_sub", href: "/admin/immigration", icon: "link", art: "ops", tone: "sky", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "branding", label: "card_branding", sub: "card_branding_sub", href: "/admin/branding", icon: "palette", art: "branding", tone: "rose", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
   { key: "features", label: "card_features", sub: "card_features_sub", href: "/admin/features", icon: "toggle", art: "features", tone: "mint", size: "half", area: "admin", auth: true, status: "live", home: true, side: true },
@@ -120,3 +124,19 @@ export function spreadTones(items: { key: string; size: "wide" | "half" }[]): Ma
   });
   return out;
 }
+
+/**
+ * Packs cards into the 2-column grid without holes: a half-width card that would stand alone in its row (the next card is wide, or it is the last one)
+ * becomes full width. The order never changes. Call it on the cards that are really shown (after menus are filtered by role and feature switches).
+ */
+export function packCards<T extends { size: "wide" | "half" }>(items: T[]): T[] {
+  const out: T[] = []; let col = 0;
+  items.forEach((it, i) => {
+    if (it.size === "wide") { out.push(it); col = 0; return; }
+    const next = items[i + 1];
+    if (col === 0 && (!next || next.size === "wide")) { out.push({ ...it, size: "wide" }); return; }
+    out.push(it); col = col === 0 ? 1 : 0;
+  });
+  return out;
+}
+

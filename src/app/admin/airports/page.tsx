@@ -3,6 +3,7 @@ import { getT } from "@/lib/i18n/server";
 import { AIRPORT_CODES, loadAirportNotes } from "@/lib/airports";
 import { LANG_CODES, LANGS } from "@/lib/i18n/langs";
 import { ARRIVAL } from "@/lib/content/guide";
+import { forLang } from "@/lib/content/types";
 import { saveAirportNotesAction } from "@/app/actions/admin";
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
@@ -14,7 +15,7 @@ export default async function AdminAirports() {
   await requireAdminPage();
   const { t, lang } = await getT();
   const notes = await loadAirportNotes();
-  const names = Object.fromEntries(ARRIVAL[lang].airports.map((a) => [a.h.match(/\(([A-Z]{3})\)/)?.[1] ?? "", a.h]));
+  const names = Object.fromEntries(forLang(ARRIVAL, lang).airports.map((a) => [a.h.match(/\(([A-Z]{3})\)/)?.[1] ?? "", a.h]));
   const area = "min-h-24 w-full rounded-control border-[1.5px] border-field bg-surface p-3 text-sm";
   return (
     <div>

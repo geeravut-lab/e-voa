@@ -38,7 +38,7 @@ export function ChatBox({ suggestions }: { suggestions: string[] }) {
           <div className="space-y-2"><p className="text-sm text-muted">{t.ai_intro}</p>
             <div className="flex flex-wrap gap-2">{suggestions.map((s) => <AsyncButton key={s} variant="ghost" className="min-h-9 px-3 text-sm" onClick={() => send(s)}>{s}</AsyncButton>)}</div></div>
         )}
-        {msgs.map((m, i) => <p key={i} className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-sky text-ink"}`}>{m.content}</p>)}
+        {msgs.map((m, i) => <p key={i} className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${m.role === "user" ? "ms-auto bg-primary text-white" : "bg-sky text-ink"}`}>{m.content}</p>)}
         {err && <p role="alert" className="rounded-control bg-rose p-3 text-sm font-semibold text-danger">✕ {err}</p>}
         <div ref={end} />
       </div>

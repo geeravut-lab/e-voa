@@ -12,7 +12,7 @@ export const parseAddonRules = (v: unknown): AddonRules => {
   return { sim_airports: ids(o.sim_airports, [1]), sim_blocked_for_express: b(o.sim_blocked_for_express, true), vip_airports: ids(o.vip_airports, [1]), vip_blocked_for_express: b(o.vip_blocked_for_express, true) };
 };
 
-export type Offer = { available: true } | { available: false; reason: "airport" | "express" };
+export type Offer = { available: true } | { available: false; reason: "airport" | "express" | "stock" };
 
 export function addonOffer(category: AddonCategory, trip: { arrivalAirportId: number | null; package: "regular" | "express" }, r: AddonRules): Offer {
   if (category === "sim" || category === "vip") {

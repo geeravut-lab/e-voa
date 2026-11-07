@@ -47,7 +47,7 @@ export function DocSlot({ appId, kind, have, required, file }: { appId: string; 
       {cam && <SelfieCamera onCapture={give} onClose={() => setCam(false)} />}
       {kind === "photo" && (checking || face) && (
         <p role="status" className={`mt-2 rounded-control p-2 text-sm font-semibold ${!checking && face?.length === 0 ? "bg-mint text-teal-deep" : "bg-gold-soft text-gold-deep"}`}>
-          {checking ? <><Spinner size={14} className="mr-1 inline" />{t.photo_checking}</> : face?.length === 0 ? `✓ ${t.photo_f_ok}` : `${t.photo_advice}: ${face?.map((w) => (t as unknown as Record<string, string>)[`photo_f_${w}`]).join(" ")}`}
+          {checking ? <><Spinner size={14} className="me-1 inline" />{t.photo_checking}</> : face?.length === 0 ? `✓ ${t.photo_f_ok}` : `${t.photo_advice}: ${face?.map((w) => (t as unknown as Record<string, string>)[`photo_f_${w}`]).join(" ")}`}
         </p>
       )}
     </ActionForm>

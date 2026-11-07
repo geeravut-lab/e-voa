@@ -8,7 +8,7 @@ function Pending({ className }: { className?: string }) {
   const { pending } = useLinkStatus();
   if (!pending) return null;
   return (
-    <span className={`pointer-events-none absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-primary shadow ${className ?? ""}`} role="status" aria-label="Loading">
+    <span className={`pointer-events-none absolute end-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-primary shadow ${className ?? ""}`} role="status" aria-label="Loading">
       <Spinner size={16} />
     </span>
   );
@@ -26,7 +26,7 @@ export function AppLink({ children, className = "", spinner = true, ...rest }: C
 /** Inline variant for list/menu rows: spinner sits at the end of the row instead of floating over it. */
 function InlinePending() {
   const { pending } = useLinkStatus();
-  return pending ? <Spinner size={16} className="ml-auto text-primary" /> : null;
+  return pending ? <Spinner size={16} className="ms-auto text-primary" /> : null;
 }
 export function NavRowLink({ children, className = "", ...rest }: ComponentProps<typeof Link>) {
   return (

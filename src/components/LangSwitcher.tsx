@@ -55,13 +55,13 @@ export function LangSwitcher({ compact = false, up = false }: { compact?: boolea
         {pending ? <Spinner size={14} /> : <ChevronDown size={16} aria-hidden="true" className={`transition ${open ? "rotate-180" : ""}`} />}
       </button>
       {open && (
-        <ul id={listId} role="listbox" aria-label="Language" className={`absolute z-50 min-w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-card ${compact ? "right-0" : "left-0 w-full"} ${up ? "bottom-full mb-2" : "top-full mt-2"}`}>
+        <ul id={listId} role="listbox" aria-label="Language" className={`absolute z-50 min-w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-card ${compact ? "end-0" : "start-0 w-full"} ${up ? "bottom-full mb-2" : "top-full mt-2"}`}>
           {LANG_CODES.map((code) => {
             const active = code === lang;
             return (
               <li key={code} role="presentation">
                 <button type="button" role="option" aria-selected={active} disabled={pending} onClick={() => choose(code)} lang={LANGS[code].htmlLang}
-                  className={`flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left text-[15px] font-semibold transition hover:bg-sky ${active ? "text-primary" : "text-ink"}`}>
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 px-4 text-start text-[15px] font-semibold transition hover:bg-sky ${active ? "text-primary" : "text-ink"}`}>
                   <span>{LANGS[code].native}</span>
                   {active && <Check size={16} aria-hidden="true" />}
                 </button>

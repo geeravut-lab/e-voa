@@ -1,7 +1,8 @@
 import "server-only";
 import { hasServiceRole } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { gatewayFromEnv } from "@/lib/immigration/gateway";
+import { resolveGateway } from "@/lib/immigration/resolve";
+import { SimulatedGateway } from "@/lib/immigration/simulator";
 import { pollPending, processOutbox } from "@/lib/immigration/pipeline";
 import { syncFlatLists } from "@/lib/immigration/sync";
 import { purgeExpiredDocuments } from "@/lib/documents";
@@ -10,6 +11,7 @@ import { DEFAULT_RETENTION } from "@/config/defaults";
 import { reconcilePaid, expireUnpaid } from "@/lib/payments/service";
 import { recheckWaiting } from "@/lib/applications/service";
 import { processAddonQueue, syncPartnerPackages } from "@/lib/partners/service";
+import { syncWalletPasses } from "@/lib/wallet/service";
 import { runRules } from "@/lib/rules/service";
 
 const DEFAULT_BUDGET_MS = 20_000;
@@ -23,13 +25,14 @@ export async function runTick(): Promise<Record<string, unknown>> {
   const started = Date.now();
   const out: Record<string, unknown> = {};
   if (!hasServiceRole()) return { skipped: "service role not configured" };
-  const gw = gatewayFromEnv();
+  const gw = await resolveGateway();
 
   const jobs: [string, () => Promise<unknown>][] = [
     ["payments", async () => ({ reconciled: await reconcilePaid(), expired: await expireUnpaid() })],
     ["pre_check", async () => recheckWaiting()],
     ["addons", async () => processAddonQueue()],
     ["rules", async () => runRules()],
+    ["wallet", async () => syncWalletPasses()],
     ["partner_packages", async () => {
       const { data } = await createAdminClient().from("partner_packages").select("synced_at").order("synced_at", { ascending: true }).limit(1);
       const last = data?.[0]?.synced_at ? Date.parse(data[0].synced_at) : 0;
@@ -38,7 +41,7 @@ export async function runTick(): Promise<Record<string, unknown>> {
     ["outbox", async () => (gw ? processOutbox(gw) : "gateway not configured")],
     ["poll", async () => (gw ? pollPending(gw) : "gateway not configured")],
     ["master_sync", async () => {
-      if (!gw) return "gateway not configured";
+      if (!gw || gw instanceof SimulatedGateway) return "gateway not configured";          // the simulator has no lists; keep what is loaded
       const { data } = await createAdminClient().from("master_sync").select("last_synced_at").order("last_synced_at", { ascending: true, nullsFirst: true }).limit(1);
       const oldest = data?.[0]?.last_synced_at ? Date.parse(data[0].last_synced_at) : 0;
       return Date.now() - oldest > 20 * 3600_000 ? syncFlatLists(gw) : "fresh";

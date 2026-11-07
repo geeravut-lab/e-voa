@@ -45,11 +45,29 @@ export async function syncPartnerPackages(): Promise<{ rows: number; failed: Pro
   return { rows, failed };
 }
 
-/** Add-ons that may be offered for a trip right now (rules + what is in the catalogue). */
-export async function offersFor(tripPackage: "regular" | "express", arrivalAirportId: number | null) {
+/** Add-ons that may be offered for a trip right now (rules + stock + what is in the catalogue). `exceptApplicationId`: that application's own unpaid picks do not count against the stock. */
+export async function offersFor(tripPackage: "regular" | "express", arrivalAirportId: number | null, exceptApplicationId?: string) {
   const rules = parseAddonRules(await getSetting<unknown>("addon_rules", DEFAULT_ADDON_RULES));
-  const { data } = await admin().from("partner_packages").select("provider, package_code, category, name, detail, price_thb, price_usd, terms, partner_id, partners(status)").eq("active", true).order("price_thb");
-  return (data ?? []).filter((p) => !p.partner_id || (p.partners as unknown as { status: string } | null)?.status === "active").map((p) => ({ ...p, price_thb: Number(p.price_thb), offer: addonOffer(p.category as AddonCategory, { arrivalAirportId, package: tripPackage }, rules) }));
+  const { data } = await admin().from("partner_packages").select("provider, package_code, category, name, detail, price_thb, price_usd, terms, partner_id, stock_total, partners(status)").eq("active", true).order("price_thb");
+  const rows = (data ?? []).filter((p) => !p.partner_id || (p.partners as unknown as { status: string } | null)?.status === "active");
+  const left = await stockLeft(rows.filter((p) => p.stock_total !== null).map((p) => ({ package_code: p.package_code, stock_total: p.stock_total as number })), exceptApplicationId);
+  return rows.map((p) => {
+    const remaining = p.stock_total === null ? null : left.get(p.package_code) ?? 0;
+    const base = addonOffer(p.category as AddonCategory, { arrivalAirportId, package: tripPackage }, rules);
+    return { ...p, price_thb: Number(p.price_thb), stock_left: remaining, offer: base.available && remaining !== null && remaining <= 0 ? ({ available: false, reason: "stock" } as const) : base };
+  });
+}
+
+/** What is left of limited packages: the limit minus paid / issued / used orders and unpaid orders made in the last 2 hours (they hold a unit while the traveler pays). */
+export async function stockLeft(pkgs: { package_code: string; stock_total: number }[], exceptApplicationId?: string): Promise<Map<string, number>> {
+  const out = new Map<string, number>(); if (pkgs.length === 0) return out;
+  const since = new Date(Date.now() - 2 * 3_600_000).toISOString();
+  const { data } = await admin().from("addon_orders").select("package_code, status, created_at, application_id").in("package_code", pkgs.map((p) => p.package_code)).in("status", ["pending_payment", "paid", "issuing", "issued", "used"]);
+  for (const p of pkgs) {
+    const taken = (data ?? []).filter((o) => o.package_code === p.package_code && (o.status !== "pending_payment" || (o.created_at > since && o.application_id !== exceptApplicationId))).length;
+    out.set(p.package_code, Math.max(p.stock_total - taken, 0));
+  }
+  return out;
 }
 
 /** Sets the add-ons chosen for one application (only unpaid ones can change). Rules are enforced here, not just on screen; prices come from the catalogue. */
@@ -59,12 +77,12 @@ export async function setAddons(ownerId: string, applicationId: string, picks: {
   if (!app) return { ok: false, error: "err_not_found" };
   if (app.status !== "draft") return { ok: false, error: "err_locked" };
   const { data: trip } = await db.from("trips").select("arrival_airport_id").eq("id", app.trip_id).maybeSingle();
-  const offers = await offersFor(app.package, trip?.arrival_airport_id ?? null);
+  const offers = await offersFor(app.package, trip?.arrival_airport_id ?? null, applicationId);
   const chosen: typeof offers = [];
   for (const pk of picks) {
     const o = offers.find((x) => x.category === pk.category && x.package_code === pk.packageCode);
     if (!o) return { ok: false, error: "err_generic" };
-    if (!o.offer.available) return { ok: false, error: "err_addon_unavailable" };
+    if (!o.offer.available) return { ok: false, error: o.offer.reason === "stock" ? "err_addon_sold_out" : "err_addon_unavailable" };
     if (chosen.some((c) => c.category === o.category)) return { ok: false, error: "err_generic" };     // one per category
     chosen.push(o);
   }

@@ -45,7 +45,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
         <ul className="space-y-3">
           {REVENUE_CATEGORIES.map((c) => { const x = s.byCategory[c]; return (
             <li key={c}>
-              <div className="flex items-baseline justify-between gap-2 text-sm"><b>{label(c)}</b><span className="tabular"><b>{money(x.net)}</b>{x.refunds > 0 && <span className="ml-2 text-xs text-muted">({money(x.gross)} − {money(x.refunds)})</span>}</span></div>
+              <div className="flex items-baseline justify-between gap-2 text-sm"><b>{label(c)}</b><span className="tabular"><b>{money(x.net)}</b>{x.refunds > 0 && <span className="ms-2 text-xs text-muted">({money(x.gross)} − {money(x.refunds)})</span>}</span></div>
               <div className="mt-1 h-2.5 rounded-full bg-sky" aria-hidden="true"><div className={`h-full rounded-full ${CAT_BG[c]}`} style={{ width: `${Math.max(x.net, 0) / top * 100}%` }} /></div>
             </li>); })}
         </ul>
@@ -57,12 +57,12 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
         </div>
         {truncated && <p className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{t.rev_truncated}</p>}
         {rows.length === 0 ? <p className="text-muted">{t.rev_none}</p> : (
-          <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm tabular">
-            <thead className="text-xs uppercase tracking-wide text-muted"><tr><th className="py-2 pr-3">{t.audit_when}</th><th className="pr-3">{t.rev_receipt}</th><th className="pr-3">{t.rev_ref}</th><th className="pr-3">{t.rev_items}</th><th className="text-right">{t.rev_total}</th></tr></thead>
+          <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-start text-sm tabular">
+            <thead className="text-xs uppercase tracking-wide text-muted"><tr><th className="py-2 pe-3">{t.audit_when}</th><th className="pe-3">{t.rev_receipt}</th><th className="pe-3">{t.rev_ref}</th><th className="pe-3">{t.rev_items}</th><th className="text-end">{t.rev_total}</th></tr></thead>
             <tbody className="divide-y divide-line">{rows.map((r, i) => (
-              <tr key={i}><td className="whitespace-nowrap py-2 pr-3">{when.format(new Date(r.at))}</td><td className="pr-3 font-mono text-xs">{r.receipt ?? ""}</td><td className="pr-3 font-mono text-xs">{r.ref}</td>
-                <td className="pr-3"><span className="flex flex-wrap gap-1">{[...r.parts].map(([c, v]) => <span key={c} className="inline-flex items-center gap-1 rounded-full bg-bg px-2 py-0.5 text-xs"><span className={`size-2 rounded-full ${CAT_BG[c as keyof typeof CAT_BG]}`} aria-hidden="true" />{label(c)} {v.toLocaleString("en-US")}</span>)}</span></td>
-                <td className="text-right font-bold">{money(r.total)}</td></tr>))}</tbody>
+              <tr key={i}><td className="whitespace-nowrap py-2 pe-3">{when.format(new Date(r.at))}</td><td className="pe-3 font-mono text-xs">{r.receipt ?? ""}</td><td className="pe-3 font-mono text-xs">{r.ref}</td>
+                <td className="pe-3"><span className="flex flex-wrap gap-1">{[...r.parts].map(([c, v]) => <span key={c} className="inline-flex items-center gap-1 rounded-full bg-bg px-2 py-0.5 text-xs"><span className={`size-2 rounded-full ${CAT_BG[c as keyof typeof CAT_BG]}`} aria-hidden="true" />{label(c)} {v.toLocaleString("en-US")}</span>)}</span></td>
+                <td className="text-end font-bold">{money(r.total)}</td></tr>))}</tbody>
           </table></div>
         )}
         {byPay.size > 100 && <p className="text-xs text-muted">{t.rev_more.replace("{n}", String(byPay.size))}</p>}

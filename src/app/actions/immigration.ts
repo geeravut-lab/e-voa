@@ -42,3 +42,45 @@ export async function syncDistrictsAction(): Promise<ActionResult> {
     return { ok: true, message: fmt(t.imm_sync_done, { rows: r.rows }) };
   } catch (e) { return { ok: false, error: code(e) }; }
 }
+
+// ------------------------------------------------------------------ the built-in Immigration simulator (for trying the journey before the real API exists)
+import { putSetting } from "@/lib/settings";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveGateway, simulatorActive } from "@/lib/immigration/resolve";
+import { gatewayFromEnv as realGateway } from "@/lib/immigration/gateway";
+import { simulateDecision } from "@/lib/immigration/simulate";
+import { pollPending, processOutbox } from "@/lib/immigration/pipeline";
+
+export async function saveSimAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction(); if (!a.ok) return a;
+  const enabled = fd.get("enabled") === "on";
+  if (enabled && realGateway()) return { ok: false, error: "err_sim_real_connected" };          // a real connection always wins
+  if (!(await putSetting("immigration_sim", { enabled }, a.viewer.user.id))) return { ok: false, error: "err_generic" };
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "settings.immigration_sim", entity: "settings", detail: { enabled } });
+  revalidatePath("/admin/immigration"); revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** "Send now": applications waiting in the queue are sent right away instead of at the next scheduled run (the retry waiting time is skipped). */
+export async function runQueueNowAction(): Promise<ActionResult> {
+  const a = await requireAdminAction(); if (!a.ok) return a;
+  const gw = await resolveGateway(); if (!gw) return { ok: false, error: "err_not_configured" };
+  const db = createAdminClient();
+  await db.from("immigration_outbox").update({ next_attempt_at: new Date().toISOString() }).eq("status", "pending");
+  const r = await processOutbox(gw, 25);
+  const p = await pollPending(gw, 0, 25).catch(() => ({ checked: 0, changed: 0 }));
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "immigration.queue_now", entity: "immigration_outbox", detail: { sent: r.sent, refused: r.refused, retry: r.retry } });
+  revalidatePath("/admin/immigration"); revalidatePath("/admin/queue", "layout");
+  const { t } = await getT();
+  return { ok: true, message: fmt(t.imm_queue_done, { sent: r.sent, refused: r.refused, retry: r.retry }) };
+}
+
+/** Plays Immigration's answer for an application that was sent to the SIMULATOR (see lib/immigration/simulate.ts). */
+export async function simulateDecisionAction(appId: string, decision: "approve" | "reject" | "update", _p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const a = await requireAdminAction(); if (!a.ok) return a;
+  const r = await simulateDecision(appId, decision, String(fd.get("reason") ?? ""));
+  if (!r.ok) return r;
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "immigration.simulated_decision", entity: "application", entityId: appId, detail: { decision } });
+  revalidatePath(`/admin/queue/${appId}`); revalidatePath("/admin/queue");
+  return { ok: true };
+}

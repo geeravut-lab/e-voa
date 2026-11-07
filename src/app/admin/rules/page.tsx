@@ -17,7 +17,7 @@ export default async function RulesPage() {
   const row = (title: string, hint: string, on: string, checked: boolean, num?: { name: string; value: number; unit: string; min: number; max: number }) => (
     <div className="space-y-2 rounded-control border border-line p-4">
       <label className="flex items-start gap-3"><input type="checkbox" name={on} defaultChecked={checked} className="mt-0.5 size-5" /><span><b className="block text-[15px]">{title}</b><span className="block text-sm text-muted">{hint}</span></span></label>
-      {num && <label className="flex items-center gap-2 pl-8 text-sm"><input type="number" name={num.name} defaultValue={num.value} min={num.min} max={num.max} className={`${inputCls} w-24 tabular`} /><span className="font-semibold">{num.unit}</span></label>}
+      {num && <label className="flex items-center gap-2 ps-8 text-sm"><input type="number" name={num.name} defaultValue={num.value} min={num.min} max={num.max} className={`${inputCls} w-24 tabular`} /><span className="font-semibold">{num.unit}</span></label>}
     </div>
   );
   return (

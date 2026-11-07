@@ -5,6 +5,7 @@ import { membersOf, membershipOf, packagesOf, partnerStats } from "@/lib/partner
 import { CATEGORIES_OF, periodOf } from "@/lib/partner-portal/rules";
 import { addPartnerMemberAction, applyPartnerAction, redeemAction, removePartnerMemberAction, savePackageAction } from "@/app/actions/partner";
 import { ActionForm } from "@/components/ActionForm";
+import { VoidVoucher } from "@/components/VoidVoucher";
 import { SubmitButton } from "@/components/Buttons";
 import { PageHead } from "@/components/PageHead";
 import { btnClass } from "@/components/buttonStyles";
@@ -25,7 +26,7 @@ export default async function PartnerPage() {
     const f = (name: string, label: string, type = "text") => <label className="block space-y-1"><span className="text-sm font-semibold">{label}</span><input name={name} type={type} required className={inputCls} /></label>;
     return (
       <div className="space-y-4">{head}
-        <section className={box}><h2 className="font-display text-lg font-bold">{t.partner_why}</h2><ul className="list-disc space-y-1 pl-5 text-[15px]">{[t.partner_p1, t.partner_p2, t.partner_p3].map((x) => <li key={x}>{x}</li>)}</ul></section>
+        <section className={box}><h2 className="font-display text-lg font-bold">{t.partner_why}</h2><ul className="list-disc space-y-1 ps-5 text-[15px]">{[t.partner_p1, t.partner_p2, t.partner_p3].map((x) => <li key={x}>{x}</li>)}</ul></section>
         <ActionForm action={applyPartnerAction} className={box}>
           <h2 className="font-display text-lg font-bold">{t.partner_join}</h2>
           {f("name", t.agency_name)}
@@ -43,7 +44,7 @@ export default async function PartnerPage() {
   const [stats, pkgs, members, { data: settled }, { data: waiting }] = await Promise.all([
     partnerStats(partner.id, partner.settlement_pct, period), packagesOf(partner.id), membersOf(partner.id),
     db.from("partner_settlements").select("period, orders, partner_thb, paid_at").eq("partner_id", partner.id).order("period", { ascending: false }).limit(12),
-    db.from("addon_orders").select("id, package_name, issued_at").eq("partner_id", partner.id).eq("status", "issued").order("issued_at", { ascending: false }).limit(20),
+    db.from("addon_orders").select("id, package_name, issued_at, partner_ref").eq("partner_id", partner.id).eq("status", "issued").order("issued_at", { ascending: false }).limit(20),
   ]);
   const cats = CATEGORIES_OF[partner.provider];
   const pkgForm = (p?: (typeof pkgs)[number]) => (
@@ -59,6 +60,8 @@ export default async function PartnerPage() {
         <label className="block space-y-1"><span className="text-sm font-semibold">USD</span><input name="price_usd" type="number" min={0} step="0.01" defaultValue={p?.price_usd ?? ""} className={`${inputCls} tabular`} /></label>
         <label className="block space-y-1"><span className="text-sm font-semibold">CNY</span><input name="price_cny" type="number" min={0} step="0.01" defaultValue={p?.price_cny ?? ""} className={`${inputCls} tabular`} /></label>
       </div>
+      <label className="block space-y-1"><span className="text-sm font-semibold">{t.partner_stock_label}</span><input name="stock_total" type="number" min={0} max={100000} step={1} defaultValue={p?.stock_total ?? ""} className={`${inputCls} w-40 tabular`} /></label>
+      {p && <p className="text-sm font-semibold tabular">{p.stock_left === null ? t.partner_stock_unlimited : p.stock_left <= 0 ? t.partner_stock_sold_out : t.partner_stock_left.replace("{left}", String(p.stock_left)).replace("{total}", String(p.stock_total))}</p>}
       <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="active" defaultChecked={p ? p.active : true} className="size-5" />{t.partner_pkg_active}</label>
       {role === "owner" && <SubmitButton>{p ? t.save : t.partner_pkg_add}</SubmitButton>}
     </ActionForm>
@@ -76,7 +79,7 @@ export default async function PartnerPage() {
         <label className="block space-y-1"><span className="text-sm font-semibold">{t.addon_voucher}</span><input name="code" required autoComplete="off" autoCapitalize="characters" placeholder="TP-XXXXXXXX" className={`${inputCls} font-mono uppercase tracking-widest`} /></label>
         <SubmitButton className="w-full">{t.partner_redeem_btn}</SubmitButton>
       </ActionForm>
-      {(waiting ?? []).length > 0 && <section className={box}><h2 className="font-display text-lg font-bold">{t.partner_waiting}</h2><ul className="divide-y divide-line text-sm">{waiting!.map((w) => <li key={w.id} className="flex justify-between gap-2 py-2"><span>{w.package_name}</span><span className="text-xs text-muted tabular">{w.issued_at ? new Intl.DateTimeFormat(lang, { dateStyle: "short" }).format(new Date(w.issued_at)) : ""}</span></li>)}</ul></section>}
+      {(waiting ?? []).length > 0 && <section className={box}><h2 className="font-display text-lg font-bold">{t.partner_waiting}</h2><ul className="divide-y divide-line text-sm">{waiting!.map((w) => <li key={w.id} className="space-y-1 py-2"><div className="flex justify-between gap-2"><span><b className="block">{w.package_name}</b><span className="font-mono text-xs text-muted">{t.partner_code}: {String((w.partner_ref as { portal_code?: string }).portal_code ?? "")}</span></span><span className="text-xs text-muted tabular">{w.issued_at ? new Intl.DateTimeFormat(lang, { dateStyle: "short" }).format(new Date(w.issued_at)) : ""}</span></div><VoidVoucher orderId={w.id} /></li>)}</ul></section>}
       <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.partner_packages}</h2>
         {!partner.portal_managed && <p className="text-sm text-muted">{t.partner_api_managed}</p>}

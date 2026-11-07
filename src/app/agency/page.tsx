@@ -1,7 +1,9 @@
 import { requireUser } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { agencyStats, membershipOf } from "@/lib/agency/service";
+import { agencyStats, loadStatement, membershipOf, payoutsOf } from "@/lib/agency/service";
+import { periodOf } from "@/lib/partner-portal/rules";
+import { ExportLink } from "@/components/ExportLink";
 import { applyAgencyAction } from "@/app/actions/agency";
 import { ActionForm } from "@/components/ActionForm";
 import { AppLink } from "@/components/AppLink";
@@ -23,7 +25,7 @@ export default async function AgencyPage() {
     const f = (name: string, label: string, type = "text", req = true) => <label className="block space-y-1"><span className="text-sm font-semibold">{label}</span><input name={name} type={type} required={req} className={inputCls} /></label>;
     return (
       <div className="space-y-4">{head}
-        <section className={box}><h2 className="font-display text-lg font-bold">{t.agency_why}</h2><ul className="list-disc space-y-1 pl-5 text-[15px]">{[t.agency_p1, t.agency_p2, t.agency_p3].map((x) => <li key={x}>{x}</li>)}</ul></section>
+        <section className={box}><h2 className="font-display text-lg font-bold">{t.agency_why}</h2><ul className="list-disc space-y-1 ps-5 text-[15px]">{[t.agency_p1, t.agency_p2, t.agency_p3].map((x) => <li key={x}>{x}</li>)}</ul></section>
         <ActionForm action={applyAgencyAction} className={box}>
           <h2 className="font-display text-lg font-bold">{t.agency_join}</h2>
           {f("name", t.agency_name)}{f("contact_name", t.agency_contact)}{f("contact_email", t.apply_email, "email")}{f("contact_phone", t.apply_phone, "tel")}{f("country", t.agency_country)}{f("license_no", t.agency_license, "text", false)}
@@ -41,6 +43,8 @@ export default async function AgencyPage() {
   const ids = [...new Set((apps ?? []).map((a) => a.traveler_id))];
   const { data: trs } = ids.length ? await db.from("travelers").select("id, given_name, surname").in("id", ids) : { data: [] };
   const money = (n: number) => `THB ${n.toLocaleString("en-US")}`;
+  const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - i, 1)); return periodOf(d); });
+  const [statements, payouts] = await Promise.all([Promise.all(months.map((m) => loadStatement(agency.id, m))), payoutsOf(agency.id)]);
   return (
     <div className="space-y-4">{head}
       <section className={box}>
@@ -48,6 +52,16 @@ export default async function AgencyPage() {
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{([[t.agency_stat_apps, stats.applications], [t.agency_stat_paid, stats.paid], [t.agency_stat_approved, stats.approved], [t.agency_stat_commission, `${money(stats.commissionThb)} (${stats.commissionPct}%)`]] as [string, string | number][]).map(([k, val]) => <div key={k} className="rounded-control bg-sky p-3"><p className="text-xs text-muted">{k}</p><p className="font-display text-lg font-extrabold tabular">{val}</p></div>)}</div>
         <p className="text-xs text-muted">{t.agency_terms.replace("{discount}", money(agency.discount_thb))}</p>
         <div className="grid gap-2 sm:grid-cols-3"><AppLink href={`/apply?agency=${agency.id}`} className={btnClass("gold")}>{t.agency_new}</AppLink><AppLink href="/agency/import" className={btnClass("ghost")}>{t.agency_import}</AppLink><AppLink href="/agency/team" className={btnClass("ghost")}>{t.agency_team}</AppLink></div>
+      </section>
+      <section className={box}>
+        <h2 className="font-display text-lg font-bold">{t.agency_statements}</h2>
+        <p className="text-sm text-muted">{t.agency_statements_hint}</p>
+        <ul className="divide-y divide-line">{months.map((m, i) => { const st = statements[i]; const paid = payouts.find((p) => p.period === m); return (
+          <li key={m} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+            <span className="min-w-0"><b className="tabular">{m}</b><span className="block text-xs text-muted tabular">{st && st.applications > 0 ? `${t.agency_st_apps.replace("{n}", String(st.applications))} · ${money(st.commissionThb)}` : t.agency_st_none}</span>
+              {st && st.applications > 0 && <span className={`text-xs font-semibold ${paid ? "text-success" : "text-gold-deep"}`}>{paid ? t.agency_st_paid.replace("{date}", paid.paid_at.slice(0, 10)) : t.agency_st_open}</span>}</span>
+            {st && st.applications > 0 && <span className="flex gap-2"><ExportLink variant="ghost" href={`/agency/statement?month=${m}&format=pdf`}>{t.agency_dl_pdf}</ExportLink><ExportLink variant="ghost" href={`/agency/statement?month=${m}&format=csv`}>{t.agency_dl_csv}</ExportLink></span>}
+          </li>); })}</ul>
       </section>
       <section className={box}>
         <h2 className="font-display text-lg font-bold">{t.agency_apps}</h2>

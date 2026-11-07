@@ -18,7 +18,7 @@ export function HomeCard({ item, href, label, sub, locked, lockedLabel, tone }: 
       className={`tone-${tone ?? item.tone} pressable group flex overflow-hidden rounded-card border p-4 shadow-card ${wide ? "col-span-2 min-h-36 items-center" : "col-span-1 min-h-44 flex-col"}`}
     >
       {locked && (
-        <span className="absolute left-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-ink/10 text-ink/70" title={lockedLabel}>
+        <span className="absolute start-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-ink/10 text-ink/70" title={lockedLabel}>
           <Lock size={13} aria-label={lockedLabel} />
         </span>
       )}
@@ -27,7 +27,7 @@ export function HomeCard({ item, href, label, sub, locked, lockedLabel, tone }: 
         {sub && <p className="mt-1 text-[13px] leading-snug text-muted">{sub}</p>}
       </div>
       {wide ? (
-        <div className="pointer-events-none absolute -right-1 bottom-1 top-1 w-[42%] transition-transform duration-300 group-hover:scale-105">{art}</div>
+        <div className="pointer-events-none absolute -end-1 bottom-1 top-1 w-[42%] transition-transform duration-300 group-hover:scale-105">{art}</div>
       ) : (
         <div className="pointer-events-none mt-auto flex justify-end pt-2">
           <div className="h-[84px] w-[112px] transition-transform duration-300 group-hover:scale-105">{art}</div>

@@ -7,7 +7,7 @@ export function PageHead({ title, hint, art, tone = "sky" }: { title: string; hi
         <h1 className="font-display text-2xl font-extrabold">{title}</h1>
         {hint && <p className="mt-1 text-sm text-muted">{hint}</p>}
       </div>
-      {art && <div className="pointer-events-none absolute -bottom-1 -right-1 top-1 w-[40%]">{ART[art]}</div>}
+      {art && <div className="pointer-events-none absolute -bottom-1 -end-1 top-1 w-[40%]">{ART[art]}</div>}
     </header>
   );
 }

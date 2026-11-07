@@ -42,3 +42,12 @@ export async function testChannelsAction(_p: ActionResult, _fd: FormData): Promi
   await notifyUser({ userId: u.id, title: t.notif_test_title, body: t.notif_test_body, kind: "test", link: "/account/notifications" });
   return { ok: true, message: t.chat_test_sent };
 }
+
+/** Step 0 of the LINE guide: a fresh one-time code and the official account to add. The code is shown once on screen (only a hash is kept), so the page keeps it in memory while the traveler follows the steps. */
+export async function startLineGuideAction(): Promise<{ ok: true; code: string; basicId: string } | { ok: false; error: string }> {
+  const u = await who(); if (!u) return { ok: false, error: "err_not_signed_in" };
+  if (!(await rateLimit(`chan:line:${u.id}`, 10, 3600))) return { ok: false, error: "err_rate_limited" };
+  const r = await startLineLink(u.id); if (!r.ok) return r;
+  revalidatePath("/account/notifications");
+  return { ok: true, code: r.code, basicId: r.basicId };
+}

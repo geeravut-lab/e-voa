@@ -7,12 +7,13 @@ import { loadFees } from "@/lib/applications/service";
 import { DEFAULT_REFUND_POLICY, parseRefundPolicy } from "@/lib/payments/refund-policy";
 import { DICTS } from "@/lib/i18n/dict";
 import type { Lang } from "@/lib/i18n/langs";
+import type { ToolDef } from "./types";
 
-export const TOOLS = [
+export const TOOLS: ToolDef[] = [
   { name: "get_my_applications", description: "List the signed-in user's own applications: reference, traveler first name, status in words, what the status means, arrival date and package. Returns an error text if nobody is signed in.", input_schema: { type: "object", properties: {}, additionalProperties: false }, strict: true },
   { name: "get_fees", description: "The current prices per traveler in Thai baht and the refund rule.", input_schema: { type: "object", properties: {}, additionalProperties: false }, strict: true },
   { name: "check_eligibility", description: "Whether a nationality is on the Visa on Arrival / visa-free list the service has loaded. Give the country name in English.", input_schema: { type: "object", properties: { nationality: { type: "string", description: "Country or nationality name in English" } }, required: ["nationality"], additionalProperties: false }, strict: true },
-] as const;
+];
 
 /** Runs one tool. Always returns a short text (never throws): the model reads it as data. Personal data returned is limited to the caller's own applications. */
 export async function runTool(name: string, input: unknown, ctx: { userId: string | null; lang: Lang }): Promise<string> {

@@ -28,9 +28,9 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         <header className="flex flex-wrap items-baseline justify-between gap-2"><b className="font-display text-xl">{brandName}</b><span className="font-mono font-bold">{p.receipt_no}</span></header>
         {p.paid_at && <p className="text-sm text-muted">{when.format(new Date(p.paid_at))}</p>}
         <table className="w-full text-sm tabular"><tbody className="divide-y divide-line">
-          {items.map((i, n) => <tr key={n}><td className="py-2 pr-2">{i.label}</td><td className="py-2 text-right">{thb(i.amountThb)}</td></tr>)}
-          <tr className="font-bold"><td className="py-2">{t.pay_total}</td><td className="py-2 text-right">{thb(Number(p.amount_thb))}</td></tr>
-          {(refunds ?? []).map((r) => <tr key={r.id} className="text-success"><td className="py-2">{t.receipt_refund} · {when.format(new Date(r.created_at))}</td><td className="py-2 text-right">− {thb(Number(r.amount_thb))}</td></tr>)}
+          {items.map((i, n) => <tr key={n}><td className="py-2 pe-2">{i.label}</td><td className="py-2 text-end">{thb(i.amountThb)}</td></tr>)}
+          <tr className="font-bold"><td className="py-2">{t.pay_total}</td><td className="py-2 text-end">{thb(Number(p.amount_thb))}</td></tr>
+          {(refunds ?? []).map((r) => <tr key={r.id} className="text-success"><td className="py-2">{t.receipt_refund} · {when.format(new Date(r.created_at))}</td><td className="py-2 text-end">− {thb(Number(r.amount_thb))}</td></tr>)}
         </tbody></table>
         <p className="text-xs text-muted">{t.receipt_note}</p>
       </article>

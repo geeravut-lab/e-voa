@@ -12,7 +12,7 @@ import { arrivalInstant, packageAvailability } from "@/lib/pricing";
 import { lookupFlight, type FlightInfo } from "@/lib/flights";
 import { cancelByTraveler, createDraftApplication, resubmitAfterFix, saveApplicationDocument, upsertTraveler } from "@/lib/applications/service";
 import { sendAdditionalDocuments } from "@/lib/immigration/pipeline";
-import { gatewayFromEnv } from "@/lib/immigration/gateway";
+import { resolveGateway } from "@/lib/immigration/resolve";
 import { setAddons } from "@/lib/partners/service";
 import { startCheckout, failPayment, startUpgradeCheckout } from "@/lib/payments/service";
 import { ADDON_CATEGORIES, type AddonCategory } from "@/lib/partners/rules";
@@ -223,7 +223,7 @@ export async function resubmitAction(_p: ActionResult, fd: FormData): Promise<Ac
   const { data: app } = await db.from("applications").select("id, immigration_ref, status").eq("id", appId).eq("owner_id", a.user.id).maybeSingle();
   if (!app) return { ok: false, error: "err_not_found" };
   if (app.immigration_ref) {                                                          // Immigration asked for more documents
-    const gw = gatewayFromEnv(); if (!gw) return { ok: false, error: "err_not_configured" };
+    const gw = await resolveGateway(); if (!gw) return { ok: false, error: "err_not_configured" };
     const r = await sendAdditionalDocuments(gw, app.id); if (!r.ok) return r;
   } else { const r = await resubmitAfterFix(a.user.id, app.id); if (!r.ok) return r; }
   await audit({ actorId: a.user.id, action: "application.resubmit", entity: "application", entityId: app.id });

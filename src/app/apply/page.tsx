@@ -154,7 +154,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
                       <label key={o.package_code} className={`flex items-start gap-3 rounded-control border border-line p-3 ${o.offer.available ? "" : "opacity-60"}`}>
                         <input type="radio" name={`addon:${a.id}:${c}`} value={o.package_code} defaultChecked={cur === o.package_code} disabled={!o.offer.available} className="mt-1" />
                         <span className="min-w-0 flex-1"><b className="block text-sm">{o.name}</b>{o.detail && <span className="block text-xs text-muted">{o.detail}</span>}
-                          {!o.offer.available && <span className="block text-xs font-semibold text-gold-deep">{o.offer.reason === "express" ? t.extras_not_with_express : t.extras_not_at_airport}</span>}</span>
+                          {!o.offer.available && <span className="block text-xs font-semibold text-gold-deep">{o.offer.reason === "express" ? t.extras_not_with_express : o.offer.reason === "stock" ? t.extras_sold_out : t.extras_not_at_airport}</span>}</span>
                         <b className="tabular text-sm">{thb(o.price_thb)}</b>
                       </label>
                     ))}

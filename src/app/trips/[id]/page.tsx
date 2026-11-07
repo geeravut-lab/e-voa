@@ -89,7 +89,7 @@ export default async function TripDetail({ params }: { params: Promise<{ id: str
 
       <section className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
         <h2 className="font-display text-lg font-bold">{t.trip_timeline}</h2>
-        <ol className="space-y-2 border-l-2 border-sky-line pl-4">
+        <ol className="space-y-2 border-l-2 border-sky-line ps-4">
           {(history ?? []).map((h, i) => (
             <li key={i} className="text-sm"><b>{(t as unknown as Record<string, string>)[`st_${h.to_status}`] ?? h.to_status}</b> <span className="text-muted tabular">· {when.format(new Date(h.at))}</span></li>
           ))}
