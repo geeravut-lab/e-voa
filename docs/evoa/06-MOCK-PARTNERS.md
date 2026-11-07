@@ -69,3 +69,7 @@ partner outage → retries → failed → refunded, unpaid order expiry. It remo
 - `POST /wallet/token`, `PATCH /wallet/walletobjects/v1/genericObject/<id>`: Google Wallet (OAuth for a service account, then the pass update; an id containing `MISSING` answers 404; state `walletPatches`). Apple's push service is simulated inside the test with a local HTTP/2 server (`tests-live/wallet.live.test.ts`) and throw-away certificates (`tests-live/wallet-certs.ts`).
 - `/line/v2/bot/message/push|reply`, `/whatsapp/v<version>/<phone>/messages`: record what would be sent in `messagesSent`; a LINE user id ending in `BLOCKED` answers 400 (the user blocked us) to test the "stop trying" path.
 - The partner portal needs no simulator: portal-managed partners are not called (the voucher is issued inside ThaiPass).
+
+
+## Weather and air look-alikes (safety advisor)
+Open-Meteo (`/open-meteo/v1/forecast`, `/open-meteo-aq/v1/air-quality`), Air4Thai (`/air4thai/getNewAQI_JSON.php`) and TMD CAP (`/tmd/CAP`, `/tmd/CAPTEST1.xml`) with the same shapes as the real services. Controls: `POST /__admin/weather {pm25, feelsC, code, rainProb, uv, gust}`, `POST /__admin/weather-break {status}`, `POST /__admin/official {air4thaiDown, tmdDown, stationPm25, noWarning}`. Point the app at them with `OPEN_METEO_URL`, `OPEN_METEO_AQ_URL`, `AIR4THAI_URL`, `TMD_CAP_URL` (see `tests-live/conditions.live.test.ts`).
