@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>TMD20261107160513_2</identifier>
+  <sender>TMD</sender>
+  <sent>2026-11-07T15:59:00+07:00</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <references>TMD,TMD20261107064828_2,2026-11-07T07:02:00+07:00</references>
+  <info>
+    <language>th-TH</language>
+    <category>Met</category>
+    <event>Heavy Rain</event>
+    <urgency>Immediate</urgency>
+    <severity>Severe</severity>
+    <certainty>Likely</certainty>
+    <effective>2026-11-07T16:00:00+07:00</effective>
+    <expires>2026-11-08T06:00:00+07:00</expires>
+    <senderName>TMD</senderName>
+    <headline>พื้นที่เสี่ยงภัยฝนตกหนักบริเวณประเทศไทย</headline>
+    <description> ภาคใต้จะมีฝนเพิ่มขึ้น และมีฝนตกหนักบางพื้นที่ ส่วนภาคเหนือ และภาคกลาง ยังคงมีสภาพอากาศแปรปรวน โดยมีลักษณะของฝนฟ้าคะนอง ลมกระโชกแรง และฝนตกหนักบางแห่ง สำหรับภาคตะวันออกเฉียงเหนือเริ่มมีฝนลดลง ทั้งนี้เนื่องจากบริเวณความกดอากาศสูงหรือมวลอากาศเย็นจากประเทศจีนปกคลุมประเทศไทยตอนบน และทะเลจีนใต้ ส่งผลให้ลมฝ่ายตะวันออกพัดปกคลุมอ่าวไทย ประเทศไทย และทะเลอันดามัน สำหรับทะเลอันดามันและอ่าวไทย บริเวณที่มีฝนฟ้าคะนองจะมีคลื่นสูงมากกว่า 2 เมตร 
+อนึ่ง ในช่วงวันที่ 8–13 พฤศจิกายน 2569 บริเวณภาคใต้จะมีฝนตกหนักหลายพื้นที่ โดยมีฝนตกหนักมากบางแห่ง ทั้งนี้เนื่องจากลมฝ่ายตะวันออก
+ที่พัดปกคลุมอ่าวไทย ภาคใต้ และทะเลอันดามัน จะมีกำลังแรงขึ้น
+</description>
+    <instruction>ขอให้ประชาชนบริเวณดังกล่าวระวังอันตรายจากฝนตกหนัก ฝนฟ้าคะนอง และลมกระโชกแรง โดยหลีกเลี่ยงการอยู่ในที่โล่งแจ้ง ใต้ต้นไม้ใหญ่ สิ่งปลูกสร้าง
+และป้ายโฆษณาที่ไม่แข็งแรงไว้ด้วย
+ชาวเรือควรเดินเรือด้วยความระมัดระวัง รวมทั้งหลีกเลี่ยงการเดินเรือในบริเวณที่มีฝนฟ้าคะนอง</instruction>
+    <web>https://www.tmd.go.th/en/forecast/daily</web>
+    <area>
+      <areaDesc>เชียงใหม่ ลำพูน ลำปาง แพร่ น่าน พะเยา เชียงราย แม่ฮ่องสอน นครสวรรค์ อุทัยธานี กำแพงเพชร ตาก สุโขทัย พิจิตร ราชบุรี กาญจนบุรี นครปฐม สมุทรสาคร สมุทรสงคราม เพชรบุรี ประจวบคีรีขันธ์ นครศรีธรรมราช กระบี่ พังงา ภูเก็ต สุราษฎร์ธานี ระนอง ชุมพร สงขลา พัทลุง</areaDesc>
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-50</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-51</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-52</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-54</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-55</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-56</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-57</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-58</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-60</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-61</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-62</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-63</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-64</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-66</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-70</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-71</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-73</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-74</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-75</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-76</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-77</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-80</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-81</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-82</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-83</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-84</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-85</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-86</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-90</value>
+      </geocode>
+      <geocode>
+        <valueName>ISO3166-2</valueName>
+        <value>TH-93</value>
+      </geocode>
+    </area>
+  </info>
+  <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+    <SignedInfo>
+      <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+      <SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+      <Reference URI="">
+        <Transforms>
+          <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+        </Transforms>
+        <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+        <DigestValue>G6hYgmhU92xVUv+nkRhIblpbwR/LfnLzn3oZ21tPm7s=</DigestValue>
+      </Reference>
+    </SignedInfo>
+    <SignatureValue>ufndRm6ZPbVnbR2K9aZwXf/i/M8yatluIoa0DRgnE5hWeYltMrCuSAA5WWwGXqNXujghqxkYmGhnlH7netmO8Pxclxd5gAzJXrTGpwsBAbsQCW8Ghb958wnbMBD8lpVR7LFD6ZyF6K1xk/IM5OEo60+PRrWwEzBcWch0gnccmayLKMtCbAhPgP1RVkioBW1NminQTUvUU0hx5zRTevWeJinHej1aGIOtLsT7AA4dev6Eur1SKVITQ6jw3CDI2JWeziNI2cqK4blB1gr6KBXYinXZ1Mn5nGA/4151yVzkAcguKZbawqgsn0gSILnmnxX1xVCvNWg2zA54Mgw0AcX8+xXXkhqtxLu3PKsMu5tCnQ3HCiDwNkcSjxpl1HLKoWl4sRMSmK1yld0GkYoBguXtCU9JvPYo0AOfTcb19FPWhUk0vLccAcROEDjEOLrc8oqyl7DbMUClObZ0Gp8CPavmYhHvyF21g+rWFojzf4foT6UzMff+PWDwVp7S0pIi6ZPhdGkKCFSH3cOAzlcg3o3SCAmxSQgnfFZ2CiyiW43o/AZr5OipAmAbk7h88/5wwYdiQlyHpw8tjF6XpNXFipZnrwl9kGsO+46LdiGps0N0qpt3ub31tCl8iJjEbPJIO+tQhaO3jy79yBz8Iqbe1LG+b7d9pYn5GRj2kfUtGokZtaU=</SignatureValue>
+    <KeyInfo>
+      <X509Data>
+        <X509Certificate>MIIGPjCCBCagAwIBAgIBADANBgkqhkiG9w0BAQQFADB3MQswCQYDVQQGEwJUSDEQMA4GA1UECBMHQmFuZ2tvazEPMA0GA1UEBxMGQmFuZ25hMQwwCgYDVQQKEwNUTUQxEzARBgNVBAsTCkRlcGFydG1lbnQxIjAgBgkqhkiG9w0BCQEWE2l0X2NlbnRlckB0bWQuZ28udGgwHhcNMTYwNjA2MDY0MTAwWhcNMTgwNjA2MDY0MTAwWjB3MQswCQYDVQQGEwJUSDEQMA4GA1UECBMHQmFuZ2tvazEPMA0GA1UEBxMGQmFuZ25hMQwwCgYDVQQKEwNUTUQxEzARBgNVBAsTCkRlcGFydG1lbnQxIjAgBgkqhkiG9w0BCQEWE2l0X2NlbnRlckB0bWQuZ28udGgwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDlNUc1PRXXt8TEWm01nE1zZ79noSDR4WVktH6k6SeFzd2Y7PGYWgfqHc4cEoyfnfNDjtwz4ghck1frp2jwqW8fhmSHKvPrvA48i4+/DBOl/6kS8ByVG2Eb/zuTHXtE8s4k3wGdK1N4tAHhv5I4WHN3HfvUk9d3/oRcom7F6EVhTuhGEZbB9rAZBWSKsKAEpqxBCQxwQi2hXJ/kHpm+lqeCWx2/f9FhlyK3NwNSOw4MmrgTcQuEUYei9ox+gqrvD5yLU8UfFAALr17cPQsbZlzUaIVKF+MUoQp9BZ8+p3xjaQJWfXSuSekhG4G8CadRQxCp3pNT0GTFkhz0wbipdvxBL1oir+wq15n78ZXyEeTX0P401JaFvSMoxEogfXt9NS+xbMe8qqiD1cyU/bVMU+NTA0Z3LSS5yt9VLteel8c8dZsALo4mDGLjdjsjtbhkOy2BhPJCYJSfLNQVj0sPP80gk1aTLiYaLU0KS+/cgOliK4b1JhW68HOu2qSrFytL684IbcO8UQij3fCxHsnFrahLbqrfwAPfMQUDygNAkkZB+pDHCKlHgHxUlFWzKpekjTX9YTVmqvevPqD2BEOeE34rUl/Nbq07NsNFSgDKEd+95fTAd00byP1/kqiKIsqDEvPZx0UuYanmfCWdoDI6c+Lb7qAhxGyPFgOzNuf5a8ik5QIDAQABo4HUMIHRMB0GA1UdDgQWBBSA+TPstPFJfU7NCb4iIujnQdmqbzCBoQYDVR0jBIGZMIGWgBSA+TPstPFJfU7NCb4iIujnQdmqb6F7pHkwdzELMAkGA1UEBhMCVEgxEDAOBgNVBAgTB0Jhbmdrb2sxDzANBgNVBAcTBkJhbmduYTEMMAoGA1UEChMDVE1EMRMwEQYDVQQLEwpEZXBhcnRtZW50MSIwIAYJKoZIhvcNAQkBFhNpdF9jZW50ZXJAdG1kLmdvLnRoggEAMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADggIBAEACz4+zfgE3LLDgMcL0p6UTbapRoFfrkHee5UgboT21fNnzZiB87IGn0u7r2/FAeb9P8SLuEZtd1bxyUcxqHD/Q19WXgOlG1eHvOBqMyrGHxeyV/wyrPSK3ZC8eX4PRPTtL1Ckh8uD/TO3CTBoBKxhkrn+Y5/GcnRZeEukEqm4xXXt8XRh8LvdveNvNKkXiPw+vCpSNkMvn89ZrGRqHM68xG7ahryWBTBkRv8r0Rne7qZJkJ+UzJhjpcQ7xBcyJWusm71LFPpcfOzCKba3n5UOujw/Ad4isqN29fozR7eUfzDj6yiF7viRk6D251gac0/U7nasP03ssQEKQhrlomvXw+MpLUqHxM/DqI6f9xr4GiYdz8gGA6EJ++3c318TIKYxP2AWxr4Y/uIFQfFH9qDIeqOP/lZ2FyWM3MBhBNQlhgl1KzYRKBsJdf+wSA6U+ch/Prl9JQQmfsI9pZRML4NLMEB6AnEB30NAbgaF5oET0f2IbeBodplX/6xbE/HKnFL3D+OETjwe/li5m368BlebT8kkmnF0d5Y5Z7NXeCxniZghZQFF5dCxYJEWNuyZlrrJWNpYj+LdEZ00rafm2mdiVrxun3TmNgjnBmwX7gyirWz/M2Ebdsy9Azc3T60o99ZPQd6OOHmN8BQj6NIuWWJY2FhJF/QMg/xLc4ERZfrvU</X509Certificate>
+      </X509Data>
+    </KeyInfo>
+  </Signature>
+</alert>

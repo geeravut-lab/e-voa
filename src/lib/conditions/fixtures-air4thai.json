@@ -1,0 +1,151 @@
+{
+ "stations": [
+  {
+   "stationID": "119t",
+   "nameTH": "สวนสาธารณะธารา",
+   "nameEN": "Thara Public Park",
+   "areaTH": "ต.ปากน้ำ อ.เมือง, กระบี่",
+   "areaEN": "Pak Nam Subdistrict, Mueang District, Krabi",
+   "stationType": "GROUND",
+   "lat": "8.0506237",
+   "long": "98.9180489",
+   "AQILast": {
+    "date": "2026-11-08",
+    "time": "03:00",
+    "PM25": {
+     "color_id": "1",
+     "aqi": "15",
+     "value": "8.7"
+    },
+    "PM10": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "O3": {
+     "color_id": "1",
+     "aqi": "9",
+     "value": "12"
+    },
+    "CO": {
+     "color_id": "1",
+     "aqi": "2",
+     "value": "0.40"
+    },
+    "NO2": {
+     "color_id": "1",
+     "aqi": "1",
+     "value": "2"
+    },
+    "SO2": {
+     "color_id": "1",
+     "aqi": "0",
+     "value": "1"
+    },
+    "AQI": {
+     "color_id": "1",
+     "aqi": "15",
+     "param": "PM25"
+    }
+   }
+  },
+  {
+   "stationID": "02t",
+   "nameTH": "มหาวิทยาลัยราชภัฏบ้านสมเด็จเจ้าพระยา",
+   "nameEN": "Bansomdejchaopraya Rajabhat University",
+   "areaTH": "แขวงหิรัญรูจี เขตธนบุรี, กรุงเทพฯ",
+   "areaEN": "Hiran Ruchi, Khet Thon Buri, Bangkok",
+   "stationType": "GROUND",
+   "lat": "13.732846",
+   "long": "100.487662",
+   "AQILast": {
+    "date": "2026-11-08",
+    "time": "03:00",
+    "PM25": {
+     "color_id": "2",
+     "aqi": "35",
+     "value": "18.9"
+    },
+    "PM10": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "O3": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "CO": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "NO2": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "SO2": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "AQI": {
+     "color_id": "2",
+     "aqi": "35",
+     "param": "PM25"
+    }
+   }
+  },
+  {
+   "stationID": "105t",
+   "nameTH": "ศูนย์บริการสาธารณสุขเทศบาลเมืองนครนายก",
+   "nameEN": "Nakhon Nayok Municipality Public Health Service Center",
+   "areaTH": "ต.บ้านใหญ่ อ.เมือง, นครนายก",
+   "areaEN": "Ban Yai Subdistrict, Mueang District, Nakhon Nayok",
+   "stationType": "GROUND",
+   "lat": "14.20422",
+   "long": "101.21509",
+   "AQILast": {
+    "date": "2026-11-08",
+    "time": "03:00",
+    "PM25": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "PM10": {
+     "color_id": "0",
+     "aqi": "-999",
+     "value": "-1"
+    },
+    "O3": {
+     "color_id": "1",
+     "aqi": "8",
+     "value": "11"
+    },
+    "CO": {
+     "color_id": "1",
+     "aqi": "1",
+     "value": "0.20"
+    },
+    "NO2": {
+     "color_id": "0",
+     "aqi": "-1",
+     "value": "-1"
+    },
+    "SO2": {
+     "color_id": "1",
+     "aqi": "0",
+     "value": "0"
+    },
+    "AQI": {
+     "color_id": "1",
+     "aqi": "8",
+     "param": "O3"
+    }
+   }
+  }
+ ]
+}
