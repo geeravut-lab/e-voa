@@ -236,6 +236,7 @@ export function createMockServer(opts = {}) {
     if (state.aiBreak.anthropic) return send(res, state.aiBreak.anthropic, { type: "error", error: { type: "api_error", message: "Forced failure" } });
     if (/You check text that an administrator/.test(String(body.system))) return reply([{ type: "text", text: JSON.stringify(reviewVerdict(text)) }], "end_turn");
     if (/BREAK-API/.test(text)) return send(res, 529, { type: "error", error: { type: "overloaded_error", message: "Overloaded" } });
+    if (/weather|haze|pm ?2\.?5|air quality|smoke|heat|storm/i.test(text)) return use("get_conditions", { place: /phuket/i.test(text) ? "Phuket" : "Bangkok" });
     if (/application|status|สถานะ/i.test(text)) return use("get_my_applications");
     if (/fee|price|cost|ราคา/i.test(text)) return use("get_fees");
     if (/eligib|nationalit/i.test(text)) return use("check_eligibility", { nationality: "India" });
