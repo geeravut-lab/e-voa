@@ -37,7 +37,7 @@ describe("helpers", () => {
 });
 
 describe("languages that are translated for travelers", () => {
-  const STAFF = /^(admin_|admins_|agency_|partner_|ops_|rev_|audit_|rules_|an_|imm_|company_|brand_|settings_|errors_|analytics_|features_|msg_|channels_|card_(ops|branding|features|admins|audit|analytics|settings|immigration|agency|partner)|ai_(title|hint|task_|primary|fallback|use_default|model_for|key_|test|events_)|prompts_|tourism_|gov_|err_gov_|err_prompt_|err_sim_|err_ai_(nokey|model_unknown|free_tier|test_failed)$|home_section_admin|nav_admin|nav_alerts|nav_queue|trust_|ai_s[0-9]$)/;
+  const STAFF = /^(admin_|admins_|agency_|partner_|ops_|rev_|audit_|rules_|an_|imm_|company_|brand_|settings_|errors_|analytics_|features_|msg_|channels_|card_(ops|branding|features|admins|audit|analytics|settings|immigration|agency|partner)|ai_(title|hint|task_|primary|fallback|use_default|model_for|key_|test|events_)|prompts_|recon_|discounts_|content_|err_content_|tourism_|gov_|err_gov_|err_prompt_|err_discount_(code_format|exists)|err_sim_|err_ai_(nokey|model_unknown|free_tier|test_failed)$|home_section_admin|nav_admin|nav_alerts|nav_queue|trust_|ai_s[0-9]$)/;
   const traveler = Object.keys(DICTS.en).filter((k) => !STAFF.test(k));
   it.each(["hi", "ar", "ru", "ko", "ja", "zh-TW"] as const)("%s translates every traveler-facing text (not left in English)", (lang) => {
     const same = traveler.filter((k) => (DICTS[lang] as Record<string, string>)[k] === (DICTS.en as Record<string, string>)[k] && /[a-z]{4}/.test((DICTS.en as Record<string, string>)[k]) && !/^(ThaiPass|you@|LINE|eSIM|E-mail|Email|Passport|Visa|e-VOA|Google|PDF)/.test((DICTS.en as Record<string, string>)[k]));

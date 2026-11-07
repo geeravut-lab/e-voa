@@ -2,8 +2,7 @@ import { pageMeta } from "@/lib/seo";
 import { featureEnabled } from "@/lib/flags";
 import { aiConfigured, loadAi } from "@/lib/ai/settings";
 import { getT } from "@/lib/i18n/server";
-import { FAQ } from "@/lib/content/faq";
-import { forLang } from "@/lib/content/types";
+import { loadFaq } from "@/lib/content/server";
 import { FaqList } from "@/components/FaqList";
 import { AppLink } from "@/components/AppLink";
 import { PageHead } from "@/components/PageHead";
@@ -13,7 +12,7 @@ export const generateMetadata = () => pageMeta({ path: "/help", title: "faq_titl
 
 export default async function HelpPage() {
   const { t, lang } = await getT();
-  const items = forLang(FAQ, lang);
+  const items = await loadFaq(lang);
   const showAi = (await featureEnabled("ai_assistant")) && aiConfigured() && (await loadAi()).enabled;
   const ld = JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: items.map((i) => ({ "@type": "Question", name: i.q, acceptedAnswer: { "@type": "Answer", text: i.a } })) }).replace(/</g, "\\u003c");
   return (
@@ -27,6 +26,7 @@ export default async function HelpPage() {
         <AppLink href="/official" className={btnClass("ghost")}>{t.official_title}</AppLink>
         <AppLink href="/prepare" className={btnClass("ghost")}>{t.prepare_title}</AppLink>
         <AppLink href="/guide" className={btnClass("ghost")}>{t.card_guide}</AppLink>
+        <AppLink href="/news" className={btnClass("ghost")}>{t.news_title}</AppLink>
         <AppLink href="/articles" className={btnClass("ghost")}>{t.articles_title}</AppLink>
       </section>
     </div>

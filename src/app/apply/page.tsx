@@ -47,9 +47,16 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
   // ------------------------------------------------------------------ step 1
   if (step === 1) {
     const m = await loadMasters(["arrivalAirport", "airlines", "purposeOfVisit", "nationality"]);
+    // "Apply again" from an earlier application: same traveler, same route and airlines; the dates and flights are left empty on purpose (they are new)
+    const again = !trip && sp.again && UUID.test(sp.again) ? await db.from("applications").select("traveler_id, trip_id").eq("id", sp.again).eq("owner_id", v.user.id).maybeSingle().then(async (r) => {
+      if (!r.data) return null;
+      const { data: old } = await db.from("trips").select("package, arrival_airport_id, arrival_airline_id, purpose_id, boarded_country_id, next_city, type_of_flight_id").eq("id", r.data.trip_id).eq("owner_id", v.user.id).maybeSingle();
+      return old ? { traveler: r.data.traveler_id as string, trip: old } : null;
+    }) : null;
+    const travelerParam = sp.traveler && UUID.test(sp.traveler) ? sp.traveler : again?.traveler;
     return (
-      <div>{head}<Stepper step={1} t={t} />
-        <TripForm agency={sp.agency && UUID.test(sp.agency) ? sp.agency : undefined} traveler={sp.traveler && UUID.test(sp.traveler) ? sp.traveler : undefined} trip={trip ?? {}} airports={opts(m.arrivalAirport)} airlines={opts(m.airlines)} purposes={opts(m.purposeOfVisit)} countries={opts(m.nationality)} fees={fees} canLookup={flightLookupConfigured()} />
+      <div>{head}{again && <p role="status" className="mb-3 rounded-control bg-mint p-3 text-sm font-semibold text-teal-deep">{t.apply_again_note}</p>}<Stepper step={1} t={t} />
+        <TripForm agency={sp.agency && UUID.test(sp.agency) ? sp.agency : undefined} traveler={travelerParam} trip={trip ?? again?.trip ?? {}} airports={opts(m.arrivalAirport)} airlines={opts(m.airlines)} purposes={opts(m.purposeOfVisit)} countries={opts(m.nationality)} fees={fees} canLookup={flightLookupConfigured()} />
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import "server-only";
 import { envValue } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // E-mail through Resend's HTTP API. RESEND_API_KEY must be set; MAIL_FROM defaults to Resend's test sender, which can only deliver to the owner of the Resend account.
 // RESEND_API_URL exists so tests can point at a local fake.
@@ -17,16 +18,23 @@ export function renderMail(a: { brand: string; title: string; lines: string[]; b
   return { html, text };
 }
 
-export async function sendMail(m: { to: string; subject: string; html: string; text: string; attachments?: MailAttachment[] }): Promise<boolean> {
+/** Counts how mail is going (kind, ok, HTTP code): never an address or a message. A logging problem never changes the result. */
+async function logMail(kind: string, ok: boolean, code: number | null) {
+  try { await createAdminClient().from("mail_log").insert({ kind: kind.slice(0, 40), ok, code }); } catch { /* best effort */ }
+}
+
+export async function sendMail(m: { to: string; subject: string; html: string; text: string; attachments?: MailAttachment[]; kind?: string; headers?: Record<string, string> }): Promise<boolean> {
   const key = envValue("RESEND_API_KEY");
   if (!key) return false;
+  const kind = m.kind ?? "other";
   try {
     const res = await fetch(envValue("RESEND_API_URL") || "https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, signal: AbortSignal.timeout(8000),
-      body: JSON.stringify({ from: envValue("MAIL_FROM") || "ThaiPass e-VOA <onboarding@resend.dev>", to: [m.to], subject: m.subject.slice(0, 200), html: m.html, text: m.text,
+      body: JSON.stringify({ from: envValue("MAIL_FROM") || "ThaiPass e-VOA <onboarding@resend.dev>", to: [m.to], subject: m.subject.slice(0, 200), html: m.html, text: m.text, ...(m.headers ? { headers: m.headers } : {}),
         ...(m.attachments?.length ? { attachments: m.attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })) } : {}) }),
     });
     if (!res.ok) console.error("[mail] provider answered", res.status, (await res.text().catch(() => "")).slice(0, 200));
+    await logMail(kind, res.ok, res.status);
     return res.ok;
-  } catch (e) { console.error("[mail] send failed", (e as Error).message); return false; }
+  } catch (e) { console.error("[mail] send failed", (e as Error).message); await logMail(kind, false, null); return false; }
 }

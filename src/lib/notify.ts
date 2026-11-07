@@ -44,15 +44,15 @@ export async function notifyUser(n: {
 }
 
 /** Same message by e-mail when mail is configured and the user has an address. Best effort: a mail problem never undoes the notification. */
-async function mailToo(n: { userId: string; title: string; body?: string; link?: string }) {
+async function mailToo(n: { userId: string; title: string; body?: string; link?: string; kind?: string }) {
   if (!mailConfigured()) return;
   try {
-    const { data: p } = await createAdminClient().from("profiles").select("email, lang").eq("id", n.userId).maybeSingle();
-    if (!p?.email) return;
+    const { data: p } = await createAdminClient().from("profiles").select("email, lang, email_notices").eq("id", n.userId).maybeSingle();
+    if (!p?.email || p.email_notices === false) return;                                        // no address, or the person switched e-mail notices off
     const t = DICTS[isLang(p.lang) ? p.lang : "en"];
     const brand = (await loadBrand()).name;
-    const { html, text } = renderMail({ brand, title: n.title, lines: n.body ? [n.body] : [], button: n.link ? { text: t.mail_open, url: `${SITE_URL}${n.link}` } : undefined, footer: t.mail_footer });
-    await sendMail({ to: p.email, subject: `${brand}: ${n.title}`, html, text });
+    const { html, text } = renderMail({ brand, title: n.title, lines: n.body ? [n.body] : [], button: n.link ? { text: t.mail_open, url: `${SITE_URL}${n.link}` } : undefined, footer: `${t.mail_footer}\n${t.mail_manage}: ${SITE_URL}/account/notifications` });
+    await sendMail({ to: p.email, subject: `${brand}: ${n.title}`, html, text, kind: n.kind ?? "info", headers: { "List-Unsubscribe": `<${SITE_URL}/account/notifications>` } });
   } catch (e) { console.error("[notify] mail failed", (e as Error).message); }
 }
 

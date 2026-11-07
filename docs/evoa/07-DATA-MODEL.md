@@ -89,3 +89,11 @@ Settings keys added: `eligibility`, `required_documents`, `addon_rules`, `insura
 - `wallet_passes (application_id, platform 'google'|'apple', serial, auth_token, lang, fingerprint, updated_at, synced_at, last_error)`: one row per pass handed out. `fingerprint` = hash of what the pass shows; a change means the pass in the wallet is out of date. Apple: `serial` + `auth_token` identify the pass to the phone.
 - `wallet_registrations (device_id, pass_id, push_token)`: Apple phones that registered for updates. Both tables are server-only (RLS on, no policy).
 
+## E-mail, discounts, content, reconciliation (round 4)
+
+- `profiles.email_notices` (default true): the person's switch for status e-mails. `mail_log (at, kind, ok, code)`: counts only, never an address or a message (30 days).
+- `discount_codes (code, kind percent|fixed, value, active, valid_from/to, max_uses, per_user)` and `discount_redemptions (code_id, payment_id unique, owner_id, amount_thb)`; `payments.discount_thb`. `reserve_discount()` takes a use atomically (limits included); a failed payment gives it back. Service fee only.
+- `content_items (kind faq|news, title jsonb, body jsonb, published, pinned, sort, published_at)`: text per language `{en, th, zh-CN}`; readers get their language, else English. No published FAQ = the built-in FAQ is shown.
+- `reconciliation_reports (day, status ok|issues|error|skipped, stripe/ours gross and refunds, issues jsonb, reviewed_at)`: one row per Thai day.
+- Account erasure keeps: `payments`, `refunds`, `tax_invoices`, `consents`, `addon_orders`, application rows (without their answers) and trips (without PNRs); the auth user stays as a banned, anonymised shell so those rows keep their owner.
+

@@ -39,6 +39,7 @@ export default async function AccountPage() {
       <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
         <AppLink href="/account/password" className={btnClass("ghost", "w-full")}>{t.password_title}</AppLink>
         <AppLink href="/account/notifications" className={btnClass("ghost", "w-full")}>{t.chat_title}</AppLink>
+        <AppLink href="/account/privacy" className={btnClass("ghost", "w-full")}>{t.account_privacy}</AppLink>
       </section>
       <InstallApp />
       <SignOutButton />

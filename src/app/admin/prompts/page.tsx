@@ -8,6 +8,7 @@ import { loadChannels } from "@/lib/channels";
 import { buildSystemPrompt } from "@/lib/ai/prompt";
 import { EXTRA_MAX } from "@/lib/ai/extra";
 import { loadExtra } from "@/lib/ai/server";
+import { loadFaq } from "@/lib/content/server";
 import { savePromptExtraAction } from "@/app/actions/admin";
 import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
@@ -19,10 +20,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminPrompts() {
   await requireAdminPage();
   const { t, lang } = await getT();
-  const [extra, fees, policy, ch, { data: versions }] = await Promise.all([loadExtra(), loadFees(), getSetting<unknown>("refund_policy", DEFAULT_REFUND_POLICY).then(parseRefundPolicy), loadChannels(),
+  const [extra, fees, policy, ch, faq, { data: versions }] = await Promise.all([loadExtra(), loadFees(), getSetting<unknown>("refund_policy", DEFAULT_REFUND_POLICY).then(parseRefundPolicy), loadChannels(), loadFaq("en"),
     createAdminClient().from("ai_prompt_versions").select("id, body, created_at").eq("task", "chat").order("created_at", { ascending: false }).limit(10)]);
   // the same builder the assistant uses, so what is shown here is what it really receives
-  const builtin = buildSystemPrompt({ fees: { visa: fees.visa_thb, regular: fees.regular_service_thb, express: fees.express_service_thb }, refund: { visa: policy.visa_fee_refundable, addons: policy.unused_addons_refundable }, lang,
+  const builtin = buildSystemPrompt({ faq, fees: { visa: fees.visa_thb, regular: fees.regular_service_thb, express: fees.express_service_thb }, refund: { visa: policy.visa_fee_refundable, addons: policy.unused_addons_refundable }, lang,
     channels: [ch.website, ch.line && `LINE ${ch.line}`, ch.email, ch.phone, ch.hours].filter(Boolean).join("; ") });
   return (
     <div className="space-y-4">
