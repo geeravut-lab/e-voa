@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { ActionForm } from "@/components/ActionForm";
 import { AsyncButton, SubmitButton } from "@/components/Buttons";
 import { errorText } from "@/lib/i18n/dict";
 import { AppLink } from "@/components/AppLink";
 import { useT } from "@/components/I18n";
 import { checkoutAction, previewDiscountAction } from "@/app/actions/apply";
+import { createPayLinkAction, revokePayLinkAction, type LinkResult } from "@/app/actions/paylink";
 import { btnClass } from "@/components/buttonStyles";
 import { SignaturePad } from "./SignaturePad";
 import { inputCls } from "./fields";
@@ -22,6 +23,8 @@ export function CheckoutForm({ tripId, totalLabel, hasAddons, canPay, backHref, 
     const r = await previewDiscountAction(tripId, code);
     if (r.ok) setApplied({ code: r.code, thb: r.discountThb, total: r.totalThb }); else { setApplied(null); setDErr(errorText(r.error, t)); }
   };
+  const [link, linkAction] = useActionState(createPayLinkAction, null as LinkResult);
+  const [stopped, setStopped] = useState<string | null>(null);                        // the link we stopped, so its box can disappear
   const ready = canPay && terms && imm && (!hasAddons || partners) && decl && name.trim().length >= 2 && ink;
   const box = "flex items-start gap-3 rounded-control border border-line p-3 text-sm";
   return (
@@ -55,11 +58,41 @@ export function CheckoutForm({ tripId, totalLabel, hasAddons, canPay, backHref, 
         <p className="text-sm font-semibold">{t.declare_sign}</p>
         <SignaturePad onInk={setInk} />
       </section>
+      <section className="space-y-3 rounded-card border border-line bg-surface p-5 shadow-card">
+        <h2 className="font-display text-lg font-bold">{t.paylink_title}</h2>
+        <p className="text-sm text-muted">{t.paylink_hint}</p>
+        <SubmitButton variant="ghost" formAction={linkAction} disabled={!ready}>{t.paylink_create}</SubmitButton>
+        {link?.ok === false && <p role="alert" className="text-sm font-semibold text-danger">✕ {errorText(link.error, t)}</p>}
+        {link?.ok === true && stopped !== link.url && <PayLinkBox tripId={tripId} url={link.url} expiresAt={link.expiresAt} onStopped={() => setStopped(link.url)} />}
+        {link?.ok === true && stopped === link.url && <p role="status" className="text-sm font-semibold text-muted">{t.paylink_revoked}</p>}
+      </section>
       <div className="flex gap-2">
         <AppLink href={backHref} className={btnClass("ghost")}>{t.back}</AppLink>
         <SubmitButton variant="gold" className="flex-1" disabled={!ready}>{t.pay_now} · {applied ? money(applied.total) : totalLabel}</SubmitButton>
       </div>
       {!ready && canPay && <p className="text-xs text-muted">{t.consent_needed}</p>}
     </ActionForm>
+  );
+}
+
+/** The finished link: copy it, share it with the phone's share sheet, or stop it. */
+function PayLinkBox({ tripId, url, expiresAt, onStopped }: { tripId: string; url: string; expiresAt: string; onStopped: () => void }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false), [err, setErr] = useState<string | null>(null);
+  const until = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(expiresAt));
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  return (
+    <div className="space-y-2 rounded-control border border-success bg-success-bg p-3" role="status">
+      <label className="block text-sm font-semibold">{t.paylink_title}
+        <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className={`${inputCls} mt-1 font-mono text-sm`} />
+      </label>
+      <p className="text-xs text-muted">{t.paylink_valid_until.replace("{date}", until)} {t.paylink_note}</p>
+      <div className="flex flex-wrap gap-2">
+        <AsyncButton variant="gold" onClick={async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setErr(null); } catch { setErr(errorText("err_generic", t)); } }}>{copied ? `✓ ${t.paylink_copied}` : t.paylink_copy}</AsyncButton>
+        {canShare && <AsyncButton variant="ghost" onClick={async () => { try { await navigator.share({ url, title: t.paylink_page_title }); } catch { /* the person closed the sheet */ } }}>{t.paylink_share}</AsyncButton>}
+        <AsyncButton variant="ghost" onClick={async () => { const r = await revokePayLinkAction(tripId); if (r?.ok) onStopped(); else setErr(errorText(r && !r.ok ? r.error : "err_generic", t)); }}>{t.paylink_revoke}</AsyncButton>
+      </div>
+      {err && <p role="alert" className="text-sm font-semibold text-danger">✕ {err}</p>}
+    </div>
   );
 }

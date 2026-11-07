@@ -30,7 +30,8 @@ export type CheckoutResult = { ok: true; url: string; paymentId: string } | { ok
  * Turns a trip's draft applications (and the add-ons picked for them) into ONE payment and one Stripe Checkout page.
  * Nothing is charged here; the money is confirmed later by confirmPayment (webhook or the return page), both of which ask Stripe again.
  */
-export async function startCheckout(userId: string, email: string | null, tripId: string, lang: Lang = "en", discountCode = ""): Promise<CheckoutResult> {
+export async function startCheckout(userId: string, email: string | null, tripId: string, lang: Lang = "en", discountCode = "", opts: { returnPath?: string } = {}): Promise<CheckoutResult> {
+  const back = opts.returnPath && /^\/[a-z/-]*$/.test(opts.returnPath) ? opts.returnPath : "/pay/return";                       // where Stripe sends the person afterwards (a pay-later payer has no account)
   const db = admin();
   const { data: apps } = await db.from("applications").select("id, ref_no, status, package, visa_fee_thb, service_fee_thb, traveler_id, form, payment_id").eq("trip_id", tripId).eq("owner_id", userId).in("status", ["draft", "awaiting_payment"]);
   if (!apps || apps.length === 0) return { ok: false, error: "err_nothing_to_pay" };
@@ -79,7 +80,7 @@ export async function startCheckout(userId: string, email: string | null, tripId
   try {
     const s = await createCheckoutSession({
       paymentId, items: items.map((i) => ({ label: i.label, amountSatang: toSatang(i.amountThb) })), email,
-      successUrl: `${SITE_URL}/pay/return?payment=${paymentId}&session_id={CHECKOUT_SESSION_ID}`, cancelUrl: `${SITE_URL}/pay/return?payment=${paymentId}&cancelled=1`,
+      successUrl: `${SITE_URL}${back}?payment=${paymentId}&session_id={CHECKOUT_SESSION_ID}`, cancelUrl: `${SITE_URL}${back}?payment=${paymentId}&cancelled=1`,
       locale: ({ "zh-CN": "zh", "zh-TW": "zh-TW", th: "th", ja: "ja", ko: "ko", ru: "ru", hi: "auto", ar: "auto", en: "en" } as Record<string, string>)[lang] ?? "en",          // Stripe Checkout has no Hindi or Arabic page: it follows the browser
     });
     const upd = await db.from("payments").update({ provider_ref: s.id }).eq("id", paymentId).select("id");
