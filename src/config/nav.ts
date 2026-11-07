@@ -48,6 +48,8 @@ export const NAV: NavItem[] = [
   { key: "travelers", label: "card_travelers", sub: "card_travelers_sub", href: "/travelers", icon: "users", art: "travelers", tone: "sand", size: "half", area: "traveler", auth: true, status: "live", phase: "Phase 2", home: true, side: true },
   { key: "pass", label: "card_pass", sub: "card_pass_sub", href: "/pass", icon: "qr", art: "pass", tone: "sky", size: "half", area: "traveler", auth: true, status: "live", phase: "Phase 2", home: true, side: true },
   { key: "guide", label: "card_guide", sub: "card_guide_sub", href: "/guide", icon: "map", art: "guide", tone: "mint", size: "wide", area: "traveler", auth: false, status: "live", phase: "Phase 2", home: true, side: true },
+  { key: "emergency", label: "card_emergency", sub: "card_emergency_sub", href: "/emergency", icon: "shield", art: "emergency", tone: "rose", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
+  { key: "toolkit", label: "card_toolkit", sub: "card_toolkit_sub", href: "/toolkit", icon: "map", art: "toolkit", tone: "mint", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "help", label: "card_help", barLabel: "nav_help", sub: "card_help_sub", href: "/help", icon: "chat", art: "help", tone: "sky", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true, bottom: true },
   { key: "prepare", label: "prepare_title", sub: "prepare_sub", href: "/prepare", icon: "list", art: "check", tone: "mint", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
   { key: "status", label: "status_title", sub: "status_hint", href: "/status", icon: "search", art: "trips", tone: "rose", size: "half", area: "traveler", auth: false, status: "live", home: true, side: true },
@@ -108,7 +110,7 @@ export const PARENTS: { test: RegExp; label: DictKey; href: string }[] = [
   { test: /^\/admin\/queue\/.+/, label: "card_ops", href: "/admin/queue" },
   { test: /^\/admin\/.+/, label: "nav_admin", href: "/admin" },
   { test: /^\/soon\/.+/, label: "nav_home", href: "/" },
-  { test: /^\/(notifications|account|account\/password|agency|partner|trips|pass|fees|extras|eligibility|apply|help|prepare|guide|status|official|privacy|terms|travelers)$/, label: "nav_home", href: "/" },
+  { test: /^\/(notifications|account|account\/password|agency|partner|trips|pass|fees|extras|eligibility|apply|help|prepare|guide|status|official|privacy|terms|travelers|emergency|toolkit)$/, label: "nav_home", href: "/" },
 ];
 export const parentOf = (path: string) => PARENTS.find((p) => p.test.test(path)) ?? null;
 

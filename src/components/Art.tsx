@@ -286,6 +286,37 @@ export const ART = {
       <Spark x={18} y={96} s={0.6} />
     </Svg>
   ),
+  emergency: (
+    <Svg>
+      <path d="M62 22 98 34v26c0 22-14 36-36 44-22-8-36-22-36-44V34Z" fill={L} />
+      <path d="M62 22 98 34v26c0 22-14 36-36 44Z" fill="#E03A74" />
+      <rect x="55" y="40" width="14" height="42" rx="4" fill={W} />
+      <rect x="41" y="54" width="42" height="14" rx="4" fill={W} />
+      <g transform="translate(112 62)">
+        <rect x="-16" y="-24" width="32" height="52" rx="8" fill={N} />
+        <rect x="-11" y="-17" width="22" height="30" rx="3" fill={S} />
+        <text x="-9" y="3" fontSize="13" fontWeight="800" fill={B} fontFamily="sans-serif">191</text>
+        <circle cx="0" cy="21" r="3" fill={G} />
+      </g>
+      <path d="M126 24c6 4 10 10 10 18M132 18c9 6 14 15 14 26" stroke={G} strokeWidth="3.2" strokeLinecap="round" fill="none" />
+      <Spark x={22} y={26} s={0.8} /><Spark x={140} y={96} s={0.7} c={L} />
+    </Svg>
+  ),
+  toolkit: (
+    <Svg>
+      <rect x="26" y="44" width="76" height="52" rx="10" fill={B} />
+      <path d="M52 44v-8a6 6 0 0 1 6-6h12a6 6 0 0 1 6 6v8" fill="none" stroke={N} strokeWidth="4" />
+      <rect x="26" y="62" width="76" height="6" fill={N} opacity=".25" />
+      <rect x="58" y="58" width="12" height="16" rx="3" fill={G} />
+      <g transform="translate(110 40)">
+        <circle r="22" fill={W} stroke={T} strokeWidth="4" />
+        <path d="M0-16 6 0 0 16-6 0Z" fill={L} /><path d="M0-16 6 0H-6Z" fill={N} />
+        <circle r="3" fill={W} />
+      </g>
+      <path d="M96 100l8 8 14-16" stroke={T} strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Spark x={20} y={28} s={0.8} /><Spark x={144} y={92} s={0.7} c={L} />
+    </Svg>
+  ),
   notifications: (
     <Svg>
       <path d="M80 20c-20 0-30 14-30 34v14l-10 14h80L110 68V54c0-20-10-34-30-34Z" fill={G} />
