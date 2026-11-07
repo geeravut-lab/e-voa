@@ -114,7 +114,7 @@ describe("discount codes at checkout (Stripe TEST API)", () => {
     // without a code nothing changes
     if (cb.ok) await failPayment(cb.paymentId, "test");
     const plain = await startCheckout(a.id, a.email, da.tripId, "en"); expect(plain.ok).toBe(true); if (plain.ok) { const pp = await pay(plain.paymentId); expect(pp.discount_thb).toBe(0); expect(pp.amount_thb).toBe(p1.amount_thb + p1.discount_thb); await failPayment(plain.paymentId, "test"); }
-  });
+  }, 240_000);                                                                                                                                  // several real Stripe round trips: it takes about 100 s on its own
 });
 
 describe("daily reconciliation", () => {
