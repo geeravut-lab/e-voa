@@ -1,4 +1,5 @@
-import type { PerLang } from "@/lib/content/types";
+import { EXTRA_LANGS, type PerLang } from "@/lib/content/types";
+import { PACK_A } from "@/lib/content/lang";
 import type { AirLevel } from "./rules";
 // Words for the conditions page in the three written languages (the others show English).
 export const AIR_LABEL: Record<AirLevel, PerLang<string>> = {
@@ -12,3 +13,10 @@ export const WEATHER_LABEL: Record<"clear" | "cloudy" | "fog" | "drizzle" | "rai
   clear: { en: "Clear or sunny", th: "แจ่มใสหรือแดดจัด", "zh-CN": "晴" }, cloudy: { en: "Cloudy", th: "มีเมฆ", "zh-CN": "多云" }, fog: { en: "Fog", th: "หมอก", "zh-CN": "有雾" }, drizzle: { en: "Drizzle", th: "ฝนปรอย", "zh-CN": "毛毛雨" },
   rain: { en: "Rain", th: "ฝนตก", "zh-CN": "下雨" }, heavy_rain: { en: "Heavy rain", th: "ฝนตกหนัก", "zh-CN": "大雨" }, storm: { en: "Thunderstorm", th: "พายุฝนฟ้าคะนอง", "zh-CN": "雷暴" },
 };
+
+for (const l of EXTRA_LANGS) {
+  const p = PACK_A[l]; if (!p) continue;
+  for (const k of Object.keys(AIR_LABEL) as (keyof typeof AIR_LABEL)[]) AIR_LABEL[k][l] = p.air[k];
+  for (const k of Object.keys(UV_LABEL) as (keyof typeof UV_LABEL)[]) UV_LABEL[k][l] = p.uv[k];
+  for (const k of Object.keys(WEATHER_LABEL) as (keyof typeof WEATHER_LABEL)[]) WEATHER_LABEL[k][l] = p.weather[k];
+}

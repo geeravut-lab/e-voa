@@ -7,12 +7,13 @@ import { ru } from "./ru";
 import { ko } from "./ko";
 import { ja } from "./ja";
 import { zhTW } from "./zh-TW";
+import { OPS } from "./ops-all";
 import type { Lang } from "../langs";
 
 export type { Dict };
 /** English, Thai and Simplified Chinese are complete. The other languages translate everything a traveler sees; back-office texts and anything not translated yet show in English. */
 const withEnglish = (part: Partial<Dict>): Dict => ({ ...en, ...part });
-export const DICTS: Record<Lang, Dict> = { en, th, "zh-CN": zhCN, hi: withEnglish(hi), ar: withEnglish(ar), ru: withEnglish(ru), ko: withEnglish(ko), ja: withEnglish(ja), "zh-TW": withEnglish(zhTW) };
+export const DICTS: Record<Lang, Dict> = { en, th, "zh-CN": zhCN, hi: withEnglish({ ...hi, ...OPS.hi }), ar: withEnglish({ ...ar, ...OPS.ar }), ru: withEnglish({ ...ru, ...OPS.ru }), ko: withEnglish({ ...ko, ...OPS.ko }), ja: withEnglish({ ...ja, ...OPS.ja }), "zh-TW": withEnglish({ ...zhTW, ...OPS["zh-TW"] }) };
 export const PARTIAL_LANGS: Lang[] = ["hi", "ar", "ru", "ko", "ja", "zh-TW"];
 export type DictKey = keyof Dict;
 

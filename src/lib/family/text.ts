@@ -1,8 +1,10 @@
 import type { PerLang } from "@/lib/content/types";
-import { forLang } from "@/lib/content/types";
+import { EXTRA_LANGS, forLang } from "@/lib/content/types";
+import { PACK_B } from "@/lib/content/lang";
 import type { Lang } from "@/lib/i18n/langs";
 // Words of the family check-in: the screens and the e-mails to contacts. Written in English, Thai and Chinese; the other languages show English until someone translates them.
-export type FamText = Record<string, string>;
+import type { FamText } from "./text-type";
+export type { FamText };
 const en: FamText = {
   title: "Family check-in", hint: "Tell the people who worry about you that you are fine, and let them know if you go quiet. You choose who sees what.",
   safe_btn: "I am safe", help_btn: "I need help", checked: "Last check-in: {time} (Thai time)", never: "You have not checked in yet.", next_due: "Next check-in due: {time}",
@@ -67,5 +69,6 @@ const zh: FamText = {
   n_remind_title: "该签到了", n_remind_body: "点击“我很安全”，让您的联系人知道您一切安好。如果不点击，{hours} 小时后将通知您的联系人。", n_alert_title: "我们已通知您的联系人", n_alert_body: "您错过了一次签到，因此已向 {n} 位联系人发送邮件。请立即签到，让他们知道您平安。",
 };
 export const FAMILY_TEXT: PerLang<FamText> = { en, th, "zh-CN": zh };
+for (const l of EXTRA_LANGS) { const p = PACK_B[l]; if (p) FAMILY_TEXT[l] = { ...en, ...p.family }; }          // a key missing in a translation shows English
 export const famText = (lang: Lang): FamText => forLang(FAMILY_TEXT, lang);
 export const fam = (s: string, vars: Record<string, string | number> = {}) => s.replace(/\{(\w+)\}/g, (_m, k: string) => String(vars[k] ?? `{${k}}`));

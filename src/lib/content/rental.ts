@@ -1,4 +1,5 @@
-import type { PerLang } from "./types";
+import { EXTRA_LANGS, type PerLang } from "./types";
+import { PACK_A } from "./lang";
 
 /** The motorbike / jet-ski / car rental helper: a checklist and the photos to take before using the vehicle. General advice, in three written languages. */
 export type CheckItem = { id: string; text: PerLang<string> };
@@ -40,3 +41,9 @@ export const PHOTO_SLOTS: PhotoSlot[] = [
   { id: "damage1", label: { en: "Existing damage 1", th: "ความเสียหายที่มีอยู่ 1", "zh-CN": "原有损坏 1" } },
   { id: "damage2", label: { en: "Existing damage 2", th: "ความเสียหายที่มีอยู่ 2", "zh-CN": "原有损坏 2" } },
 ];
+
+for (const l of EXTRA_LANGS) {
+  const p = PACK_A[l]; if (!p) continue;
+  for (const g of RENTAL) { const t = p.rental.groups[g.id]; if (t) g.title[l] = t; for (const it of g.items) { const x = p.rental.items[it.id]; if (x) it.text[l] = x; } }
+  for (const sl of PHOTO_SLOTS) { const t = p.rental.slots[sl.id]; if (t) sl.label[l] = t; }
+}

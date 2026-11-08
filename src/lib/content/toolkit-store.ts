@@ -2,7 +2,7 @@
 // the offline page and the tests share it. The built-in lists in toolkit.ts are the fallback, so a missing or damaged setting never breaks a page (rule 9).
 import { EMERGENCY, PHRASES, RULES_CHECK, type Emergency, type Phrase, type RuleItem } from "./toolkit";
 import { INCIDENTS, type Incident } from "./incidents";
-import type { PerLang } from "./types";
+import { EXTRA_LANGS, type PerLang } from "./types";
 
 export type ToolkitContent = { emergency: Emergency[]; phrases: Phrase[]; rules: RuleItem[]; incidents: Incident[] };
 export type ToolkitKind = keyof ToolkitContent;
@@ -61,11 +61,25 @@ function cleanIncidents(raw: unknown): Incident[] {
 }
 const CLEAN = { emergency: cleanEmergency, phrases: cleanPhrases, rules: cleanRules, incidents: cleanIncidents } as const;
 
+/**
+ * The back-office form edits English, Thai and Chinese only. A built-in item the staff did not change keeps its translations into the six later languages
+ * (matched by number / id / English text); an item they rewrote shows English in those languages until a translation is added in code.
+ */
+function carryExtras(c: Partial<ToolkitContent>): Partial<ToolkitContent> {
+  const copy = <T extends string | string[]>(to: PerLang<T>, from: PerLang<T>) => { for (const l of EXTRA_LANGS) if (from[l] !== undefined) to[l] = from[l]; };
+  const same = (a: string[] | string, b: string[] | string) => (Array.isArray(a) ? a.join("\n") === (b as string[]).join("\n") : a === b);
+  for (const e of c.emergency ?? []) { const b = EMERGENCY.find((x) => x.number === e.number); if (!b) continue; if (b.label.en === e.label.en) copy(e.label, b.label); if (b.use.en === e.use.en) copy(e.use, b.use); }
+  for (const p of c.phrases ?? []) { const b = PHRASES.find((x) => x.th === p.th); if (b?.more && b.en === p.en) p.more = { ...b.more }; }
+  for (const r of c.rules ?? []) { const b = RULES_CHECK.find((x) => x.title.en === r.title.en); if (!b) { const t = RULES_CHECK.find((x) => x.text.en === r.text.en); if (t) copy(r.text, t.text); continue; } copy(r.title, b.title); if (b.text.en === r.text.en) copy(r.text, b.text); }
+  for (const i of c.incidents ?? []) { const b = INCIDENTS.find((x) => x.id === i.id); if (!b) continue; if (b.title.en === i.title.en) copy(i.title, b.title); if (b.summary.en === i.summary.en) copy(i.summary, b.summary); if (same(b.steps.en, i.steps.en)) copy(i.steps, b.steps); }
+  return c;
+}
+
 /** The stored setting, with every list cleaned: bad items are dropped, an empty list counts as "not edited". */
 export function parseToolkit(raw: unknown): Partial<ToolkitContent> {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>, out: Partial<ToolkitContent> = {};
   for (const k of KINDS) { const list = CLEAN[k](o[k]); if (list.length) (out as Record<string, unknown>)[k] = list; }
-  return out;
+  return carryExtras(out);
 }
 /** What the pages show: the edited list when there is one, otherwise the built-in one. */
 export const mergeToolkit = (stored: Partial<ToolkitContent>): ToolkitContent => ({ emergency: stored.emergency ?? BUILTIN.emergency, phrases: stored.phrases ?? BUILTIN.phrases, rules: stored.rules ?? BUILTIN.rules, incidents: stored.incidents ?? BUILTIN.incidents });

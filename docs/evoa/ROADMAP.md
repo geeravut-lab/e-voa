@@ -137,6 +137,8 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 
 | **9 Nov round 4**: ✅ Ops queue: the "Selected applications" card no longer covers the screen. Nothing ticked → one slim row with "Select all"; something ticked → ONE compact bar stuck to the bottom (count, action, extra field, apply, clear; about 62 px on desktop, 110 px on a phone instead of about 350 px), and the result message sits on the same row | ✅ |
 
+| **10 Nov round**: ✅ the traveler toolkit and the queue are translated into HI, AR (right-to-left), RU, KO, JA, ZH-TW: family check-in page and e-mails, emergency numbers, phrase meanings, rules check, TDAC helper, Stay Guard, incident guides, rental helper, weather/air advice and labels (`src/lib/content/lang/<code>-a.ts` / `-b.ts`), and the 74 queue texts of the Ops console (`src/lib/i18n/dict/ops-<code>.ts`). A test (`lang.test.ts`) fails if any item, key or {placeholder} is missing in any of the six. Back-office note: the `/admin/toolkit` form edits English, Thai and Chinese only; a built-in item the staff did not change keeps its six translations, a rewritten one shows English in those six until a translation is added in code | ✅ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes · ⬜ rich text and images in news

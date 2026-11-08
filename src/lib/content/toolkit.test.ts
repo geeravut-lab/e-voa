@@ -33,3 +33,23 @@ describe("toolkit texts", () => {
   });
   it("send people to the official TDAC site, not to an address of ours, and carry a review date", () => { expect(new URL(TDAC_URL).protocol).toBe("https:"); expect(new URL(TDAC_URL).hostname).toMatch(/\.go\.th$/); expect(LAST_REVIEWED).toMatch(/^\d{4}-\d{2}$/); });
 });
+
+describe("translations survive a back-office save", () => {
+  it("keeps the six later languages for items the staff did not change, and drops them for rewritten ones", async () => {
+    const { parseToolkit } = await import("./toolkit-store");
+    const { EMERGENCY, RULES_CHECK } = await import("./toolkit");
+    const { INCIDENTS } = await import("./incidents");
+    const tri = (o: { en: string; th: string; "zh-CN": string }) => ({ en: o.en, th: o.th, "zh-CN": o["zh-CN"] });
+    const e0 = EMERGENCY[0], r0 = RULES_CHECK[0], i0 = INCIDENTS[0];
+    const stored = {
+      emergency: [{ number: e0.number, label: tri(e0.label), use: { ...tri(e0.use), en: "A rewritten sentence." } }],
+      rules: [{ level: r0.level, title: tri(r0.title), text: tri(r0.text) }],
+      incidents: [{ id: i0.id, call: i0.call, title: tri(i0.title), summary: tri(i0.summary), steps: { en: i0.steps.en.join("\n"), th: i0.steps.th.join("\n"), "zh-CN": i0.steps["zh-CN"].join("\n") } }],
+    };
+    const out = parseToolkit(stored);
+    expect(out.emergency![0].label.ja).toBe(e0.label.ja);             // unchanged: translation kept
+    expect(out.emergency![0].use.ja).toBeUndefined();                  // rewritten: English shows in Japanese
+    expect(out.rules![0].text.ar).toBe(r0.text.ar);
+    expect(out.incidents![0].steps.ko).toEqual(i0.steps.ko);
+  });
+});

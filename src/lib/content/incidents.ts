@@ -1,4 +1,5 @@
-import type { PerLang } from "./types";
+import { EXTRA_LANGS, type PerLang } from "./types";
+import { PACK_B } from "./lang";
 
 /**
  * "Something went wrong": what to do first, in order, for the situations travelers meet most. General guidance written from public advice (Thai authorities, embassies, insurers)
@@ -84,3 +85,9 @@ export const INCIDENT_NOTE: PerLang<string> = {
   th: "คำแนะนำทั่วไปจากข้อมูลสาธารณะ ตรวจทานล่าสุด {when} ขั้นตอนต่างกันตามกรณีและเจ้าหน้าที่เป็นผู้ตัดสิน ให้ทำตามคำสั่งของทางการ สถานทูต และบริษัทประกัน ไม่ใช่คำแนะนำทางกฎหมายหรือการแพทย์",
   "zh-CN": "基于公开建议的一般性指引，最近一次审核时间：{when}。各案程序不同，由官员裁量：请遵循当局、大使馆和保险公司的指示。本内容不构成法律或医疗意见。",
 };
+
+for (const l of EXTRA_LANGS) {
+  const p = PACK_B[l]; if (!p) continue;
+  for (const i of INCIDENTS) { const t = p.incidents[i.id]; if (t) { i.title[l] = t.title; i.summary[l] = t.summary; i.steps[l] = t.steps; } }
+  INCIDENT_NOTE[l] = p.incidentNote;
+}

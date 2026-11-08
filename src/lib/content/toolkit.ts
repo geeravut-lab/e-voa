@@ -1,4 +1,5 @@
-import type { PerLang } from "./types";
+import { EXTRA_LANGS, type ExtraLang, type PerLang } from "./types";
+import { PACK_A } from "./lang";
 
 /**
  * "While you are in Thailand": the texts behind the emergency page, the phrase card, the rules check, the TDAC helper and Stay Guard.
@@ -24,7 +25,7 @@ export const EMERGENCY_NOTE: PerLang<string> = {
 };
 
 // ---------------------------------------------------------------- Thai phrase card: tap a phrase and show the Thai to the person you are talking to
-export type Phrase = { id: string; urgent?: boolean; th: string; roman: string; en: string; zh: string };
+export type Phrase = { id: string; urgent?: boolean; th: string; roman: string; en: string; zh: string; more?: Partial<Record<ExtraLang, string>> };          // more: the meaning in the six later languages
 export const PHRASES: Phrase[] = [
   { id: "help", urgent: true, th: "ช่วยด้วย", roman: "chûai dûai", en: "Help!", zh: "救命！" },
   { id: "ambulance", urgent: true, th: "เรียกรถพยาบาลหน่อย", roman: "riak rót pha-yaa-baan nòi", en: "Please call an ambulance.", zh: "请叫救护车。" },
@@ -145,3 +146,14 @@ export const STAY: PerLang<{ intro: string; how: string; extend: string; oversta
     overstay: "超过获准日期停留属违法：按天罚款，长期逾期还可能被禁止再次入境。请及时离境或办理延期。",
   },
 };
+
+// ---------------------------------------------------------------- the six later languages (content/lang/<code>-a.ts): added to the built-in lists when this file loads
+for (const l of EXTRA_LANGS) {
+  const p = PACK_A[l]; if (!p) continue;
+  for (const e of EMERGENCY) { const t = p.emergency[e.number]; if (t) { e.label[l] = t[0]; e.use[l] = t[1]; } }
+  EMERGENCY_NOTE[l] = p.emergencyNote;
+  for (const ph of PHRASES) { const m = p.phrases[ph.id]; if (m) (ph.more ??= {})[l] = m; }
+  for (const r of RULES_CHECK) { const t = p.rules[r.id]; if (t) { r.title[l] = t[0]; r.text[l] = t[1]; } }
+  for (const k of Object.keys(LEVEL_LABEL) as RuleItem["level"][]) LEVEL_LABEL[k][l] = p.levels[k];
+  RULES_NOTE[l] = p.rulesNote; TDAC[l] = p.tdac; STAY[l] = p.stay;
+}

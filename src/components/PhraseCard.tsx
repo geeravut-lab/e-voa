@@ -4,7 +4,7 @@ import { useT } from "@/components/I18n";
 import { btnClass } from "@/components/buttonStyles";
 import type { Phrase } from "@/lib/content/toolkit";
 
-const meaning = (p: Phrase, lang: string) => (lang === "zh-CN" || lang === "zh-TW" ? p.zh : p.en);
+const meaning = (p: Phrase, lang: string) => (p.more as Record<string, string | undefined> | undefined)?.[lang] ?? (lang === "zh-CN" || lang === "zh-TW" ? p.zh : p.en);
 /** A list of phrases: tap one to show it full-screen in big Thai letters for the other person to read. */
 export function PhraseCard({ phrases, lang }: { phrases: Phrase[]; lang: string }) {
   const t = useT();

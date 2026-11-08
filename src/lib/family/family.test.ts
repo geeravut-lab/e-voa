@@ -57,7 +57,7 @@ describe("family check-in rules", () => {
     expect(hoursAgo("2026-11-08T00:00:00Z", at("2026-11-08T05:30:00Z"))).toBe(5); expect(hoursAgo(null, new Date())).toBeNull();
     void H;
   });
-  it("English, Thai and Chinese have the same message keys, with the same {placeholders}; other languages fall back to English", () => {
+  it("English, Thai and Chinese have the same message keys, with the same {placeholders}; a language without a pack falls back to English", () => {
     const en = famText("en"); const keys = Object.keys(en) as (keyof typeof en)[];
     for (const l of ["en", "th", "zh-CN"] as Lang[]) {
       const t = famText(l);
@@ -67,7 +67,8 @@ describe("family check-in rules", () => {
         expect(ph(t[k] as string), `${l}.${String(k)}`).toBe(ph(en[k] as string));
       }
     }
-    expect(famText("ja")).toBe(famText("en"));
+    expect(famText("ja").title).not.toBe(famText("en").title);            // Japanese is translated now (content/lang/ja-b.ts)
+    expect(famText("ja").safe_btn).toBe("無事です");
     expect(fam("Hi {name}, {n}", { name: "A", n: 2 })).toBe("Hi A, 2");
   });
 });

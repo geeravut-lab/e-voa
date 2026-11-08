@@ -1,7 +1,8 @@
 // Turns weather and air readings into plain advice. PURE: the page, the assistant tool and the tests share it.
 // The thresholds are the usual public ones (WHO UV index bands, apparent-temperature bands like the US heat index, the Thai 24-hour PM2.5 limit of 37.5 µg/m³).
 // The readings are modelled current values, not a 24-hour average and not a measurement at the traveler's street: the texts say "about".
-import type { PerLang } from "@/lib/content/types";
+import { EXTRA_LANGS, type PerLang } from "@/lib/content/types";
+import { PACK_A } from "@/lib/content/lang";
 
 export type Readings = {
   time: string | null;                               // local time of the reading (Asia/Bangkok), ISO without zone
@@ -76,3 +77,9 @@ export const ADVICE_NOTE: PerLang<string> = {
   th: "สภาพอากาศและ UV เป็นค่าจากแบบจำลองของพื้นที่ ไม่ได้วัดที่หน้าบ้านคุณ ค่า PM2.5 เป็นค่าที่วัดจริงเมื่อระบุสถานี มิฉะนั้นเป็นค่าประมาณ เฉพาะคำเตือนของกรมอุตุนิยมวิทยาเท่านั้นที่เป็นทางการ กรณีฉุกเฉินโทร 1669, 191 หรือ 1155",
   "zh-CN": "天气和紫外线为区域模型估算，并非您所在街道的实测。注明监测站时 PM2.5 为实测值，否则为估算值。只有气象局的预警属于官方预警；紧急情况请拨打 1669、191 或 1155。",
 };
+
+for (const l of EXTRA_LANGS) {
+  const p = PACK_A[l]; if (!p) continue;
+  for (const k of Object.keys(ADVICE) as AdviceKey[]) ADVICE[k][l] = p.advice[k];
+  ADVICE_NOTE[l] = p.adviceNote;
+}
