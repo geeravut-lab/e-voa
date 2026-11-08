@@ -153,7 +153,7 @@ export async function saveContentAction(_p: ActionResult, fd: FormData): Promise
   const kindRaw = String(fd.get("kind") ?? ""), kind = kindRaw === "news" ? "news" : kindRaw === "article" ? "article" : "faq", idRaw = String(fd.get("id") ?? "");
   if (idRaw && !/^[0-9a-f-]{36}$/i.test(idRaw)) return { ok: false, error: "err_generic" };
   const pick = (name: string, max: number) => cleanTexts({ en: fd.get(`${name}_en`), th: fd.get(`${name}_th`), "zh-CN": fd.get(`${name}_zh`) }, max);
-  const article = kind === "article", title = pick("title", TITLE_MAX), body = pick("body", article ? ARTICLE_MAX : BODY_MAX), summary = article ? pick("summary", SUMMARY_MAX) : null;
+  const article = kind === "article", title = pick("title", TITLE_MAX), body = pick("body", article || kind === "news" ? ARTICLE_MAX : BODY_MAX), summary = article ? pick("summary", SUMMARY_MAX) : null;
   if (!title.en || !body.en || (article && !summary?.en)) return { ok: false, error: "err_content_en_required" };
   if (article) for (const [l, t] of Object.entries(body)) if (parseSections(t as string).length === 0) return { ok: false, error: l === "en" ? "err_content_en_required" : "err_generic" };
   const slug = article && !idRaw ? String(fd.get("slug") ?? "").trim().toLowerCase() : null;
@@ -183,11 +183,26 @@ export async function deleteContentAction(id: string, _p: ActionResult, _fd: For
   const a = await requireAdminAction("content");
   if (!a.ok) return a;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "err_generic" };
-  const { data, error } = await createAdminClient().from("content_items").delete().eq("id", id).select("id, kind");
+  const { data, error } = await createAdminClient().from("content_items").delete().eq("id", id).select("id, kind, body");
   if (error || data?.length !== 1) return { ok: false, error: "err_generic" };
+  if (data[0].kind === "news") { const { richImages } = await import("@/lib/content/rich"), { removeUnusedNewsImages } = await import("@/lib/content/news-images"); await removeUnusedNewsImages(Object.values((data[0].body ?? {}) as Record<string, string>).flatMap((t) => (typeof t === "string" ? richImages(t) : []))); }
   await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.delete", entity: "content_item", entityId: id, detail: { kind: data[0].kind } });
   revalidatePath("/help"); revalidatePath("/news"); revalidatePath("/articles"); revalidatePath("/", "layout");
   redirect(`/admin/content?kind=${data[0].kind}`);
+}
+
+/** The editor's "Add picture" button: checks, shrinks and stores one picture for a news text and returns the line to put in the text. */
+export async function uploadNewsImageAction(fd: FormData): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const a = await requireAdminAction("content");
+  if (!a.ok) return a;
+  const f = fd.get("file");
+  if (!(f instanceof File) || f.size === 0) return { ok: false, error: "err_file_missing" };
+  if (f.size > 6 * 1024 * 1024) return { ok: false, error: "err_file_big" };
+  const { saveNewsImage } = await import("@/lib/content/news-images");
+  const r = await saveNewsImage(new Uint8Array(await f.arrayBuffer()));
+  if (!r.ok) return r;
+  await audit({ actorId: a.viewer.user.id, actorRole: "admin", action: "content.image", entity: "content_item", entityId: r.name, detail: { bytes: f.size } });
+  return { ok: true, url: r.url };
 }
 
 /** Copies the built-in travel articles (English, Thai, Chinese) into the editor, once, so every article can be edited, unpublished or replaced. */

@@ -4,6 +4,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
 import { useT } from "@/components/I18n";
 import { inputCls } from "@/components/inputStyles";
+import { RichEditor } from "@/components/RichEditor";
 import { saveContentAction } from "@/app/actions/admin";
 import { ARTICLE_MAX, BODY_MAX, SUMMARY_MAX, TITLE_MAX } from "@/lib/content/managed";
 
@@ -41,8 +42,11 @@ export function ContentForm({ kind, row }: { kind: "faq" | "news" | "article"; r
             <legend className="px-1 text-sm font-bold">{name}{i === 0 ? ` · ${t.content_required}` : ""}</legend>
             <label className="block space-y-1"><span className="text-xs font-semibold text-muted">{faq ? t.content_question : t.content_headline}</span><input name={`title_${short}`} value={tx.title[l]} onChange={(e) => set("title", l, e.target.value)} maxLength={TITLE_MAX} required={i === 0} className={inputCls} /></label>
             {article && <label className="block space-y-1"><span className="text-xs font-semibold text-muted">{t.content_summary}</span><textarea name={`summary_${short}`} value={tx.summary[l]} onChange={(e) => set("summary", l, e.target.value)} rows={2} maxLength={SUMMARY_MAX} required={i === 0} className={`${inputCls} text-sm`} /></label>}
-            <label className="block space-y-1"><span className="text-xs font-semibold text-muted">{faq ? t.content_answer : t.content_text}</span><textarea name={`body_${short}`} value={tx.body[l]} onChange={(e) => set("body", l, e.target.value)} rows={faq ? 5 : article ? 16 : 7} maxLength={article ? ARTICLE_MAX : BODY_MAX} required={i === 0} className={`${inputCls} text-sm ${article ? "font-mono" : ""}`} /></label>
+            {kind === "news"
+              ? <RichEditor name={`body_${short}`} value={tx.body[l]} onChange={(val) => set("body", l, val)} rows={10} maxLength={ARTICLE_MAX} label={t.content_text} required={i === 0} />
+              : <label className="block space-y-1"><span className="text-xs font-semibold text-muted">{faq ? t.content_answer : t.content_text}</span><textarea name={`body_${short}`} value={tx.body[l]} onChange={(e) => set("body", l, e.target.value)} rows={faq ? 5 : article ? 16 : 7} maxLength={article ? ARTICLE_MAX : BODY_MAX} required={i === 0} className={`${inputCls} text-sm ${article ? "font-mono" : ""}`} /></label>}
             {article && <p className="text-xs text-muted">{t.content_body_help}</p>}
+            {kind === "news" && i === 0 && <p className="text-xs text-muted">{t.content_rich_help}</p>}
           </fieldset>
         );
       })}

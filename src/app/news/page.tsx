@@ -2,11 +2,12 @@ import { pageMeta } from "@/lib/seo";
 import { getT } from "@/lib/i18n/server";
 import { loadNews } from "@/lib/content/server";
 import { PageHead } from "@/components/PageHead";
+import { RichText } from "@/components/RichText";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = () => pageMeta({ path: "/news", title: "news_title", description: "news_hint" });
 
-/** News and announcements written in the back office (plain text; in the reader's language, English when it is not written yet). */
+/** News and announcements written in the back office (rich text: headings, lists, links and pictures; in the reader's language, English when it is not written yet). */
 export default async function NewsPage() {
   const { t, lang } = await getT();
   const items = await loadNews(lang);
@@ -20,7 +21,7 @@ export default async function NewsPage() {
             <li key={n.id} className="space-y-2 rounded-card border border-line bg-surface p-5 shadow-card">
               <h2 className="font-display text-lg font-bold">{n.title}</h2>
               {n.publishedAt && <p className="text-xs text-muted tabular">{fmt.format(new Date(n.publishedAt))}</p>}
-              <p className="whitespace-pre-line break-words text-sm">{n.body}</p>
+              <RichText text={n.body} />
             </li>
           ))}
         </ul>

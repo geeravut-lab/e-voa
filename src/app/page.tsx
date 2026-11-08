@@ -11,6 +11,7 @@ import { GreetingCard } from "@/components/GreetingCard";
 import { NavRowLink } from "@/components/AppLink";
 import { btnClass } from "@/components/buttonStyles";
 import { pinnedNews } from "@/lib/content/server";
+import { richPlain } from "@/lib/content/rich";
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ erased?: string }> }) {
   const [viewer, { t, brand, lang }, flags] = await Promise.all([getViewer(), getT(), loadFlags()]);
@@ -50,7 +51,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <NavRowLink href="/news" className="tone-green block rounded-card border p-4 shadow-card">
           <span className="text-xs font-bold uppercase tracking-wider text-success">{t.news_title}</span>
           <b className="mt-1 block text-success">{pinned.title}</b>
-          <span className="mt-1 block line-clamp-2 text-sm text-ink">{pinned.body}</span>
+          <span className="mt-1 block line-clamp-2 text-sm text-ink">{richPlain(pinned.body)}</span>
           <span className="mt-2 block text-sm font-semibold text-primary">{t.news_read_all} →</span>
         </NavRowLink>
       )}
