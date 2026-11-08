@@ -29,7 +29,7 @@ function Row({ e, active, onNavigate }: { e: NavEntry; active: boolean; onNaviga
     >
       <NavIcon name={e.icon} size={20} />
       <span className="truncate">{e.label}</span>
-      {!!e.badge && <span className="ms-auto grid min-w-5 place-items-center rounded-full bg-lotus px-1.5 text-[11px] font-bold leading-5 text-white">{e.badge > 99 ? "99+" : e.badge}</span>}
+      {!!e.badge && <span className="ms-auto grid min-w-5 place-items-center rounded-full bg-danger px-1.5 text-[11px] font-bold leading-5 text-white">{e.badge > 99 ? "99+" : e.badge}</span>}
       {e.locked && <Lock size={14} className="ms-auto text-muted" aria-hidden="true" />}
     </NavRowLink>
   );
@@ -93,7 +93,7 @@ export function BottomBar({ left, right, apply, more, unread, centerIcon, childr
     return (
       <NavRowLink key={e.key} href={e.href} aria-current={active ? "page" : undefined}
         className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold ${active ? "text-primary" : "text-muted"}`}>
-        <span className="relative"><NavIcon name={e.icon} size={22} />{!!e.badge && <span className="absolute -end-2.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-lotus px-1 text-[10px] font-bold leading-4 text-white">{e.badge > 9 ? "9+" : e.badge}</span>}</span>
+        <span className="relative"><NavIcon name={e.icon} size={22} />{!!e.badge && <span className="absolute -end-2.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-bold leading-4 text-white">{e.badge > 9 ? "9+" : e.badge}</span>}</span>
         <span className="max-w-full truncate px-1">{e.short ?? e.label}</span>
       </NavRowLink>
     );
