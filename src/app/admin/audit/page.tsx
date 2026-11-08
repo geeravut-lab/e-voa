@@ -40,7 +40,7 @@ export default async function AuditPage() {
       {rows.length === 0 ? (
         <p className="rounded-card border border-line bg-surface p-5 text-muted">{t.audit_empty}</p>
       ) : (
-        <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
+        <div tabIndex={0} role="region" aria-label={t.audit_title} className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
           <table className="w-full min-w-[640px] text-start text-sm tabular">
             <thead className="bg-bg text-xs uppercase tracking-wide text-muted">
               <tr><th className="p-3">{t.audit_when}</th><th className="p-3">{t.audit_who}</th><th className="p-3">{t.audit_what}</th><th className="p-3">{t.audit_detail}</th></tr>

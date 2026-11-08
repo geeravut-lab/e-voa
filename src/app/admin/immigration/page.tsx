@@ -67,7 +67,7 @@ export default async function ImmigrationPage() {
           <ActionForm action={syncListsAction}><SubmitButton disabled={!configured}>{t.imm_sync_lists}</SubmitButton></ActionForm>
           <ActionForm action={syncDistrictsAction}><SubmitButton variant="ghost" disabled={!configured}>{t.imm_sync_districts}</SubmitButton></ActionForm>
         </div>
-        <div className="overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label={t.imm_lists} className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-start text-sm tabular">
             <thead className="text-xs uppercase tracking-wide text-muted"><tr><th className="py-2">{t.imm_list_name}</th><th>{t.imm_list_rows}</th><th>{t.imm_list_synced}</th></tr></thead>
             <tbody className="divide-y divide-line">

@@ -150,12 +150,12 @@ export async function runSafetyJob(now = new Date(), opts: { onlyUsers?: string[
     const step = nextStep(s as Schedule, now); if (step === "none") continue;
     const owner = await ownerFirstName(s.owner_id as string), t = famText(owner.lang), due = s.next_due_at as string;
     if (step === "remind") {
-      const r = await db().from("safety_schedule").update({ reminded_at: now.toISOString() }).eq("owner_id", s.owner_id).eq("next_due_at", due).select("owner_id");          // compare-and-set: one reminder per due time
+      const r = await db().from("safety_schedule").update({ reminded_at: now.toISOString() }).eq("owner_id", s.owner_id).eq("next_due_at", due).or(`reminded_at.is.null,reminded_at.lt.${due}`).select("owner_id");          // compare-and-set: one reminder per due time (the row must still show "not reminded for this due time")
       if (r.data?.length !== 1) continue;
       await notifyUser({ userId: s.owner_id as string, title: t.n_remind_title, body: fam(t.n_remind_body, { hours: s.grace_hours as number }), link: "/family", kind: "safety.remind", dedupeKey: `safety:remind:${s.owner_id}:${due}`, mail: false });
       out.reminded++; continue;
     }
-    const r = await db().from("safety_schedule").update({ alerted_at: now.toISOString() }).eq("owner_id", s.owner_id).eq("next_due_at", due).select("owner_id");
+    const r = await db().from("safety_schedule").update({ alerted_at: now.toISOString() }).eq("owner_id", s.owner_id).eq("next_due_at", due).or(`alerted_at.is.null,alerted_at.lt.${due}`).select("owner_id");
     if (r.data?.length !== 1) continue;
     const { data: cs } = await db().from("safety_contacts").select("id, name, email, lang, confirmed_at, revoked_at").eq("owner_id", s.owner_id);
     const contacts = (cs ?? []).filter(canNotify);

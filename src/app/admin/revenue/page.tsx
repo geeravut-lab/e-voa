@@ -57,7 +57,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
         </div>
         {truncated && <p className="rounded-control bg-gold-soft p-3 text-sm font-semibold text-gold-deep">{t.rev_truncated}</p>}
         {rows.length === 0 ? <p className="text-muted">{t.rev_none}</p> : (
-          <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-start text-sm tabular">
+          <div tabIndex={0} role="region" aria-label={t.rev_list} className="overflow-x-auto"><table className="w-full min-w-[640px] text-start text-sm tabular">
             <thead className="text-xs uppercase tracking-wide text-muted"><tr><th className="py-2 pe-3">{t.audit_when}</th><th className="pe-3">{t.rev_receipt}</th><th className="pe-3">{t.rev_ref}</th><th className="pe-3">{t.rev_items}</th><th className="text-end">{t.rev_total}</th></tr></thead>
             <tbody className="divide-y divide-line">{rows.map((r, i) => (
               <tr key={i}><td className="whitespace-nowrap py-2 pe-3">{when.format(new Date(r.at))}</td><td className="pe-3 font-mono text-xs">{r.receipt ?? ""}</td><td className="pe-3 font-mono text-xs">{r.ref}</td>
