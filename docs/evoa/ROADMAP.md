@@ -146,6 +146,8 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 
 | **10 Nov round, home news card**: ✅ the pinned news card on the home page shows the title in at most 2 lines and the text in at most 3 lines, whatever the screen width (the old 2-line limit did not work: the `block` class overrode the clamp, so the whole text showed — measured 9 lines at 320 px before, 3 now). Only ONE pinned item is shown: the most recently published pinned news; other pinned items are listed on `/news` | ✅ |
 
+| **10 Nov 2026, strategy**: 📄 pivot analysis `docs/evoa/12-PIVOT-ANALYSIS.md`: since 15 Sep 2026 the VOA list was cut from 31 to 4 countries and visa-free stays to 30 days, so the e-VOA market itself is very small. Options scored: A "Thailand Stay OS" (e-Visa prep, 30-day extension, 90-day calendar, insurance, Thailand Privilege), B migrant-worker compliance cloud for employers, C outbound visa helper for Thais; D–F not recommended as the core. Waiting for the owner to choose | ⏳ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes
