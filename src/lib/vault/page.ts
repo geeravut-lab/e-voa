@@ -1,6 +1,6 @@
-import { forLang } from "@/lib/content/types";
 import type { Lang } from "@/lib/i18n/langs";
-import { VAULT_TEXT } from "./text";
+import { LANGS } from "@/lib/i18n/langs";
+import { vaultText } from "./text";
 import { VAULT_CRYPTO_SRC } from "./crypto-src";
 import { VAULT_UI_SRC } from "./ui-src";
 import { ALLERGIES, BLOOD, CONDITIONS, HEALTH_LABELS } from "./health";
@@ -8,11 +8,11 @@ import { ALLERGIES, BLOOD, CONDITIONS, HEALTH_LABELS } from "./health";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 /** The offline vault as one self-contained HTML page: no network is needed once it is saved on the phone (the service worker keeps a copy). No personal data is in it; everything the traveler saves lives in the phone's own storage. */
 export function renderVaultPage(lang: Lang): string {
-  const T = forLang(VAULT_TEXT, lang);
+  const T = vaultText(lang);
   const cfg = JSON.stringify({ t: T, health: { labels: HEALTH_LABELS, blood: BLOOD, allergies: ALLERGIES, conditions: CONDITIONS } }).replace(/</g, "\\u003c").split("\u2028").join("\\u2028").split("\u2029").join("\\u2029");
   const types = ["passport", "evoa", "insurance", "booking", "ticket", "other"].map((k) => `<option value="${k}">${esc(T[`type_${k}`])}</option>`).join("");
   return `<!doctype html>
-<html lang="${esc(lang)}">
+<html lang="${esc(LANGS[lang].htmlLang)}" dir="${LANGS[lang].dir}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

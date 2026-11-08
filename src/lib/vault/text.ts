@@ -1,4 +1,6 @@
 import type { PerLang } from "@/lib/content/types";
+import type { Lang } from "@/lib/i18n/langs";
+import { VAULT_MORE } from "./text-more";
 // Words of the offline vault page in the three written languages (other languages show English). Typed values never go through here.
 export type VaultText = Record<string, string>;
 const en: VaultText = {
@@ -44,3 +46,6 @@ const zh: VaultText = {
   emergency: "紧急电话", back_app: "返回应用", idle: "闲置几分钟后会自动锁定。", card_for_medic: "请出示给正在帮助您的人",
 };
 export const VAULT_TEXT: PerLang<VaultText> = { en, th, "zh-CN": zh };
+
+/** The page text in one language; a language without a translation shows English. */
+export const vaultText = (lang: Lang): VaultText => (lang === "en" ? en : lang === "th" ? th : lang === "zh-CN" ? zh : VAULT_MORE[lang] ?? en);

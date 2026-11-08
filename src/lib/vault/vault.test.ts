@@ -3,7 +3,9 @@ import { webcrypto } from "node:crypto";
 import { VAULT_CRYPTO_SRC } from "@/lib/vault/crypto-src";
 import { VAULT_UI_SRC } from "@/lib/vault/ui-src";
 import { renderVaultPage } from "@/lib/vault/page";
-import { VAULT_TEXT } from "@/lib/vault/text";
+import { VAULT_TEXT, vaultText } from "@/lib/vault/text";
+import { VAULT_MORE } from "@/lib/vault/text-more";
+import { LANG_CODES } from "@/lib/i18n/langs";
 import { ALLERGIES, BLOOD, CONDITIONS, HEALTH_LABELS, cleanHealth, emptyHealth, hasHealthData } from "@/lib/vault/health";
 
 // the encryption is the very text that runs on the phone, executed here with Node's WebCrypto
@@ -39,8 +41,13 @@ describe("the vault page", () => {
     expect(html).toContain('id="cfg"'); expect(html).toMatch(/noindex/); expect(html.match(/<script/g)).toHaveLength(3);
   });
   it("is written in the reader's language and falls back to English", () => {
-    expect(renderVaultPage("en")).toContain(VAULT_TEXT.en.title); expect(renderVaultPage("th")).toContain(VAULT_TEXT.th.title); expect(renderVaultPage("zh-CN")).toContain(VAULT_TEXT["zh-CN"].title); expect(renderVaultPage("ja")).toContain(VAULT_TEXT.en.title);
+    expect(renderVaultPage("en")).toContain(VAULT_TEXT.en.title); expect(renderVaultPage("th")).toContain(VAULT_TEXT.th.title); expect(renderVaultPage("zh-CN")).toContain(VAULT_TEXT["zh-CN"].title); expect(renderVaultPage("ja")).toContain(VAULT_MORE.ja.title);
     for (const l of ["th", "zh-CN"] as const) expect(Object.keys(VAULT_TEXT[l]).sort()).toEqual(Object.keys(VAULT_TEXT.en).sort());
+  });
+  it("is translated into all nine languages with the same keys and no English left in the others; Arabic is right-to-left", () => {
+    const keys = Object.keys(VAULT_TEXT.en).sort();
+    for (const l of LANG_CODES) { const t = vaultText(l); expect(Object.keys(t).sort(), l).toEqual(keys); if (l !== "en") for (const k of ["title", "intro", "forget", "create_title", "wrong", "erase_confirm"]) expect(t[k], `${l}.${k}`).not.toBe(VAULT_TEXT.en[k]); }
+    expect(renderVaultPage("ar")).toContain('dir="rtl"'); expect(renderVaultPage("en")).toContain('dir="ltr"'); expect(renderVaultPage("zh-TW")).toContain('lang="zh-TW"');
   });
   it("cannot be broken out of by what is in the configuration", () => {
     const html = renderVaultPage("en"), cfg = /<script type="application\/json" id="cfg">([\s\S]*?)<\/script>/.exec(html)![1];
