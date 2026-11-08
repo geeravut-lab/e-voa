@@ -15,6 +15,7 @@ export default async function ToolkitPage() {
     { href: "/check-rules", title: t.tk_rules, sub: t.tk_rules_sub, tone: "tone-rose" },
     { href: "/incident", title: t.tk_incident, sub: t.tk_incident_sub, tone: "tone-rose" },
     { href: "/rental", title: t.tk_rental, sub: t.tk_rental_sub, tone: "tone-mint" },
+    { href: "/family", title: t.tk_family, sub: t.tk_family_sub, tone: "tone-rose" },
     { href: "/offline-vault.html", title: t.tk_vault, sub: t.tk_vault_sub, tone: "tone-sky" },
     { href: "/phrases", title: t.tk_phrases, sub: t.tk_phrases_sub, tone: "tone-gold" },
     { href: "/emergency", title: t.card_emergency, sub: t.card_emergency_sub, tone: "tone-sand" },

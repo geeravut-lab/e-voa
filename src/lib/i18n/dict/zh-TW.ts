@@ -831,4 +831,10 @@ export const zhTW: Partial<Dict> = {
   err_watch_limit: "最多可關注 5 個地點，請先取消一個。",
   tk_vault: "離線保險箱與健康卡",
   tk_vault_sub: "證件和健康資訊保存在手機上，加鎖，無需網路",
+  tk_family: "家人平安簽到",
+  tk_family_sub: "告訴家人您平安；失聯時會通知他們",
+  err_family_limit: "最多可新增 5 人，請先移除一位。",
+  err_family_email: "請輸入有效的電子郵件地址。",
+  err_family_dup: "此人已在您的名單中。",
+  err_family_until: "截止日期不能是過去的日期。",
 };

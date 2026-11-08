@@ -15,6 +15,7 @@ import { syncWalletPasses } from "@/lib/wallet/service";
 import { runDailyReconcile } from "@/lib/reconcile/service";
 import { runRules } from "@/lib/rules/service";
 import { runWarningAlerts } from "@/lib/conditions/watch";
+import { runSafetyJob } from "@/lib/family/service";
 
 const DEFAULT_BUDGET_MS = 20_000;
 const budgetMs = () => { const n = Number(process.env.TICK_BUDGET_MS); return Number.isFinite(n) && n >= 1000 ? n : DEFAULT_BUDGET_MS; };          // tests on a slow link may raise it
@@ -35,6 +36,7 @@ export async function runTick(only?: string[]): Promise<Record<string, unknown>>
     ["addons", async () => processAddonQueue()],
     ["rules", async () => runRules()],
     ["warnings", async () => runWarningAlerts()],
+    ["safety", async () => runSafetyJob()],
     ["wallet", async () => syncWalletPasses()],
     ["reconcile", async () => runDailyReconcile()],
     ["partner_packages", async () => {
@@ -56,6 +58,7 @@ export async function runTick(only?: string[]): Promise<Record<string, unknown>>
       await db.from("error_log").delete().lt("at", iso(30 * day));
       await db.from("mail_log").delete().lt("at", iso(30 * day));
       await db.from("form_drafts").delete().lt("updated_at", iso(30 * day));
+      await db.from("safety_checkins").delete().lt("at", iso(30 * day));          // family check-ins are kept 30 days only
       return "ok";
     }],
     ["purge", async () => {

@@ -32,7 +32,15 @@ const safeDecrypt = (v: string | null) => { if (!v) return null; try { return de
 /** Everything we hold about this person, as one JSON document (documents are listed, the files themselves are downloaded from each application). */
 export async function exportMyData(userId: string, email: string | null): Promise<Record<string, unknown>> {
   const q = async (table: string, cols: string, col = "owner_id", order = "created_at") => (await db().from(table).select(cols).eq(col, userId).order(order, { ascending: true }).limit(5000)).data ?? [];
-  const [profile, consents, travelers, trips, apps, declarations, docs, payments, addons, tax, notices, channels, refundsRaw] = await Promise.all([
+  const [family, profile, consents, travelers, trips, apps, declarations, docs, payments, addons, tax, notices, channels, refundsRaw] = await Promise.all([
+    (async () => {
+      const [contacts, checkins, schedule] = await Promise.all([
+        db().from("safety_contacts").select("name, email, lang, invited_at, confirmed_at, revoked_at").eq("owner_id", userId).order("created_at"),
+        db().from("safety_checkins").select("at, status, lat, lon").eq("owner_id", userId).order("at"),
+        db().from("safety_schedule").select("enabled, interval_hours, grace_hours, until_date, next_due_at, updated_at").eq("owner_id", userId).maybeSingle(),
+      ]);
+      return { contacts: contacts.data ?? [], checkins: checkins.data ?? [], schedule: schedule.data ?? null };
+    })(),
     db().from("profiles").select("display_name, email, lang, email_notices, created_at").eq("id", userId).maybeSingle().then((r) => r.data),
     q("consents", "kind, version, accepted_at", "owner_id", "accepted_at"),
     q("travelers", "id, relation, given_name, middle_name, surname, gender_id, salutation_id, date_of_birth, nationality_id, passport_no_enc, passport_issue_date, passport_expiry_date, passport_place_of_issue, email, phone, created_at"),
@@ -50,7 +58,7 @@ export async function exportMyData(userId: string, email: string | null): Promis
   return {
     generated_at: new Date().toISOString(), account: { id: userId, email, ...profile },
     note: "This file holds the data ThaiPass keeps about your account. Uploaded document files can be downloaded from each application page. Passport numbers are shown in clear text here because only you receive this file.",
-    consents,
+    consents, family_checkin: family,
     travelers: (travelers as unknown as Record<string, unknown>[]).map(({ passport_no_enc, ...t }) => ({ ...t, passport_no: safeDecrypt(passport_no_enc as string | null) })),
     trips, applications: apps, declarations, documents: docs, payments, refunds: refundsRaw, addon_orders: addons, tax_invoices: tax, notifications: notices, notification_channels: channels,
   };
@@ -71,7 +79,7 @@ export async function eraseAccount(userId: string): Promise<{ ok: true } | { ok:
     await step("declarations", db().from("declarations").delete().eq("owner_id", userId));
     await step("documents", db().from("documents").delete().eq("owner_id", userId));
     // 2) rows that hold personal data
-    for (const [t, c] of [["form_drafts", "owner_id"], ["app_notifications", "user_id"], ["notification_channels", "owner_id"], ["message_log", "owner_id"], ["agency_members", "user_id"], ["partner_members", "user_id"], ["aivora_links", "user_id"], ["product_events", "user_id"], ["report_viewers", "user_id"]] as const)
+    for (const [t, c] of [["safety_checkins", "owner_id"], ["safety_contacts", "owner_id"], ["safety_schedule", "owner_id"], ["warning_watches", "user_id"], ["push_subscriptions", "user_id"], ["payment_links", "owner_id"], ["form_drafts", "owner_id"], ["app_notifications", "user_id"], ["notification_channels", "owner_id"], ["message_log", "owner_id"], ["agency_members", "user_id"], ["partner_members", "user_id"], ["aivora_links", "user_id"], ["product_events", "user_id"], ["report_viewers", "user_id"]] as const)
       await step(t, db().from(t).delete().eq(c, userId));
     await step("travelers", db().from("travelers").update({ given_name: "Deleted", middle_name: null, surname: "traveler", date_of_birth: null, passport_no_enc: null, passport_no_hash: null, passport_last4: null, passport_issue_date: null, passport_expiry_date: null, passport_place_of_issue: null, email: null, phone: null }).eq("owner_id", userId));
     await step("trips", db().from("trips").update({ arrival_pnr: null, departure_pnr: null }).eq("owner_id", userId));

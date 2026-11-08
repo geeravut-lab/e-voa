@@ -1495,6 +1495,12 @@ export const en = {
   err_watch_limit: "You can follow up to 5 places. Stop one first.",
   tk_vault: "Offline vault and health card",
   tk_vault_sub: "Papers and health info on your phone, locked, no internet needed",
+  tk_family: "Family check-in",
+  tk_family_sub: "Tell your family you are safe; they are told if you go quiet",
+  err_family_limit: "You can add up to 5 people. Remove one first.",
+  err_family_email: "Enter a valid e-mail address.",
+  err_family_dup: "That person is already on your list.",
+  err_family_until: "The last day cannot be in the past.",
   // errors
   err_generic: "Something went wrong. Please try again.",
   err_not_signed_in: "Please sign in first.",

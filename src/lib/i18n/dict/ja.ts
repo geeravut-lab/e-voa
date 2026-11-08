@@ -831,4 +831,10 @@ export const ja: Partial<Dict> = {
   err_watch_limit: "最大5か所まで設定できます。先に1つ解除してください。",
   tk_vault: "オフライン金庫とヘルスカード",
   tk_vault_sub: "書類と健康情報をスマホに保存、ロック付き、ネット不要",
+  tk_family: "家族への無事連絡",
+  tk_family_sub: "家族に無事を知らせ、連絡が途絶えたら通知します",
+  err_family_limit: "追加できるのは5人までです。先に1人削除してください。",
+  err_family_email: "有効なメールアドレスを入力してください。",
+  err_family_dup: "この人はすでにリストにいます。",
+  err_family_until: "最終日は過去にできません。",
 };

@@ -831,4 +831,10 @@ export const ko: Partial<Dict> = {
   err_watch_limit: "최대 5곳까지 설정할 수 있습니다. 먼저 하나를 해제하세요.",
   tk_vault: "오프라인 보관함과 건강 카드",
   tk_vault_sub: "휴대폰에 서류와 건강 정보를 잠가 보관, 인터넷 불필요",
+  tk_family: "가족 안부 체크인",
+  tk_family_sub: "가족에게 안전을 알리고, 연락이 끊기면 가족에게 알립니다",
+  err_family_limit: "최대 5명까지 추가할 수 있습니다. 먼저 한 명을 삭제하세요.",
+  err_family_email: "올바른 이메일 주소를 입력하세요.",
+  err_family_dup: "이미 목록에 있는 사람입니다.",
+  err_family_until: "마지막 날은 과거일 수 없습니다.",
 };
