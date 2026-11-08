@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ActionForm, type ActionResult } from "@/components/ActionForm";
 import { SubmitButton } from "@/components/Buttons";
@@ -59,33 +59,50 @@ export function DeleteFilterForm({ id, name }: { id: string; name: string }) {
 }
 
 const boxes = () => Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="ids"][form="${BULK_FORM}"]`));
-/** The bar under the list: choose what to do with the ticked applications. The ticks live on the rows (form="ops-bulk"). */
+const ticked = () => boxes().filter((b) => b.checked).length;
+/**
+ * The bulk actions for the ticked applications (the ticks live on the rows, form="ops-bulk").
+ * Nothing ticked: one slim row with "Select all" so the list keeps the screen.
+ * Something ticked: ONE compact bar (count, action, extra field, apply) that sticks to the bottom.
+ */
 export function BulkBar({ people }: { people: Person[] }) {
   const t = useT();
   const [state, action] = useActionState(bulkOpsAction, null as ActionResult);
   const [op, setOp] = useState("assign_me");
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const recount = () => setN(ticked());
+    document.addEventListener("change", recount);
+    return () => document.removeEventListener("change", recount);
+  }, []);
+  useEffect(() => { const id = setTimeout(() => setN(ticked()), 600); return () => clearTimeout(id); }, [state]);          // the list may reload after an action
+  const setAll = (v: boolean) => { boxes().forEach((b) => (b.checked = v)); setN(ticked()); };
+  const message = (
+    <span aria-live="polite" role="status" className="min-w-0 text-sm">
+      {state?.ok === true && <span className="font-semibold text-success">✓ {state.message ?? t.saved}</span>}
+      {state?.ok === false && <span className="font-semibold text-danger">✕ {errorText(state.error, t)}</span>}
+    </span>
+  );
+  const small = btnClass("ghost", "min-h-10 px-3 text-sm");
+  const compactField = "min-h-10 min-w-40 flex-1 rounded-control border-[1.5px] border-field bg-surface px-3 py-1 text-base sm:w-56 sm:flex-none";
+  if (n === 0) return (
+    <form id={BULK_FORM} action={action} aria-label={t.ops_bulk_title} className="flex flex-wrap items-center gap-2">
+      <button type="button" onClick={() => setAll(true)} className={small}>{t.ops_select_all}</button>
+      {message}
+    </form>
+  );
   return (
-    <form id={BULK_FORM} action={action} className="sticky bottom-20 z-10 space-y-2 rounded-card border border-primary bg-surface p-4 shadow-card lg:bottom-4" aria-label={t.ops_bulk_title}>
-      <div className="flex flex-wrap items-center gap-2">
-        <b className="me-auto text-sm">{t.ops_bulk_title}</b>
-        <button type="button" onClick={() => boxes().forEach((b) => (b.checked = true))} className={btnClass("ghost", "min-h-10 px-3 text-sm")}>{t.ops_select_all}</button>
-        <button type="button" onClick={() => boxes().forEach((b) => (b.checked = false))} className={btnClass("ghost", "min-h-10 px-3 text-sm")}>{t.ops_select_none}</button>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
-        <label className="block space-y-1 text-sm font-semibold">{t.ops_bulk_op}
-          <select name="op" value={op} onChange={(e) => setOp(e.target.value)} className={inputCls}>
-            <option value="assign_me">{t.ops_bulk_assign_me}</option><option value="assign">{t.ops_bulk_assign}</option><option value="unassign">{t.ops_bulk_unassign}</option>
-            <option value="note">{t.ops_bulk_note}</option><option value="retry">{t.ops_bulk_retry}</option>
-          </select></label>
-        {op === "assign" && <label className="block space-y-1 text-sm font-semibold">{t.ops_pick_assignee}
-          <select name="assignee" required className={inputCls} defaultValue=""><option value="" disabled>—</option>{people.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}
-        {op === "note" && <label className="block space-y-1 text-sm font-semibold">{t.ops_note}<input name="note" required maxLength={1000} className={inputCls} /></label>}
-      </div>
-      <SubmitButton>{t.ops_bulk_apply}</SubmitButton>
-      <div aria-live="polite" className="min-h-6 text-sm">
-        {state?.ok === true && <p className="font-semibold text-success">✓ {state.message ?? t.saved}</p>}
-        {state?.ok === false && <p className="font-semibold text-danger">✕ {errorText(state.error, t)}</p>}
-      </div>
+    <form id={BULK_FORM} action={action} aria-label={t.ops_bulk_title} className="sticky bottom-20 z-10 flex flex-wrap items-center gap-2 rounded-card border border-primary bg-surface p-2 shadow-card lg:bottom-4">
+      <b className="px-1 text-sm tabular">{t.ops_selected_n.replace("{n}", String(n))}</b>
+      <select name="op" value={op} onChange={(e) => setOp(e.target.value)} aria-label={t.ops_bulk_op} className={compactField}>
+        <option value="assign_me">{t.ops_bulk_assign_me}</option><option value="assign">{t.ops_bulk_assign}</option><option value="unassign">{t.ops_bulk_unassign}</option>
+        <option value="note">{t.ops_bulk_note}</option><option value="retry">{t.ops_bulk_retry}</option>
+      </select>
+      {op === "assign" && <select name="assignee" required aria-label={t.ops_pick_assignee} className={compactField} defaultValue=""><option value="" disabled>{t.ops_pick_assignee}</option>{people.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select>}
+      {op === "note" && <input name="note" required maxLength={1000} aria-label={t.ops_note} placeholder={t.ops_note} className={`${"min-h-10 min-w-48 flex-1 rounded-control border-[1.5px] border-field bg-surface px-3 py-1 text-base"}`} />}
+      <SubmitButton className="min-h-10 px-4 text-sm">{t.ops_bulk_apply}</SubmitButton>
+      <button type="button" onClick={() => setAll(false)} className={small}>{t.ops_select_none}</button>
+      {message}
     </form>
   );
 }

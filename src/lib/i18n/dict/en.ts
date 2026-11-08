@@ -1266,6 +1266,7 @@ export const en = {
   ops_assign_title: "Who is working on it",
   ops_assign_save: "Save",
   ops_bulk_title: "Selected applications",
+  ops_selected_n: "{n} selected",
   ops_select_all: "Select all",
   ops_select_none: "Clear selection",
   ops_select_row: "Select",

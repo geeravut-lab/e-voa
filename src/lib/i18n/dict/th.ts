@@ -1249,6 +1249,7 @@ export const th = {
   ops_assign_title: "ใครรับผิดชอบเรื่องนี้",
   ops_assign_save: "บันทึก",
   ops_bulk_title: "ใบสมัครที่เลือก",
+  ops_selected_n: "เลือกแล้ว {n} รายการ",
   ops_select_all: "เลือกทั้งหมด",
   ops_select_none: "ล้างการเลือก",
   ops_select_row: "เลือก",

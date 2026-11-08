@@ -1249,6 +1249,7 @@ export const zhCN = {
   ops_assign_title: "谁在处理",
   ops_assign_save: "保存",
   ops_bulk_title: "已选申请",
+  ops_selected_n: "已选 {n} 项",
   ops_select_all: "全选",
   ops_select_none: "清除选择",
   ops_select_row: "选择",
