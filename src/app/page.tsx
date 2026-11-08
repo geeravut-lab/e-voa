@@ -50,8 +50,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       {pinned && (
         <NavRowLink href="/news" className="tone-green block rounded-card border p-4 shadow-card">
           <span className="text-xs font-bold uppercase tracking-wider text-success">{t.news_title}</span>
-          <b className="mt-1 block text-success">{pinned.title}</b>
-          <span className="mt-1 block line-clamp-2 text-sm text-ink">{richPlain(pinned.body)}</span>
+          <b className="mt-1 line-clamp-2 break-words text-success">{pinned.title}</b>
+          <span className="mt-1 line-clamp-3 break-words text-sm text-ink">{richPlain(pinned.body).replace(/\s+/g, " ")}</span>          {/* no "block" here: it would override the clamp's display:-webkit-box and the text would show in full */}
           <span className="mt-2 block text-sm font-semibold text-primary">{t.news_read_all} →</span>
         </NavRowLink>
       )}

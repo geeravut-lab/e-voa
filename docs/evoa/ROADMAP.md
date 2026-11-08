@@ -143,6 +143,8 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 
 | **10 Nov round, infographic**: ✅ the infographic (`docs/evoa/infographic/ThaiPass-eVOA-infographic-{EN,TH}-{1,2,3}.png`, 3 pages each, system colours, the app's own illustrations) now covers everything built so far: the 4-step flow, safety companion (emergency numbers and Thai phrases, incident guides, weather/air/official warnings with phone alerts, rules check, TDAC and Stay Guard, motorbike rental helper, offline vault and health card, family check-in, AI assistant, airport guide), add-ons, prices and refunds, pay-later links, privacy (download/erase), nine languages, agencies and partners, and the back office (roles, bulk actions, audit trail, news with pictures). Rebuild: `npx vite-node tools/infographic/art.tsx /tmp/art.json` then `node tools/infographic/build.mjs /tmp/art.json <out-dir> .` | ✅ |
 
+| **10 Nov round, home news card**: ✅ the pinned news card on the home page shows the title in at most 2 lines and the text in at most 3 lines, whatever the screen width (the old 2-line limit did not work: the `block` class overrode the clamp, so the whole text showed — measured 9 lines at 320 px before, 3 now). Only ONE pinned item is shown: the most recently published pinned news; other pinned items are listed on `/news` | ✅ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes
