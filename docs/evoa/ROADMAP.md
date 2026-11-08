@@ -18,6 +18,7 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 | Q10 | All nationalities; marketing focused on 3–5 markets first |
 | Q11 | Agency portal in Phase 2+, data model ready from day one |
 | Q12 | Document retention set by Admin; default delete images 90 days after travel |
+| Q13 (10 Nov 2026) | Home page shows ONE pinned news item: the most recently published pinned one. Other pinned items stay on `/news` (no extra space on the home page) |
 
 ## Phase 0 — Foundation ✅ (code and live checks done; two items wait for you)
 
