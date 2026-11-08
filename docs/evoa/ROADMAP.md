@@ -148,6 +148,8 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 
 | **10 Nov 2026, strategy**: 📄 pivot analysis `docs/evoa/12-PIVOT-ANALYSIS.md`: since 15 Sep 2026 the VOA list was cut from 31 to 4 countries and visa-free stays to 30 days, so the e-VOA market itself is very small. Options scored: A "Thailand Stay OS" (e-Visa prep, 30-day extension, 90-day calendar, insurance, Thailand Privilege), B migrant-worker compliance cloud for employers, C outbound visa helper for Thais; D–F not recommended as the core. Waiting for the owner to choose | ⏳ |
 
+| **10 Nov round, official channels**: ✅ on `/official` a tap on the LINE id opens LINE's add-friend page (`@id` → `https://line.me/R/ti/p/%40id`, personal id → `/ti/p/~id`, opens in a new tab) and a tap on the phone number starts a call (`tel:+66946120581`; spaces, dashes and brackets are removed). Text that does not look like a LINE id or phone number stays plain text (`lib/channel-links.ts`, 4 unit tests). Checked in a browser against the real values | ✅ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes
