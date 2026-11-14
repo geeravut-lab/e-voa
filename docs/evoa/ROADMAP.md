@@ -150,6 +150,8 @@ Legend: ✅ done · 🟡 started / needs your action · ⬜ not started. Owner d
 
 | **10 Nov round, official channels**: ✅ on `/official` a tap on the LINE id opens LINE's add-friend page (`@id` → `https://line.me/R/ti/p/%40id`, personal id → `/ti/p/~id`, opens in a new tab) and a tap on the phone number starts a call (`tel:+66946120581`; spaces, dashes and brackets are removed). Text that does not look like a LINE id or phone number stays plain text (`lib/channel-links.ts`, 4 unit tests). Checked in a browser against the real values | ✅ |
 
+| **14 Nov 2026, knowledge**: ✅ `docs/evoa/13-KNOWLEDGE-BLUEPRINT.md` (~650 lines, Thai): every function of the system except the six core e-VOA pages (apply, eligibility, trips, pass, status, fees), written as a blueprint for a new travel web app: architecture and code rules, UX/UI system (tokens, shell, bottom bar, More sheet and the device Back behaviour, BackLink, menu highlight rules, spinner rules, forms, live sync, PWA, accessibility), every traveler / agency / partner / government / back-office page, notifications, AI, jobs and rules, data and settings, tests, and a reuse / replace / build-order guide with lessons learned | ✅ |
+
 ## Still planned
 
 ⬜ TAT API / scheduled data feed · ⬜ wallet passes for other states (boarding-style flight reminders) · ⬜ discount codes for add-ons / per-agency codes

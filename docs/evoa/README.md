@@ -17,3 +17,4 @@
 > Brand decision (Q2): the product name is **ThaiPass e-VOA**. Documents 02 and 03 and the preview page were written under the working name "Thailand Global E-VOA"; the logo in `brand/` already uses the new name.
 - [12-PIVOT-ANALYSIS.md](12-PIVOT-ANALYSIS.md) — ถ้า visa-free ยังอยู่ ควร transform ระบบไปทำอะไร (วิเคราะห์ตลาดและทางเลือก, พ.ย. 2026)
 - [HANDOFF.md](HANDOFF.md) — ส่งต่องาน: วิธีทำงาน กติกา สถานะล่าสุด ของค้าง และวิธีตั้งค่า account/environment ใหม่ (อ่านก่อนทำงานต่อใน session ใหม่)
+- [13-KNOWLEDGE-BLUEPRINT.md](13-KNOWLEDGE-BLUEPRINT.md) — Knowledge ของระบบทุกฟังก์ชัน (ยกเว้น 6 เรื่องแกน e-VOA): UX/UI, เมนู, Back, ไฮไลต์, ทีละหน้า, บริการเบื้องหลัง, ข้อมูล, ทดสอบ และคู่มือย้ายไปสร้างเว็บแอปท่องเที่ยวใหม่
