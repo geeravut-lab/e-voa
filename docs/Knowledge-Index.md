@@ -37,6 +37,7 @@
 | แจ้งเตือนในแอปและ LINE: คิว โควตา retry การ์ด Flex       | [LINE-NOTIFICATIONS-KNOWLEDGE.md](./LINE-NOTIFICATIONS-KNOWLEDGE.md)       |
 | ผูกบัญชี LINE ของผู้ใช้เพื่อรับแจ้งเตือน (รหัสครั้งเดียว, webhook, สถานะ) | [LINE-ACCOUNT-LINKING-KNOWLEDGE.md](./LINE-ACCOUNT-LINKING-KNOWLEDGE.md) |
 | สร้าง/แก้ไขข่าวและบทความจากหลังบ้าน (rich text ปลอดภัย, รูป, SEO, หลายภาษา) | [NEWS-ARTICLES-KNOWLEDGE.md](./NEWS-ARTICLES-KNOWLEDGE.md) |
+| เมนู "ระหว่างอยู่ไทย": ชุดเครื่องมือระหว่างเดินทาง (ฉุกเฉิน, กฎ, อากาศ/ฝุ่น, เช็กอินครอบครัว, ตู้เอกสารออฟไลน์) | [WHILE-IN-THAILAND-KNOWLEDGE.md](./WHILE-IN-THAILAND-KNOWLEDGE.md) |
 | สองภาษาและการสลับภาษา                                    | [I18N-KNOWLEDGE.md](./I18N-KNOWLEDGE.md)                                   |
 
 
